@@ -1,0 +1,7 @@
+[package]
+name = "interpreter_tutorial"
+version = "0.1.0"
+authors = ["Dominik Fankhauser <dominik@fankhausers.ch>"]
+
+[dependencies]
+
