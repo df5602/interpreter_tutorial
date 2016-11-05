@@ -1,7 +1,9 @@
 use std::fmt;
 use std::cell::{Cell, RefCell};
+use std::io;
+use std::io::{BufRead, Write};
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 enum TokenType {
     Integer,
     Plus,
@@ -18,7 +20,7 @@ impl fmt::Display for TokenType {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Token {
     token_type: TokenType,
     value: Option<u64>,
@@ -93,15 +95,21 @@ impl Interpreter {
             return Ok(Token::new(TokenType::Plus, None));
         }
 
-        return Err("Invalid token".to_string());
+        Err("Invalid token".to_string())
     }
 
     fn eat(&self, token_type: TokenType) -> Result<(), String> {
         let mut current_token = self.current_token.borrow_mut();
         if current_token.is_some() {
             if current_token.as_ref().unwrap().token_type == token_type {
-                *current_token = Some(self.get_next_token().unwrap());
-                Ok(())
+                let next_token = self.get_next_token();
+                match next_token {
+                    Ok(token) => {
+                        *current_token = Some(token);
+                        Ok(())
+                    }
+                    Err(s) => Err(s),
+                }
             } else {
                 Err(format!("Expected {}, got {}",
                             token_type,
@@ -111,16 +119,83 @@ impl Interpreter {
             Err(("".to_string()))
         }
     }
+
+    // Evaluates an expression:
+    // expr -> INTEGER '+' INTEGER
+    fn expr(&self) -> Result<u64, String> {
+        let left: Token;
+        let right: Token;
+
+        // Get first token (return error if no valid token)
+        {
+            let mut current_token = self.current_token.borrow_mut();
+            let next_token = self.get_next_token();
+            if next_token.is_err() {
+                return Err(next_token.unwrap_err());
+            }
+            *current_token = Some(next_token.unwrap());
+
+            left = current_token.clone().unwrap();
+        }
+        // First token should be an integer
+        let mut result = self.eat(TokenType::Integer);
+        if result.is_err() {
+            return Err(result.unwrap_err());
+        }
+
+        // Expect next token to be a '+'
+        result = self.eat(TokenType::Plus);
+        if result.is_err() {
+            return Err(result.unwrap_err());
+        }
+
+        // Expect next token to be an integer
+        {
+            right = self.current_token.borrow().clone().unwrap();
+        }
+        result = self.eat(TokenType::Integer);
+        if result.is_err() {
+            return Err(result.unwrap_err());
+        }
+
+        // Expect next token to be EOF
+        result = self.eat(TokenType::Eof);
+        if result.is_err() {
+            return Err(result.unwrap_err());
+        }
+
+        Ok(left.value.unwrap() + right.value.unwrap())
+    }
+}
+
+#[allow(unused_must_use)]
+fn print_preamble() {
+    let stdout = io::stdout();
+
+    stdout.lock().write(b"interpreter> ");
+    stdout.lock().flush();
 }
 
 fn main() {
-    let interpreter = Interpreter::new("4+34".to_string());
+    let stdin = io::stdin();
 
-    *interpreter.current_token.borrow_mut() = Some(interpreter.get_next_token().unwrap());
-    let result = interpreter.eat(TokenType::Plus);
-    match result {
-        Ok(()) => println!("Got integer"),
-        Err(s) => interpreter.print_error(s, -1),
+    print_preamble();
+    for line in stdin.lock().lines() {
+        match line {
+            Ok(_) => {
+                let interpreter = Interpreter::new(line.unwrap());
+                let result = interpreter.expr();
+                match result {
+                    Ok(value) => println!("{}", value),
+                    Err(s) => interpreter.print_error(s, 0),
+                }
+            }
+            Err(error) => {
+                println!("error: {}", error);
+                panic!();
+            }
+        }
+        print_preamble();
     }
 }
 
@@ -185,7 +260,7 @@ fn interpreter_get_next_token_return_error_when_input_is_letter() {
 fn interpreter_eat_should_consume_token_if_it_has_the_correct_type() {
     let interpreter = Interpreter::new("+4".to_string());
     *interpreter.current_token.borrow_mut() = Some(interpreter.get_next_token().unwrap());
-    interpreter.eat(TokenType::Plus);
+    let _op = interpreter.eat(TokenType::Plus);
     let current_token = interpreter.current_token.borrow();
     match *current_token {
         Some(ref token) => assert_eq!(TokenType::Integer, token.token_type),
@@ -198,5 +273,55 @@ fn interpreter_eat_should_not_consume_token_if_it_has_the_wrong_type() {
     let interpreter = Interpreter::new("+4".to_string());
     *interpreter.current_token.borrow_mut() = Some(interpreter.get_next_token().unwrap());
     let result = interpreter.eat(TokenType::Integer);
+    assert!(result.is_err());
+}
+
+#[test]
+// expr -> INTEGER '+' INTEGER
+fn interpreter_expr_should_only_parse_valid_expressions() {
+    let interpreter = Interpreter::new("3+4".to_string());
+    let result = interpreter.expr();
+    assert_eq!(7, result.unwrap());
+}
+
+#[test]
+fn interpreter_expr_should_not_parse_expressions_that_dont_begin_with_an_integer() {
+    let interpreter = Interpreter::new("+4".to_string());
+    let result = interpreter.expr();
+    assert!(result.is_err());
+}
+
+#[test]
+fn interpreter_expr_should_not_parse_expressions_that_dont_begin_with_single_digit_integer() {
+    let interpreter = Interpreter::new("44+3".to_string());
+    let result = interpreter.expr();
+    assert!(result.is_err());
+}
+
+#[test]
+fn interpreter_expr_should_not_parse_expressions_that_dont_have_plus_after_integer() {
+    let interpreter = Interpreter::new("4-2".to_string());
+    let result = interpreter.expr();
+    assert!(result.is_err());
+}
+
+#[test]
+fn interpreter_expr_should_not_parse_expressions_that_dont_have_integer_after_plus() {
+    let interpreter = Interpreter::new("4+a".to_string());
+    let result = interpreter.expr();
+    assert!(result.is_err());
+}
+
+#[test]
+fn interpreter_expr_should_not_parse_empty_string() {
+    let interpreter = Interpreter::new("".to_string());
+    let result = interpreter.expr();
+    assert!(result.is_err());
+}
+
+#[test]
+fn interpreter_expr_should_not_parse_expressions_that_dont_terminate_with_eof() {
+    let interpreter = Interpreter::new("1+33".to_string());
+    let result = interpreter.expr();
     assert!(result.is_err());
 }
