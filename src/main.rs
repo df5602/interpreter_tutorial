@@ -72,6 +72,33 @@ impl Interpreter {
         println!(">>> {}^", s);
     }
 
+    // Returns a multi-digit integer
+    // Precondition: First character is digit
+    fn get_integer(&self) -> u64 {
+        let mut pos = self.pos.get();
+        let mut current_char = self.chars[pos];
+        assert!(current_char.is_digit(10));
+        let mut result = current_char.to_digit(10).unwrap() as u64;
+
+        loop {
+            pos += 1;
+
+            if pos + 1 > self.chars.len() {
+                break;
+            }
+
+            current_char = self.chars[pos];
+            if current_char.is_digit(10) {
+                result = result * 10 + (current_char.to_digit(10).unwrap() as u64);
+            } else {
+                break;
+            }
+        }
+
+        self.pos.set(pos);
+        result
+    }
+
     fn get_next_token(&self) -> Result<Token, String> {
         let pos = self.pos.get();
 
@@ -84,9 +111,8 @@ impl Interpreter {
 
         // Return INTEGER when the next character is a digit
         if current_char.is_digit(10) {
-            self.pos.set(pos + 1);
-            return Ok(Token::new(TokenType::Integer,
-                                 Some(current_char.to_digit(10).unwrap() as u64)));
+            let value = self.get_integer();
+            return Ok(Token::new(TokenType::Integer, Some(value)));
         }
 
         // Return PLUS when the next character is '+'
@@ -240,14 +266,14 @@ fn interpreter_get_next_token_returns_next_token_when_called_second_time() {
 }
 
 #[test]
-fn interpreter_get_next_token_return_plus_when_input_is_plus() {
+fn interpreter_get_next_token_returns_plus_when_input_is_plus() {
     let interpreter = Interpreter::new("+".to_string());
     let next_token = interpreter.get_next_token().unwrap();
     assert_eq!(TokenType::Plus, next_token.token_type);
 }
 
 #[test]
-fn interpreter_get_next_token_return_error_when_input_is_letter() {
+fn interpreter_get_next_token_returns_error_when_input_is_letter() {
     let interpreter = Interpreter::new("a".to_string());
     let next_token = interpreter.get_next_token();
     match next_token {
@@ -292,10 +318,10 @@ fn interpreter_expr_should_not_parse_expressions_that_dont_begin_with_an_integer
 }
 
 #[test]
-fn interpreter_expr_should_not_parse_expressions_that_dont_begin_with_single_digit_integer() {
+fn interpreter_expr_should_parse_expressions_that_contain_multi_digit_integer() {
     let interpreter = Interpreter::new("44+3".to_string());
     let result = interpreter.expr();
-    assert!(result.is_err());
+    assert_eq!(47, result.unwrap());
 }
 
 #[test]
@@ -321,7 +347,29 @@ fn interpreter_expr_should_not_parse_empty_string() {
 
 #[test]
 fn interpreter_expr_should_not_parse_expressions_that_dont_terminate_with_eof() {
-    let interpreter = Interpreter::new("1+33".to_string());
+    let interpreter = Interpreter::new("1+3a".to_string());
     let result = interpreter.expr();
     assert!(result.is_err());
+}
+
+#[test]
+fn interpreter_get_integer_returns_multi_digit_integer() {
+    let interpreter = Interpreter::new("123".to_string());
+    let result = interpreter.get_integer();
+    assert_eq!(123, result);
+}
+
+#[test]
+fn interpreter_get_integer_should_advance_position_correctly() {
+    let interpreter = Interpreter::new("123".to_string());
+    let _result = interpreter.get_integer();
+    assert_eq!(3, interpreter.pos.get());
+}
+
+#[test]
+fn interpreter_get_integer_should_only_advance_as_long_as_there_are_more_digits() {
+    let interpreter = Interpreter::new("12a".to_string());
+    let result = interpreter.get_integer();
+    assert_eq!(12, result);
+    assert_eq!(2, interpreter.pos.get());
 }
