@@ -104,9 +104,38 @@ impl Interpreter {
         result
     }
 
+    // Advances the position to the next non-whitespace character
+    fn skip_whitespace(&self) {
+        let mut pos = self.pos.get();
+
+        loop {
+            // Terminate if we have reached the end of the input
+            if pos + 1 > self.chars.len() {
+                break;
+            }
+
+            // Read character at current position
+            let current_char = self.chars[pos];
+
+            // Is current character whitespace character?
+            if current_char.is_whitespace() {
+                // Advance position and continue
+                pos += 1;
+            } else {
+                break;
+            }
+        }
+
+        // Set new position
+        self.pos.set(pos);
+    }
+
     // Returns the next token in the input
     // Result is the token, if possible, Error "Invalid token" otherwise
     fn get_next_token(&self) -> Result<Token, String> {
+        // Advance to the next non-whitespace character
+        self.skip_whitespace();
+
         let pos = self.pos.get();
 
         // Return EOF when we have reached the end of the input
@@ -385,4 +414,39 @@ fn interpreter_get_integer_should_only_advance_as_long_as_there_are_more_digits(
     let result = interpreter.get_integer();
     assert_eq!(12, result);
     assert_eq!(2, interpreter.pos.get());
+}
+
+#[test]
+fn interpreter_skip_whitespace_should_skip_all_whitespaces_until_eof() {
+    let interpreter = Interpreter::new("  \n".to_string());
+    interpreter.skip_whitespace();
+    assert_eq!(3, interpreter.pos.get());
+}
+
+#[test]
+fn interpreter_skip_whitespace_should_skip_all_whitespaces_until_first_non_whitespace_char() {
+    let interpreter = Interpreter::new("  3".to_string());
+    interpreter.skip_whitespace();
+    assert_eq!(2, interpreter.pos.get());
+}
+
+#[test]
+fn interpreter_skip_whitespace_should_not_skip_non_whitespace_characters() {
+    let interpreter = Interpreter::new("123".to_string());
+    interpreter.skip_whitespace();
+    assert_eq!(0, interpreter.pos.get());
+}
+
+#[test]
+fn interpreter_expr_should_parse_expressions_that_contain_whitespace_characters() {
+    let interpreter = Interpreter::new("2 + 3".to_string());
+    let result = interpreter.expr();
+    assert_eq!(5, result.unwrap());
+}
+
+#[test]
+fn interpreter_expr_should_parse_expressions_that_begin_with_whitespace_characters() {
+    let interpreter = Interpreter::new(" 2 + 3".to_string());
+    let result = interpreter.expr();
+    assert_eq!(5, result.unwrap());
 }
