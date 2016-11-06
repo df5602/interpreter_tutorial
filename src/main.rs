@@ -75,6 +75,12 @@ impl Token {
 }
 
 #[derive(Debug)]
+struct SyntaxError {
+    msg: String,
+    position: usize,
+}
+
+#[derive(Debug)]
 struct Interpreter {
     text: String,
     chars: Vec<char>,
@@ -96,13 +102,10 @@ impl Interpreter {
     // Error parsing input: msg
     // >>> 3?5
     // >>>  ^
-    // Use offset to move marker
-    fn print_error(&self, msg: String, offset: isize) {
-        let mut s = "".to_string();
-        for _ in 0..((self.pos.get() as isize + offset) as usize) {
-            s = s + " ";
-        }
-        println!("Error parsing input: {}", msg);
+    fn print_error(&self, e: SyntaxError) {
+        let s = std::iter::repeat(" ").take(e.position).collect::<String>();
+
+        println!("Error parsing input: {}", e.msg);
         println!(">>> {}", self.text);
         println!(">>> {}^", s);
     }
@@ -162,7 +165,7 @@ impl Interpreter {
 
     // Returns the next token in the input
     // Result is the token, if possible, Error "Invalid token" otherwise
-    fn get_next_token(&self) -> Result<Token, String> {
+    fn get_next_token(&self) -> Result<Token, SyntaxError> {
         // Advance to the next non-whitespace character
         self.skip_whitespace();
 
@@ -170,6 +173,7 @@ impl Interpreter {
 
         // Return EOF when we have reached the end of the input
         if pos + 1 > self.chars.len() {
+            self.pos.set(pos + 1);
             return Ok(Token::new(TokenType::Eof, None));
         }
 
@@ -196,11 +200,14 @@ impl Interpreter {
         }
 
         // Current character didn't match any known token, return error
-        Err("Invalid token".to_string())
+        Err(SyntaxError {
+            msg: "Invalid token".to_string(),
+            position: pos,
+        })
     }
 
     // Consumes current token if it is of the expected type
-    fn eat(&self, token_type: TokenType) -> Result<(), String> {
+    fn eat(&self, token_type: TokenType) -> Result<(), SyntaxError> {
         let mut current_token = self.current_token.borrow_mut();
         // If token is present...
         if current_token.is_some() {
@@ -213,21 +220,29 @@ impl Interpreter {
                         *current_token = Some(token);
                         Ok(())
                     }
-                    Err(s) => Err(s),
+                    Err(e) => Err(e),
                 }
             } else {
-                Err(format!("Expected {}, got {}",
-                            token_type,
-                            current_token.as_ref().unwrap().token_type))
+                let mut pos = self.pos.get();
+                pos = if pos > 0 { pos - 1 } else { pos };
+                Err(SyntaxError {
+                    msg: format!("Expected {}, got {}",
+                                 token_type,
+                                 current_token.as_ref().unwrap().token_type),
+                    position: pos,
+                })
             }
         } else {
-            Err(("Internal error (No token present)".to_string()))
+            Err(SyntaxError {
+                msg: "Internal error (No token present)".to_string(),
+                position: self.pos.get(),
+            })
         }
     }
 
     // Evaluates an expression:
     // expr -> INTEGER OPERATOR INTEGER
-    fn expr(&self) -> Result<i64, String> {
+    fn expr(&self) -> Result<i64, SyntaxError> {
         let lhs: Option<TokenValue>;
         let rhs: Option<TokenValue>;
         let op: Option<TokenValue>;
@@ -255,12 +270,20 @@ impl Interpreter {
                 match value {
                     TokenValue::IntegerValue(value) => value,
                     TokenValue::OperatorValue(_) => {
-                        return Err("Internal Error (Integer value has wrong type OperatorValue)"
-                            .to_string())
+                        return Err(SyntaxError {
+                            msg: "Internal Error (Integer value has wrong type OperatorValue)"
+                                .to_string(),
+                            position: self.pos.get(),
+                        })
                     }
                 }
             }
-            None => return Err("Internal Error (Integer value not set)".to_string()),
+            None => {
+                return Err(SyntaxError {
+                    msg: "Internal Error (Integer value not set)".to_string(),
+                    position: self.pos.get(),
+                })
+            }
         };
 
         // Expect next token to be a '+'
@@ -277,13 +300,21 @@ impl Interpreter {
             Some(value) => {
                 match value {
                     TokenValue::IntegerValue(_) => {
-                        return Err("Internal Error (Operator value has wrong type IntegerValue)"
-                            .to_string())
+                        return Err(SyntaxError {
+                            msg: "Internal Error (Operator value has wrong type IntegerValue)"
+                                .to_string(),
+                            position: self.pos.get(),
+                        })
                     }
                     TokenValue::OperatorValue(value) => value,
                 }
             }
-            None => return Err("Internal Error (Operator value not set)".to_string()),
+            None => {
+                return Err(SyntaxError {
+                    msg: "Internal Error (Operator value not set)".to_string(),
+                    position: self.pos.get(),
+                })
+            }
         };
 
         // Expect next token to be an integer
@@ -301,12 +332,20 @@ impl Interpreter {
                 match value {
                     TokenValue::IntegerValue(value) => value,
                     TokenValue::OperatorValue(_) => {
-                        return Err("Internal Error (Integer value has wrong type OperatorValue)"
-                            .to_string())
+                        return Err(SyntaxError {
+                            msg: "Internal Error (Integer value has wrong type OperatorValue)"
+                                .to_string(),
+                            position: self.pos.get(),
+                        })
                     }
                 }
             }
-            None => return Err("Internal Error (Integer value not set)".to_string()),
+            None => {
+                return Err(SyntaxError {
+                    msg: "Internal Error (Integer value not set)".to_string(),
+                    position: self.pos.get(),
+                })
+            }
         };
 
         // Expect next token to be EOF
@@ -321,7 +360,10 @@ impl Interpreter {
         } else if op_type == OperatorType::Minus {
             Ok((lhs_val as i64) - (rhs_val as i64))
         } else {
-            Err("Internal Error (Unknown operator type)".to_string())
+            Err(SyntaxError {
+                msg: "Internal Error (Unknown operator type)".to_string(),
+                position: self.pos.get(),
+            })
         }
     }
 }
@@ -345,7 +387,7 @@ fn main() {
                 let result = interpreter.expr();
                 match result {
                     Ok(value) => println!("{}", value),
-                    Err(s) => interpreter.print_error(s, 0),
+                    Err(e) => interpreter.print_error(e),
                 }
             }
             Err(error) => {
