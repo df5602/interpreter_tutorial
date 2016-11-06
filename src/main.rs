@@ -62,6 +62,11 @@ impl Interpreter {
         }
     }
 
+    // Prints error in the following format:
+    // Error parsing input: msg
+    // >>> 3?5
+    // >>>  ^
+    // Use offset to move marker
     fn print_error(&self, msg: String, offset: isize) {
         let mut s = "".to_string();
         for _ in 0..((self.pos.get() as isize + offset) as usize) {
@@ -72,7 +77,7 @@ impl Interpreter {
         println!(">>> {}^", s);
     }
 
-    // Returns a multi-digit integer
+    // Returns a multi-digit (unsigned, base 10) integer
     // Precondition: First character is digit
     fn get_integer(&self) -> u64 {
         let mut pos = self.pos.get();
@@ -99,6 +104,8 @@ impl Interpreter {
         result
     }
 
+    // Returns the next token in the input
+    // Result is the token, if possible, Error "Invalid token" otherwise
     fn get_next_token(&self) -> Result<Token, String> {
         let pos = self.pos.get();
 
@@ -121,13 +128,18 @@ impl Interpreter {
             return Ok(Token::new(TokenType::Plus, None));
         }
 
+        // Current character didn't match any known token, return error
         Err("Invalid token".to_string())
     }
 
+    // Consumes current token if it is of the expected type
     fn eat(&self, token_type: TokenType) -> Result<(), String> {
         let mut current_token = self.current_token.borrow_mut();
+        // If token is present...
         if current_token.is_some() {
+            // ... and has expected type...
             if current_token.as_ref().unwrap().token_type == token_type {
+                // ... consume token and set current token to the next token
                 let next_token = self.get_next_token();
                 match next_token {
                     Ok(token) => {
@@ -142,7 +154,7 @@ impl Interpreter {
                             current_token.as_ref().unwrap().token_type))
             }
         } else {
-            Err(("".to_string()))
+            Err(("Internal error (No token present)".to_string()))
         }
     }
 
@@ -190,6 +202,7 @@ impl Interpreter {
             return Err(result.unwrap_err());
         }
 
+        // Return sum of operands
         Ok(left.value.unwrap() + right.value.unwrap())
     }
 }
