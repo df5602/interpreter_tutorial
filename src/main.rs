@@ -6,7 +6,7 @@ use std::io::{BufRead, Write};
 #[derive(Debug, PartialEq, Clone)]
 enum TokenType {
     Integer,
-    Plus,
+    Operator,
     Eof,
 }
 
@@ -14,29 +14,59 @@ impl fmt::Display for TokenType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             TokenType::Integer => write!(f, "INTEGER"),
-            TokenType::Plus => write!(f, "'+'"),
+            TokenType::Operator => write!(f, "OPERATOR"),
             TokenType::Eof => write!(f, "EOF"),
         }
     }
 }
 
+#[derive(Debug, PartialEq, Clone)]
+enum OperatorType {
+    Plus,
+    Minus,
+}
+
+impl fmt::Display for OperatorType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            OperatorType::Plus => write!(f, "'+'"),
+            OperatorType::Minus => write!(f, "'-'"),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+enum TokenValue {
+    IntegerValue(u64),
+    OperatorValue(OperatorType),
+}
+
 #[derive(Debug, Clone)]
 struct Token {
     token_type: TokenType,
-    value: Option<u64>,
+    value: Option<TokenValue>,
 }
 
 impl fmt::Display for Token {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.value {
-            Some(value) => write!(f, "Token({}, {})", self.token_type, value),
+            Some(ref value) => {
+                match *value {
+                    TokenValue::IntegerValue(val) => {
+                        write!(f, "Token({}, {})", self.token_type, val)
+                    }
+                    TokenValue::OperatorValue(ref val) => {
+                        write!(f, "Token({}, {})", self.token_type, val)
+                    }
+                }
+            }
             None => write!(f, "Token({})", self.token_type),
         }
     }
 }
 
 impl Token {
-    fn new(token_type: TokenType, value: Option<u64>) -> Token {
+    fn new(token_type: TokenType, value: Option<TokenValue>) -> Token {
         Token {
             token_type: token_type,
             value: value,
@@ -148,13 +178,21 @@ impl Interpreter {
         // Return INTEGER when the next character is a digit
         if current_char.is_digit(10) {
             let value = self.get_integer();
-            return Ok(Token::new(TokenType::Integer, Some(value)));
+            return Ok(Token::new(TokenType::Integer, Some(TokenValue::IntegerValue(value))));
         }
 
         // Return PLUS when the next character is '+'
         if current_char == '+' {
             self.pos.set(pos + 1);
-            return Ok(Token::new(TokenType::Plus, None));
+            return Ok(Token::new(TokenType::Operator,
+                                 Some(TokenValue::OperatorValue(OperatorType::Plus))));
+        }
+
+        // Return MINUS when the next character is '-'
+        if current_char == '-' {
+            self.pos.set(pos + 1);
+            return Ok(Token::new(TokenType::Operator,
+                                 Some(TokenValue::OperatorValue(OperatorType::Minus))));
         }
 
         // Current character didn't match any known token, return error
@@ -188,10 +226,11 @@ impl Interpreter {
     }
 
     // Evaluates an expression:
-    // expr -> INTEGER '+' INTEGER
-    fn expr(&self) -> Result<u64, String> {
-        let left: Token;
-        let right: Token;
+    // expr -> INTEGER OPERATOR INTEGER
+    fn expr(&self) -> Result<i64, String> {
+        let lhs: Option<TokenValue>;
+        let rhs: Option<TokenValue>;
+        let op: Option<TokenValue>;
 
         // Get first token (return error if no valid token)
         {
@@ -202,7 +241,7 @@ impl Interpreter {
             }
             *current_token = Some(next_token.unwrap());
 
-            left = current_token.clone().unwrap();
+            lhs = current_token.clone().unwrap().value;
         }
         // First token should be an integer
         let mut result = self.eat(TokenType::Integer);
@@ -210,20 +249,65 @@ impl Interpreter {
             return Err(result.unwrap_err());
         }
 
+        // Extract value
+        let lhs_val = match lhs {
+            Some(value) => {
+                match value {
+                    TokenValue::IntegerValue(value) => value,
+                    TokenValue::OperatorValue(_) => {
+                        return Err("Internal Error (Integer value has wrong type OperatorValue)"
+                            .to_string())
+                    }
+                }
+            }
+            None => return Err("Internal Error (Integer value not set)".to_string()),
+        };
+
         // Expect next token to be a '+'
-        result = self.eat(TokenType::Plus);
+        {
+            op = self.current_token.borrow().clone().unwrap().value;
+        }
+        result = self.eat(TokenType::Operator);
         if result.is_err() {
             return Err(result.unwrap_err());
         }
 
+        // Extract value
+        let op_type = match op {
+            Some(value) => {
+                match value {
+                    TokenValue::IntegerValue(_) => {
+                        return Err("Internal Error (Operator value has wrong type IntegerValue)"
+                            .to_string())
+                    }
+                    TokenValue::OperatorValue(value) => value,
+                }
+            }
+            None => return Err("Internal Error (Operator value not set)".to_string()),
+        };
+
         // Expect next token to be an integer
         {
-            right = self.current_token.borrow().clone().unwrap();
+            rhs = self.current_token.borrow().clone().unwrap().value;
         }
         result = self.eat(TokenType::Integer);
         if result.is_err() {
             return Err(result.unwrap_err());
         }
+
+        // Extract value
+        let rhs_val = match rhs {
+            Some(value) => {
+                match value {
+                    TokenValue::IntegerValue(value) => value,
+                    TokenValue::OperatorValue(_) => {
+                        return Err("Internal Error (Integer value has wrong type OperatorValue)"
+                            .to_string())
+                    }
+                }
+            }
+            None => return Err("Internal Error (Integer value not set)".to_string()),
+        };
 
         // Expect next token to be EOF
         result = self.eat(TokenType::Eof);
@@ -231,8 +315,14 @@ impl Interpreter {
             return Err(result.unwrap_err());
         }
 
-        // Return sum of operands
-        Ok(left.value.unwrap() + right.value.unwrap())
+        // Return result of expression
+        if op_type == OperatorType::Plus {
+            Ok((lhs_val + rhs_val) as i64)
+        } else if op_type == OperatorType::Minus {
+            Ok((lhs_val as i64) - (rhs_val as i64))
+        } else {
+            Err("Internal Error (Unknown operator type)".to_string())
+        }
     }
 }
 
@@ -295,14 +385,17 @@ fn interpreter_get_next_token_returns_integer_when_input_is_digit() {
 fn interpreter_get_next_token_returns_integer_value_when_input_is_digit() {
     let interpreter = Interpreter::new("3".to_string());
     let next_token = interpreter.get_next_token().unwrap();
-    assert_eq!(3, next_token.value.unwrap());
+    match next_token.value.unwrap() {
+        TokenValue::IntegerValue(value) => assert_eq!(3, value),
+        TokenValue::OperatorValue(_) => assert!(false),
+    }
 }
 
 #[test]
 fn interpreter_get_next_token_returns_next_token_when_called_second_time() {
     let interpreter = Interpreter::new("+3".to_string());
     let next_token = interpreter.get_next_token().unwrap();
-    assert_eq!(TokenType::Plus, next_token.token_type);
+    assert_eq!(TokenType::Operator, next_token.token_type);
     let next_token = interpreter.get_next_token().unwrap();
     assert_eq!(TokenType::Integer, next_token.token_type);
 }
@@ -311,7 +404,34 @@ fn interpreter_get_next_token_returns_next_token_when_called_second_time() {
 fn interpreter_get_next_token_returns_plus_when_input_is_plus() {
     let interpreter = Interpreter::new("+".to_string());
     let next_token = interpreter.get_next_token().unwrap();
-    assert_eq!(TokenType::Plus, next_token.token_type);
+    assert_eq!(TokenType::Operator, next_token.token_type);
+}
+
+#[test]
+fn interpreter_get_next_token_returns_operator_value_plus_when_input_is_operator_plus() {
+    let interpreter = Interpreter::new("+".to_string());
+    let next_token = interpreter.get_next_token().unwrap();
+    match next_token.value.unwrap() {
+        TokenValue::IntegerValue(_) => assert!(false),
+        TokenValue::OperatorValue(value) => assert_eq!(OperatorType::Plus, value),
+    }
+}
+
+#[test]
+fn interpreter_get_next_token_returns_minus_when_input_is_minus() {
+    let interpreter = Interpreter::new('-'.to_string());
+    let next_token = interpreter.get_next_token().unwrap();
+    assert_eq!(TokenType::Operator, next_token.token_type);
+}
+
+#[test]
+fn interpreter_get_next_token_returns_operator_value_minus_when_input_is_operator_minus() {
+    let interpreter = Interpreter::new("-".to_string());
+    let next_token = interpreter.get_next_token().unwrap();
+    match next_token.value.unwrap() {
+        TokenValue::IntegerValue(_) => assert!(false),
+        TokenValue::OperatorValue(value) => assert_eq!(OperatorType::Minus, value),
+    }
 }
 
 #[test]
@@ -328,7 +448,7 @@ fn interpreter_get_next_token_returns_error_when_input_is_letter() {
 fn interpreter_eat_should_consume_token_if_it_has_the_correct_type() {
     let interpreter = Interpreter::new("+4".to_string());
     *interpreter.current_token.borrow_mut() = Some(interpreter.get_next_token().unwrap());
-    let _op = interpreter.eat(TokenType::Plus);
+    let _op = interpreter.eat(TokenType::Operator);
     let current_token = interpreter.current_token.borrow();
     match *current_token {
         Some(ref token) => assert_eq!(TokenType::Integer, token.token_type),
@@ -345,11 +465,26 @@ fn interpreter_eat_should_not_consume_token_if_it_has_the_wrong_type() {
 }
 
 #[test]
-// expr -> INTEGER '+' INTEGER
-fn interpreter_expr_should_only_parse_valid_expressions() {
+// expr -> INTEGER OPERATOR INTEGER
+fn interpreter_expr_should_add_values_when_expression_is_addition() {
     let interpreter = Interpreter::new("3+4".to_string());
     let result = interpreter.expr();
     assert_eq!(7, result.unwrap());
+}
+
+#[test]
+// expr -> INTEGER OPERATOR INTEGER
+fn interpreter_expr_should_subtract_values_when_expression_is_subtraction() {
+    let interpreter = Interpreter::new("4-3".to_string());
+    let result = interpreter.expr();
+    assert_eq!(1, result.unwrap());
+}
+
+#[test]
+fn interpreter_expr_should_return_negative_number_when_result_of_subtraction_is_negative() {
+    let interpreter = Interpreter::new("3-4".to_string());
+    let result = interpreter.expr();
+    assert_eq!(-1, result.unwrap() as i64);
 }
 
 #[test]
@@ -367,14 +502,14 @@ fn interpreter_expr_should_parse_expressions_that_contain_multi_digit_integer() 
 }
 
 #[test]
-fn interpreter_expr_should_not_parse_expressions_that_dont_have_plus_after_integer() {
-    let interpreter = Interpreter::new("4-2".to_string());
+fn interpreter_expr_should_not_parse_expressions_that_dont_have_operator_after_integer() {
+    let interpreter = Interpreter::new("4?2".to_string());
     let result = interpreter.expr();
     assert!(result.is_err());
 }
 
 #[test]
-fn interpreter_expr_should_not_parse_expressions_that_dont_have_integer_after_plus() {
+fn interpreter_expr_should_not_parse_expressions_that_dont_have_integer_after_operator() {
     let interpreter = Interpreter::new("4+a".to_string());
     let result = interpreter.expr();
     assert!(result.is_err());
