@@ -3,7 +3,7 @@ use std::cell::{Cell, RefCell};
 use std::io;
 use std::io::{BufRead, Write};
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Clone, Debug, PartialEq)]
 enum TokenType {
     Integer,
     Operator,
@@ -20,7 +20,7 @@ impl fmt::Display for TokenType {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Clone, Debug, PartialEq)]
 enum OperatorType {
     Plus,
     Minus,
@@ -35,13 +35,13 @@ impl fmt::Display for OperatorType {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug)]
 enum TokenValue {
     IntegerValue(u64),
     OperatorValue(OperatorType),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug)]
 struct Token {
     token_type: TokenType,
     value: Option<TokenValue>,
@@ -209,33 +209,26 @@ impl Interpreter {
     // Consumes current token if it is of the expected type
     fn eat(&self, token_type: TokenType) -> Result<(), SyntaxError> {
         let mut current_token = self.current_token.borrow_mut();
-        // If token is present...
-        if current_token.is_some() {
-            // ... and has expected type...
-            if current_token.as_ref().unwrap().token_type == token_type {
-                // ... consume token and set current token to the next token
-                let next_token = self.get_next_token();
-                match next_token {
-                    Ok(token) => {
-                        *current_token = Some(token);
-                        Ok(())
-                    }
-                    Err(e) => Err(e),
+
+        // If token has expected type...
+        if current_token.as_ref().unwrap().token_type == token_type {
+            // ... consume token and set current token to the next token
+            let next_token = self.get_next_token();
+            match next_token {
+                Ok(token) => {
+                    *current_token = Some(token);
+                    Ok(())
                 }
-            } else {
-                let mut pos = self.pos.get();
-                pos = if pos > 0 { pos - 1 } else { pos };
-                Err(SyntaxError {
-                    msg: format!("Expected {}, got {}",
-                                 token_type,
-                                 current_token.as_ref().unwrap().token_type),
-                    position: pos,
-                })
+                Err(e) => Err(e),
             }
         } else {
+            let mut pos = self.pos.get();
+            pos = if pos > 0 { pos - 1 } else { pos };
             Err(SyntaxError {
-                msg: "Internal error (No token present)".to_string(),
-                position: self.pos.get(),
+                msg: format!("Expected {}, got {}",
+                             token_type,
+                             current_token.as_ref().unwrap().token_type),
+                position: pos,
             })
         }
     }
@@ -265,25 +258,9 @@ impl Interpreter {
         }
 
         // Extract value
-        let lhs_val = match lhs {
-            Some(value) => {
-                match value {
-                    TokenValue::IntegerValue(value) => value,
-                    TokenValue::OperatorValue(_) => {
-                        return Err(SyntaxError {
-                            msg: "Internal Error (Integer value has wrong type OperatorValue)"
-                                .to_string(),
-                            position: self.pos.get(),
-                        })
-                    }
-                }
-            }
-            None => {
-                return Err(SyntaxError {
-                    msg: "Internal Error (Integer value not set)".to_string(),
-                    position: self.pos.get(),
-                })
-            }
+        let lhs_val = match lhs.unwrap() {
+            TokenValue::IntegerValue(value) => value,
+            _ => panic!("Internal Error (Integer value has wrong type)"),
         };
 
         // Expect next token to be a '+'
@@ -296,25 +273,9 @@ impl Interpreter {
         }
 
         // Extract value
-        let op_type = match op {
-            Some(value) => {
-                match value {
-                    TokenValue::IntegerValue(_) => {
-                        return Err(SyntaxError {
-                            msg: "Internal Error (Operator value has wrong type IntegerValue)"
-                                .to_string(),
-                            position: self.pos.get(),
-                        })
-                    }
-                    TokenValue::OperatorValue(value) => value,
-                }
-            }
-            None => {
-                return Err(SyntaxError {
-                    msg: "Internal Error (Operator value not set)".to_string(),
-                    position: self.pos.get(),
-                })
-            }
+        let op_type = match op.unwrap() {
+            TokenValue::OperatorValue(value) => value,
+            _ => panic!("Internal Error (Operator value has wrong type)"),
         };
 
         // Expect next token to be an integer
@@ -327,25 +288,9 @@ impl Interpreter {
         }
 
         // Extract value
-        let rhs_val = match rhs {
-            Some(value) => {
-                match value {
-                    TokenValue::IntegerValue(value) => value,
-                    TokenValue::OperatorValue(_) => {
-                        return Err(SyntaxError {
-                            msg: "Internal Error (Integer value has wrong type OperatorValue)"
-                                .to_string(),
-                            position: self.pos.get(),
-                        })
-                    }
-                }
-            }
-            None => {
-                return Err(SyntaxError {
-                    msg: "Internal Error (Integer value not set)".to_string(),
-                    position: self.pos.get(),
-                })
-            }
+        let rhs_val = match rhs.unwrap() {
+            TokenValue::IntegerValue(value) => value,
+            _ => panic!("Internal Error (Integer value has wrong type)"),
         };
 
         // Expect next token to be EOF
