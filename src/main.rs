@@ -24,6 +24,8 @@ impl fmt::Display for TokenType {
 enum OperatorType {
     Plus,
     Minus,
+    Times,
+    Division,
 }
 
 impl fmt::Display for OperatorType {
@@ -31,6 +33,8 @@ impl fmt::Display for OperatorType {
         match *self {
             OperatorType::Plus => write!(f, "'+'"),
             OperatorType::Minus => write!(f, "'-'"),
+            OperatorType::Times => write!(f, "'*'"),
+            OperatorType::Division => write!(f, "'/'"),
         }
     }
 }
@@ -45,6 +49,7 @@ enum TokenValue {
 struct Token {
     token_type: TokenType,
     value: Option<TokenValue>,
+    position: usize,
 }
 
 impl fmt::Display for Token {
@@ -66,10 +71,11 @@ impl fmt::Display for Token {
 }
 
 impl Token {
-    fn new(token_type: TokenType, value: Option<TokenValue>) -> Token {
+    fn new(token_type: TokenType, value: Option<TokenValue>, position: usize) -> Token {
         Token {
             token_type: token_type,
             value: value,
+            position: position,
         }
     }
 }
@@ -174,7 +180,7 @@ impl Interpreter {
         // Return EOF when we have reached the end of the input
         if pos + 1 > self.chars.len() {
             self.pos.set(pos + 1);
-            return Ok(Token::new(TokenType::Eof, None));
+            return Ok(Token::new(TokenType::Eof, None, pos));
         }
 
         let current_char = self.chars[pos];
@@ -182,21 +188,41 @@ impl Interpreter {
         // Return INTEGER when the next character is a digit
         if current_char.is_digit(10) {
             let value = self.get_integer();
-            return Ok(Token::new(TokenType::Integer, Some(TokenValue::IntegerValue(value))));
+            return Ok(Token::new(TokenType::Integer,
+                                 Some(TokenValue::IntegerValue(value)),
+                                 pos));
         }
 
         // Return PLUS when the next character is '+'
         if current_char == '+' {
             self.pos.set(pos + 1);
             return Ok(Token::new(TokenType::Operator,
-                                 Some(TokenValue::OperatorValue(OperatorType::Plus))));
+                                 Some(TokenValue::OperatorValue(OperatorType::Plus)),
+                                 pos));
         }
 
         // Return MINUS when the next character is '-'
         if current_char == '-' {
             self.pos.set(pos + 1);
             return Ok(Token::new(TokenType::Operator,
-                                 Some(TokenValue::OperatorValue(OperatorType::Minus))));
+                                 Some(TokenValue::OperatorValue(OperatorType::Minus)),
+                                 pos));
+        }
+
+        // Return TIMES when the next character is '*'
+        if current_char == '*' {
+            self.pos.set(pos + 1);
+            return Ok(Token::new(TokenType::Operator,
+                                 Some(TokenValue::OperatorValue(OperatorType::Times)),
+                                 pos));
+        }
+
+        // Return DIVISION when the next character is '/'
+        if current_char == '/' {
+            self.pos.set(pos + 1);
+            return Ok(Token::new(TokenType::Operator,
+                                 Some(TokenValue::OperatorValue(OperatorType::Division)),
+                                 pos));
         }
 
         // Current character didn't match any known token, return error
@@ -213,13 +239,17 @@ impl Interpreter {
         // If token has expected type...
         if current_token.as_ref().unwrap().token_type == token_type {
             // ... consume token and set current token to the next token
-            let next_token = self.get_next_token();
-            match next_token {
-                Ok(token) => {
-                    *current_token = Some(token);
-                    Ok(())
+            if token_type != TokenType::Eof {
+                let next_token = self.get_next_token();
+                match next_token {
+                    Ok(token) => {
+                        *current_token = Some(token);
+                        Ok(())
+                    }
+                    Err(e) => Err(e),
                 }
-                Err(e) => Err(e),
+            } else {
+                Ok(())
             }
         } else {
             let mut pos = self.pos.get();
@@ -237,7 +267,7 @@ impl Interpreter {
     // expr -> INTEGER OPERATOR INTEGER
     fn expr(&self) -> Result<i64, SyntaxError> {
         let lhs: Option<TokenValue>;
-        let rhs: Option<TokenValue>;
+        let rhs: Token;
         let op: Option<TokenValue>;
 
         // Get first token (return error if no valid token)
@@ -263,7 +293,7 @@ impl Interpreter {
             _ => panic!("Internal Error (Integer value has wrong type)"),
         };
 
-        // Expect next token to be a '+'
+        // Expect next token to be an operator
         {
             op = self.current_token.borrow().clone().unwrap().value;
         }
@@ -280,7 +310,7 @@ impl Interpreter {
 
         // Expect next token to be an integer
         {
-            rhs = self.current_token.borrow().clone().unwrap().value;
+            rhs = self.current_token.borrow().clone().unwrap();
         }
         result = self.eat(TokenType::Integer);
         if result.is_err() {
@@ -288,7 +318,7 @@ impl Interpreter {
         }
 
         // Extract value
-        let rhs_val = match rhs.unwrap() {
+        let rhs_val = match rhs.value.unwrap() {
             TokenValue::IntegerValue(value) => value,
             _ => panic!("Internal Error (Integer value has wrong type)"),
         };
@@ -304,6 +334,17 @@ impl Interpreter {
             Ok((lhs_val + rhs_val) as i64)
         } else if op_type == OperatorType::Minus {
             Ok((lhs_val as i64) - (rhs_val as i64))
+        } else if op_type == OperatorType::Times {
+            Ok((lhs_val * rhs_val) as i64)
+        } else if op_type == OperatorType::Division {
+            if rhs_val == 0 {
+                Err(SyntaxError {
+                    msg: "Division by zero".to_string(),
+                    position: rhs.position,
+                })
+            } else {
+                Ok((lhs_val / rhs_val) as i64)
+            }
         } else {
             Err(SyntaxError {
                 msg: "Internal Error (Unknown operator type)".to_string(),
@@ -472,6 +513,27 @@ fn interpreter_expr_should_return_negative_number_when_result_of_subtraction_is_
     let interpreter = Interpreter::new("3-4".to_string());
     let result = interpreter.expr();
     assert_eq!(-1, result.unwrap() as i64);
+}
+
+#[test]
+fn interpreter_expr_should_multiply_values_when_expression_is_multiplication() {
+    let interpreter = Interpreter::new("3*4".to_string());
+    let result = interpreter.expr();
+    assert_eq!(12, result.unwrap());
+}
+
+#[test]
+fn interpreter_expr_should_divide_values_when_expression_is_division() {
+    let interpreter = Interpreter::new("4/2".to_string());
+    let result = interpreter.expr();
+    assert_eq!(2, result.unwrap());
+}
+
+#[test]
+fn interpreter_expr_should_return_error_when_division_by_zero() {
+    let interpreter = Interpreter::new("1 / 0".to_string());
+    let result = interpreter.expr();
+    assert!(result.is_err());
 }
 
 #[test]
