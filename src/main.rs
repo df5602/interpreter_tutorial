@@ -263,25 +263,34 @@ impl Interpreter {
         }
     }
 
+    // Loads first token
+    fn load_first_token(&self) -> Result<(), SyntaxError> {
+        let mut current_token = self.current_token.borrow_mut();
+        let next_token = self.get_next_token();
+        if next_token.is_err() {
+            Err(next_token.unwrap_err())
+        } else {
+            *current_token = Some(next_token.unwrap());
+            Ok(())
+        }
+    }
+
     // Evaluates an expression:
-    // expr -> INTEGER OPERATOR INTEGER
+    // expr -> INTEGER
+    //       | INTEGER OPERATOR EXPR
+    //
+    // Precondition: First token has been loaded
     fn expr(&self) -> Result<i64, SyntaxError> {
         let lhs: Option<TokenValue>;
-        let rhs: Token;
         let op: Option<TokenValue>;
 
-        // Get first token (return error if no valid token)
-        {
-            let mut current_token = self.current_token.borrow_mut();
-            let next_token = self.get_next_token();
-            if next_token.is_err() {
-                return Err(next_token.unwrap_err());
-            }
-            *current_token = Some(next_token.unwrap());
+        // Precondition: First token has been loaded
+        assert!(self.current_token.borrow().is_some());
 
-            lhs = current_token.clone().unwrap().value;
-        }
         // First token should be an integer
+        {
+            lhs = self.current_token.borrow().clone().unwrap().value;
+        }
         let mut result = self.eat(TokenType::Integer);
         if result.is_err() {
             return Err(result.unwrap_err());
@@ -293,7 +302,12 @@ impl Interpreter {
             _ => panic!("Internal Error (Integer value has wrong type)"),
         };
 
-        // Expect next token to be an operator
+        // Return if next token is EOF
+        if self.current_token.borrow().clone().unwrap().token_type == TokenType::Eof {
+            return Ok(lhs_val as i64);
+        }
+
+        // Otherwise, expect next token to be an operator
         {
             op = self.current_token.borrow().clone().unwrap().value;
         }
@@ -308,42 +322,28 @@ impl Interpreter {
             _ => panic!("Internal Error (Operator value has wrong type)"),
         };
 
-        // Expect next token to be an integer
-        {
-            rhs = self.current_token.borrow().clone().unwrap();
-        }
-        result = self.eat(TokenType::Integer);
-        if result.is_err() {
-            return Err(result.unwrap_err());
-        }
-
-        // Extract value
-        let rhs_val = match rhs.value.unwrap() {
-            TokenValue::IntegerValue(value) => value,
-            _ => panic!("Internal Error (Integer value has wrong type)"),
+        // Expect next part to be an expression
+        let rhs = self.expr();
+        let rhs_val = match rhs {
+            Ok(val) => val,
+            Err(e) => return Err(e),
         };
-
-        // Expect next token to be EOF
-        result = self.eat(TokenType::Eof);
-        if result.is_err() {
-            return Err(result.unwrap_err());
-        }
 
         // Return result of expression
         if op_type == OperatorType::Plus {
-            Ok((lhs_val + rhs_val) as i64)
+            Ok((lhs_val as i64) + rhs_val)
         } else if op_type == OperatorType::Minus {
             Ok((lhs_val as i64) - (rhs_val as i64))
         } else if op_type == OperatorType::Times {
-            Ok((lhs_val * rhs_val) as i64)
+            Ok((lhs_val as i64) * rhs_val)
         } else if op_type == OperatorType::Division {
             if rhs_val == 0 {
                 Err(SyntaxError {
                     msg: "Division by zero".to_string(),
-                    position: rhs.position,
+                    position: self.pos.get() - 2,
                 })
             } else {
-                Ok((lhs_val / rhs_val) as i64)
+                Ok((lhs_val as i64) / rhs_val)
             }
         } else {
             Err(SyntaxError {
@@ -370,11 +370,18 @@ fn main() {
         match line {
             Ok(_) => {
                 let interpreter = Interpreter::new(line.unwrap());
-                let result = interpreter.expr();
-                match result {
-                    Ok(value) => println!("{}", value),
+                let load_result = interpreter.load_first_token();
+                match load_result {
+                    Ok(()) => {
+                        let result = interpreter.expr();
+                        match result {
+                            Ok(value) => println!("{}", value),
+                            Err(e) => interpreter.print_error(e),
+                        }
+                    }
                     Err(e) => interpreter.print_error(e),
                 }
+
             }
             Err(error) => {
                 println!("error: {}", error);
@@ -463,6 +470,40 @@ fn interpreter_get_next_token_returns_operator_value_minus_when_input_is_operato
 }
 
 #[test]
+fn interpreter_get_next_token_returns_times_when_input_is_times() {
+    let interpreter = Interpreter::new('*'.to_string());
+    let next_token = interpreter.get_next_token().unwrap();
+    assert_eq!(TokenType::Operator, next_token.token_type);
+}
+
+#[test]
+fn interpreter_get_next_token_returns_operator_value_times_when_input_is_operator_times() {
+    let interpreter = Interpreter::new("*".to_string());
+    let next_token = interpreter.get_next_token().unwrap();
+    match next_token.value.unwrap() {
+        TokenValue::IntegerValue(_) => assert!(false),
+        TokenValue::OperatorValue(value) => assert_eq!(OperatorType::Times, value),
+    }
+}
+
+#[test]
+fn interpreter_get_next_token_returns_division_when_input_is_division() {
+    let interpreter = Interpreter::new('/'.to_string());
+    let next_token = interpreter.get_next_token().unwrap();
+    assert_eq!(TokenType::Operator, next_token.token_type);
+}
+
+#[test]
+fn interpreter_get_next_token_returns_operator_value_division_when_input_is_operator_division() {
+    let interpreter = Interpreter::new("/".to_string());
+    let next_token = interpreter.get_next_token().unwrap();
+    match next_token.value.unwrap() {
+        TokenValue::IntegerValue(_) => assert!(false),
+        TokenValue::OperatorValue(value) => assert_eq!(OperatorType::Division, value),
+    }
+}
+
+#[test]
 fn interpreter_get_next_token_returns_error_when_input_is_letter() {
     let interpreter = Interpreter::new("a".to_string());
     let next_token = interpreter.get_next_token();
@@ -496,6 +537,7 @@ fn interpreter_eat_should_not_consume_token_if_it_has_the_wrong_type() {
 // expr -> INTEGER OPERATOR INTEGER
 fn interpreter_expr_should_add_values_when_expression_is_addition() {
     let interpreter = Interpreter::new("3+4".to_string());
+    assert!(interpreter.load_first_token().is_ok());
     let result = interpreter.expr();
     assert_eq!(7, result.unwrap());
 }
@@ -504,6 +546,7 @@ fn interpreter_expr_should_add_values_when_expression_is_addition() {
 // expr -> INTEGER OPERATOR INTEGER
 fn interpreter_expr_should_subtract_values_when_expression_is_subtraction() {
     let interpreter = Interpreter::new("4-3".to_string());
+    assert!(interpreter.load_first_token().is_ok());
     let result = interpreter.expr();
     assert_eq!(1, result.unwrap());
 }
@@ -511,6 +554,7 @@ fn interpreter_expr_should_subtract_values_when_expression_is_subtraction() {
 #[test]
 fn interpreter_expr_should_return_negative_number_when_result_of_subtraction_is_negative() {
     let interpreter = Interpreter::new("3-4".to_string());
+    assert!(interpreter.load_first_token().is_ok());
     let result = interpreter.expr();
     assert_eq!(-1, result.unwrap() as i64);
 }
@@ -518,6 +562,7 @@ fn interpreter_expr_should_return_negative_number_when_result_of_subtraction_is_
 #[test]
 fn interpreter_expr_should_multiply_values_when_expression_is_multiplication() {
     let interpreter = Interpreter::new("3*4".to_string());
+    assert!(interpreter.load_first_token().is_ok());
     let result = interpreter.expr();
     assert_eq!(12, result.unwrap());
 }
@@ -525,6 +570,7 @@ fn interpreter_expr_should_multiply_values_when_expression_is_multiplication() {
 #[test]
 fn interpreter_expr_should_divide_values_when_expression_is_division() {
     let interpreter = Interpreter::new("4/2".to_string());
+    assert!(interpreter.load_first_token().is_ok());
     let result = interpreter.expr();
     assert_eq!(2, result.unwrap());
 }
@@ -532,6 +578,7 @@ fn interpreter_expr_should_divide_values_when_expression_is_division() {
 #[test]
 fn interpreter_expr_should_return_error_when_division_by_zero() {
     let interpreter = Interpreter::new("1 / 0".to_string());
+    assert!(interpreter.load_first_token().is_ok());
     let result = interpreter.expr();
     assert!(result.is_err());
 }
@@ -539,6 +586,7 @@ fn interpreter_expr_should_return_error_when_division_by_zero() {
 #[test]
 fn interpreter_expr_should_not_parse_expressions_that_dont_begin_with_an_integer() {
     let interpreter = Interpreter::new("+4".to_string());
+    assert!(interpreter.load_first_token().is_ok());
     let result = interpreter.expr();
     assert!(result.is_err());
 }
@@ -546,6 +594,7 @@ fn interpreter_expr_should_not_parse_expressions_that_dont_begin_with_an_integer
 #[test]
 fn interpreter_expr_should_parse_expressions_that_contain_multi_digit_integer() {
     let interpreter = Interpreter::new("44+3".to_string());
+    assert!(interpreter.load_first_token().is_ok());
     let result = interpreter.expr();
     assert_eq!(47, result.unwrap());
 }
@@ -553,6 +602,7 @@ fn interpreter_expr_should_parse_expressions_that_contain_multi_digit_integer() 
 #[test]
 fn interpreter_expr_should_not_parse_expressions_that_dont_have_operator_after_integer() {
     let interpreter = Interpreter::new("4?2".to_string());
+    assert!(interpreter.load_first_token().is_ok());
     let result = interpreter.expr();
     assert!(result.is_err());
 }
@@ -560,6 +610,7 @@ fn interpreter_expr_should_not_parse_expressions_that_dont_have_operator_after_i
 #[test]
 fn interpreter_expr_should_not_parse_expressions_that_dont_have_integer_after_operator() {
     let interpreter = Interpreter::new("4+a".to_string());
+    assert!(interpreter.load_first_token().is_ok());
     let result = interpreter.expr();
     assert!(result.is_err());
 }
@@ -567,6 +618,7 @@ fn interpreter_expr_should_not_parse_expressions_that_dont_have_integer_after_op
 #[test]
 fn interpreter_expr_should_not_parse_empty_string() {
     let interpreter = Interpreter::new("".to_string());
+    assert!(interpreter.load_first_token().is_ok());
     let result = interpreter.expr();
     assert!(result.is_err());
 }
@@ -574,6 +626,15 @@ fn interpreter_expr_should_not_parse_empty_string() {
 #[test]
 fn interpreter_expr_should_not_parse_expressions_that_dont_terminate_with_eof() {
     let interpreter = Interpreter::new("1+3a".to_string());
+    assert!(interpreter.load_first_token().is_ok());
+    let result = interpreter.expr();
+    assert!(result.is_err());
+}
+
+#[test]
+fn interpreter_expr_should_not_parse_expressions_that_dont_terminate_with_eof2() {
+    let interpreter = Interpreter::new("1+3-".to_string());
+    assert!(interpreter.load_first_token().is_ok());
     let result = interpreter.expr();
     assert!(result.is_err());
 }
@@ -624,6 +685,7 @@ fn interpreter_skip_whitespace_should_not_skip_non_whitespace_characters() {
 #[test]
 fn interpreter_expr_should_parse_expressions_that_contain_whitespace_characters() {
     let interpreter = Interpreter::new("2 + 3".to_string());
+    assert!(interpreter.load_first_token().is_ok());
     let result = interpreter.expr();
     assert_eq!(5, result.unwrap());
 }
@@ -631,6 +693,36 @@ fn interpreter_expr_should_parse_expressions_that_contain_whitespace_characters(
 #[test]
 fn interpreter_expr_should_parse_expressions_that_begin_with_whitespace_characters() {
     let interpreter = Interpreter::new(" 2 + 3".to_string());
+    assert!(interpreter.load_first_token().is_ok());
     let result = interpreter.expr();
     assert_eq!(5, result.unwrap());
+}
+
+#[test]
+fn interpreter_load_first_token_should_load_first_token() {
+    let interpreter = Interpreter::new("2+3".to_string());
+    let _ = interpreter.load_first_token();
+    assert_eq!(TokenType::Integer,
+               interpreter.current_token.borrow().clone().unwrap().token_type);
+    let val = interpreter.current_token.borrow().clone().unwrap().value.unwrap();
+    match val {
+        TokenValue::IntegerValue(val) => assert_eq!(2, val),
+        _ => panic!(),
+    }
+}
+
+#[test]
+fn interpreter_expr_should_return_integer_value_if_input_consists_of_only_integer() {
+    let interpreter = Interpreter::new("42".to_string());
+    assert!(interpreter.load_first_token().is_ok());
+    let result = interpreter.expr();
+    assert_eq!(42, result.unwrap());
+}
+
+#[test]
+fn interpreter_expr_should_interpret_chained_expressions() {
+    let interpreter = Interpreter::new("1+3+5".to_string());
+    assert!(interpreter.load_first_token().is_ok());
+    let result = interpreter.expr();
+    assert_eq!(9, result.unwrap());
 }
