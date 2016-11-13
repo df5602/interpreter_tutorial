@@ -49,7 +49,7 @@ enum TokenValue {
 struct Token {
     token_type: TokenType,
     value: Option<TokenValue>,
-    position: usize,
+    position: (usize, usize),
 }
 
 impl fmt::Display for Token {
@@ -71,7 +71,7 @@ impl fmt::Display for Token {
 }
 
 impl Token {
-    fn new(token_type: TokenType, value: Option<TokenValue>, position: usize) -> Token {
+    fn new(token_type: TokenType, value: Option<TokenValue>, position: (usize, usize)) -> Token {
         Token {
             token_type: token_type,
             value: value,
@@ -83,7 +83,7 @@ impl Token {
 #[derive(Debug)]
 struct SyntaxError {
     msg: String,
-    position: usize,
+    position: (usize, usize),
 }
 
 #[derive(Debug)]
@@ -109,11 +109,12 @@ impl Interpreter {
     // >>> 3?5
     // >>>  ^
     fn print_error(&self, e: SyntaxError) {
-        let s = std::iter::repeat(" ").take(e.position).collect::<String>();
+        let s = std::iter::repeat(" ").take(e.position.0).collect::<String>();
+        let m = std::iter::repeat("^").take(e.position.1 - e.position.0).collect::<String>();
 
         println!("Error parsing input: {}", e.msg);
         println!(">>> {}", self.text);
-        println!(">>> {}^", s);
+        println!(">>> {}{}", s, m);
     }
 
     // Returns a multi-digit (unsigned, base 10) integer
@@ -180,7 +181,7 @@ impl Interpreter {
         // Return EOF when we have reached the end of the input
         if pos + 1 > self.chars.len() {
             self.pos.set(pos + 1);
-            return Ok(Token::new(TokenType::Eof, None, pos));
+            return Ok(Token::new(TokenType::Eof, None, (pos, pos + 1)));
         }
 
         let current_char = self.chars[pos];
@@ -190,7 +191,7 @@ impl Interpreter {
             let value = self.get_integer();
             return Ok(Token::new(TokenType::Integer,
                                  Some(TokenValue::IntegerValue(value)),
-                                 pos));
+                                 (pos, self.pos.get())));
         }
 
         // Return PLUS when the next character is '+'
@@ -198,7 +199,7 @@ impl Interpreter {
             self.pos.set(pos + 1);
             return Ok(Token::new(TokenType::Operator,
                                  Some(TokenValue::OperatorValue(OperatorType::Plus)),
-                                 pos));
+                                 (pos, pos + 1)));
         }
 
         // Return MINUS when the next character is '-'
@@ -206,7 +207,7 @@ impl Interpreter {
             self.pos.set(pos + 1);
             return Ok(Token::new(TokenType::Operator,
                                  Some(TokenValue::OperatorValue(OperatorType::Minus)),
-                                 pos));
+                                 (pos, pos + 1)));
         }
 
         // Return TIMES when the next character is '*'
@@ -214,7 +215,7 @@ impl Interpreter {
             self.pos.set(pos + 1);
             return Ok(Token::new(TokenType::Operator,
                                  Some(TokenValue::OperatorValue(OperatorType::Times)),
-                                 pos));
+                                 (pos, pos + 1)));
         }
 
         // Return DIVISION when the next character is '/'
@@ -222,13 +223,13 @@ impl Interpreter {
             self.pos.set(pos + 1);
             return Ok(Token::new(TokenType::Operator,
                                  Some(TokenValue::OperatorValue(OperatorType::Division)),
-                                 pos));
+                                 (pos, pos + 1)));
         }
 
         // Current character didn't match any known token, return error
         Err(SyntaxError {
             msg: "Invalid token".to_string(),
-            position: pos,
+            position: (pos, pos + 1),
         })
     }
 
@@ -252,8 +253,7 @@ impl Interpreter {
                 Ok(())
             }
         } else {
-            let mut pos = self.pos.get();
-            pos = if pos > 0 { pos - 1 } else { pos };
+            let pos = current_token.as_ref().unwrap().position;
             Err(SyntaxError {
                 msg: format!("Expected {}, got {}",
                              token_type,
@@ -351,10 +351,6 @@ impl Interpreter {
                 if rhs_val == 0 {
                     return Err(SyntaxError {
                         msg: "Division by zero".to_string(),
-                        // TODO: if rewritten iteratively, can use rhs.position again.
-                        // Make position a tuple that encodes start position and length of token;
-                        // that way, the error message can mark the whole token instead of just
-                        // one position.. (i.e. ^^^ instead of ^)
                         position: rhs.position,
                     });
                 } else {
@@ -363,7 +359,7 @@ impl Interpreter {
             } else {
                 return Err(SyntaxError {
                     msg: "Internal Error (Unknown operator type)".to_string(),
-                    position: self.pos.get(),
+                    position: (self.pos.get(), self.pos.get() + 1),
                 });
             }
         }
