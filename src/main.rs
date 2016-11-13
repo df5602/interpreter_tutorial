@@ -282,7 +282,9 @@ impl Interpreter {
     // Precondition: First token has been loaded
     fn expr(&self) -> Result<i64, SyntaxError> {
         let lhs: Option<TokenValue>;
-        let op: Option<TokenValue>;
+        let mut rhs: Token;
+        let mut op: Option<TokenValue>;
+        let mut result: i64;
 
         // Precondition: First token has been loaded
         assert!(self.current_token.borrow().is_some());
@@ -291,65 +293,79 @@ impl Interpreter {
         {
             lhs = self.current_token.borrow().clone().unwrap().value;
         }
-        let mut result = self.eat(TokenType::Integer);
-        if result.is_err() {
-            return Err(result.unwrap_err());
+        let mut eaten = self.eat(TokenType::Integer);
+        if eaten.is_err() {
+            return Err(eaten.unwrap_err());
         }
 
         // Extract value
-        let lhs_val = match lhs.unwrap() {
-            TokenValue::IntegerValue(value) => value,
+        result = match lhs.unwrap() {
+            TokenValue::IntegerValue(value) => value as i64,
             _ => panic!("Internal Error (Integer value has wrong type)"),
         };
 
-        // Return if next token is EOF
-        if self.current_token.borrow().clone().unwrap().token_type == TokenType::Eof {
-            return Ok(lhs_val as i64);
-        }
-
-        // Otherwise, expect next token to be an operator
-        {
-            op = self.current_token.borrow().clone().unwrap().value;
-        }
-        result = self.eat(TokenType::Operator);
-        if result.is_err() {
-            return Err(result.unwrap_err());
-        }
-
-        // Extract value
-        let op_type = match op.unwrap() {
-            TokenValue::OperatorValue(value) => value,
-            _ => panic!("Internal Error (Operator value has wrong type)"),
-        };
-
-        // Expect next part to be an expression
-        let rhs = self.expr();
-        let rhs_val = match rhs {
-            Ok(val) => val,
-            Err(e) => return Err(e),
-        };
-
-        // Return result of expression
-        if op_type == OperatorType::Plus {
-            Ok((lhs_val as i64) + rhs_val)
-        } else if op_type == OperatorType::Minus {
-            Ok((lhs_val as i64) - (rhs_val as i64))
-        } else if op_type == OperatorType::Times {
-            Ok((lhs_val as i64) * rhs_val)
-        } else if op_type == OperatorType::Division {
-            if rhs_val == 0 {
-                Err(SyntaxError {
-                    msg: "Division by zero".to_string(),
-                    position: self.pos.get() - 2,
-                })
-            } else {
-                Ok((lhs_val as i64) / rhs_val)
+        loop {
+            // Return if next token is EOF
+            if self.current_token.borrow().clone().unwrap().token_type == TokenType::Eof {
+                return Ok(result);
             }
-        } else {
-            Err(SyntaxError {
-                msg: "Internal Error (Unknown operator type)".to_string(),
-                position: self.pos.get(),
-            })
+
+            // Otherwise, expect next token to be an operator
+            {
+                op = self.current_token.borrow().clone().unwrap().value;
+            }
+            eaten = self.eat(TokenType::Operator);
+            if eaten.is_err() {
+                return Err(eaten.unwrap_err());
+            }
+
+            // Extract value
+            let op_type = match op.unwrap() {
+                TokenValue::OperatorValue(value) => value,
+                _ => panic!("Internal Error (Operator value has wrong type)"),
+            };
+
+            // Expect next token to be an integer
+            {
+                rhs = self.current_token.borrow().clone().unwrap();
+            }
+            eaten = self.eat(TokenType::Integer);
+            if eaten.is_err() {
+                return Err(eaten.unwrap_err());
+            }
+
+            // Extract value
+            let rhs_val = match rhs.value.unwrap() {
+                TokenValue::IntegerValue(value) => value as i64,
+                _ => panic!("Internal Error (Integer value has wrong type)"),
+            };
+
+            // Update result of expression
+            result = if op_type == OperatorType::Plus {
+                result + rhs_val
+            } else if op_type == OperatorType::Minus {
+                result - rhs_val
+            } else if op_type == OperatorType::Times {
+                result * rhs_val
+            } else if op_type == OperatorType::Division {
+                if rhs_val == 0 {
+                    return Err(SyntaxError {
+                        msg: "Division by zero".to_string(),
+                        // TODO: if rewritten iteratively, can use rhs.position again.
+                        // Make position a tuple that encodes start position and length of token;
+                        // that way, the error message can mark the whole token instead of just
+                        // one position.. (i.e. ^^^ instead of ^)
+                        position: rhs.position,
+                    });
+                } else {
+                    result / rhs_val
+                }
+            } else {
+                return Err(SyntaxError {
+                    msg: "Internal Error (Unknown operator type)".to_string(),
+                    position: self.pos.get(),
+                });
+            }
         }
     }
 }
@@ -725,4 +741,12 @@ fn interpreter_expr_should_interpret_chained_expressions() {
     assert!(interpreter.load_first_token().is_ok());
     let result = interpreter.expr();
     assert_eq!(9, result.unwrap());
+}
+
+#[test]
+fn interpreter_expr_should_evaluate_chained_expressions_from_left_to_right() {
+    let interpreter = Interpreter::new("1-2+3".to_string());
+    assert!(interpreter.load_first_token().is_ok());
+    let result = interpreter.expr();
+    assert_eq!(2, result.unwrap());
 }
