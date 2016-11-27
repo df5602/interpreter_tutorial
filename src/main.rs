@@ -87,34 +87,17 @@ struct SyntaxError {
 }
 
 #[derive(Debug)]
-struct Interpreter {
-    text: String,
+struct Lexer {
     chars: Vec<char>,
     pos: Cell<usize>,
-    current_token: RefCell<Option<Token>>,
 }
 
-impl Interpreter {
-    fn new(text: String) -> Interpreter {
-        Interpreter {
-            text: text.clone(),
+impl Lexer {
+    fn new(text: &String) -> Lexer {
+        Lexer {
             chars: text.chars().collect(),
             pos: Cell::new(0),
-            current_token: RefCell::new(None),
         }
-    }
-
-    // Prints error in the following format:
-    // Error parsing input: msg
-    // >>> 3?5
-    // >>>  ^
-    fn print_error(&self, e: SyntaxError) {
-        let s = std::iter::repeat(" ").take(e.position.0).collect::<String>();
-        let m = std::iter::repeat("^").take(e.position.1 - e.position.0).collect::<String>();
-
-        println!("Error parsing input: {}", e.msg);
-        println!(">>> {}", self.text);
-        println!(">>> {}{}", s, m);
     }
 
     // Returns a multi-digit (unsigned, base 10) integer
@@ -232,6 +215,36 @@ impl Interpreter {
             position: (pos, pos + 1),
         })
     }
+}
+
+#[derive(Debug)]
+struct Interpreter {
+    text: String,
+    current_token: RefCell<Option<Token>>,
+    lexer: Lexer,
+}
+
+impl Interpreter {
+    fn new(text: String, lexer: Lexer) -> Interpreter {
+        Interpreter {
+            text: text,
+            current_token: RefCell::new(None),
+            lexer: lexer,
+        }
+    }
+
+    // Prints error in the following format:
+    // Error parsing input: msg
+    // >>> 3?5
+    // >>>  ^
+    fn print_error(&self, e: SyntaxError) {
+        let s = std::iter::repeat(" ").take(e.position.0).collect::<String>();
+        let m = std::iter::repeat("^").take(e.position.1 - e.position.0).collect::<String>();
+
+        println!("Error parsing input: {}", e.msg);
+        println!(">>> {}", self.text);
+        println!(">>> {}{}", s, m);
+    }
 
     // Consumes current token if it is of the expected type
     fn eat(&self, token_type: TokenType) -> Result<(), SyntaxError> {
@@ -241,7 +254,7 @@ impl Interpreter {
         if current_token.as_ref().unwrap().token_type == token_type {
             // ... consume token and set current token to the next token
             if token_type != TokenType::Eof {
-                let next_token = self.get_next_token();
+                let next_token = self.lexer.get_next_token();
                 match next_token {
                     Ok(token) => {
                         *current_token = Some(token);
@@ -266,7 +279,7 @@ impl Interpreter {
     // Loads first token
     fn load_first_token(&self) -> Result<(), SyntaxError> {
         let mut current_token = self.current_token.borrow_mut();
-        let next_token = self.get_next_token();
+        let next_token = self.lexer.get_next_token();
         if next_token.is_err() {
             Err(next_token.unwrap_err())
         } else {
@@ -359,7 +372,7 @@ impl Interpreter {
             } else {
                 return Err(SyntaxError {
                     msg: "Internal Error (Unknown operator type)".to_string(),
-                    position: (self.pos.get(), self.pos.get() + 1),
+                    position: (self.lexer.pos.get(), self.lexer.pos.get() + 1),
                 });
             }
         }
@@ -381,7 +394,9 @@ fn main() {
     for line in stdin.lock().lines() {
         match line {
             Ok(_) => {
-                let interpreter = Interpreter::new(line.unwrap());
+                let input = line.unwrap();
+                let lexer = Lexer::new(&input);
+                let interpreter = Interpreter::new(input, lexer);
                 let load_result = interpreter.load_first_token();
                 match load_result {
                     Ok(()) => {
@@ -405,16 +420,16 @@ fn main() {
 }
 
 #[test]
-fn interpreter_get_next_token_returns_eof_when_input_is_empty() {
-    let interpreter = Interpreter::new("".to_string());
-    let next_token = interpreter.get_next_token().unwrap();
+fn lexer_get_next_token_returns_eof_when_input_is_empty() {
+    let lexer = Lexer::new(&"".to_string());
+    let next_token = lexer.get_next_token().unwrap();
     assert_eq!(TokenType::Eof, next_token.token_type);
 }
 
 #[test]
-fn interpreter_get_next_token_returns_token_or_error_when_input_is_not_empty() {
-    let interpreter = Interpreter::new("3+5".to_string());
-    let next_token = interpreter.get_next_token();
+fn lexer_get_next_token_returns_token_or_error_when_input_is_not_empty() {
+    let lexer = Lexer::new(&"3+5".to_string());
+    let next_token = lexer.get_next_token();
     match next_token {
         Ok(token) => assert!(token.token_type != TokenType::Eof),
         Err(_) => assert!(true),
@@ -422,16 +437,16 @@ fn interpreter_get_next_token_returns_token_or_error_when_input_is_not_empty() {
 }
 
 #[test]
-fn interpreter_get_next_token_returns_integer_when_input_is_digit() {
-    let interpreter = Interpreter::new("3".to_string());
-    let next_token = interpreter.get_next_token().unwrap();
+fn lexer_get_next_token_returns_integer_when_input_is_digit() {
+    let lexer = Lexer::new(&"3".to_string());
+    let next_token = lexer.get_next_token().unwrap();
     assert_eq!(TokenType::Integer, next_token.token_type);
 }
 
 #[test]
-fn interpreter_get_next_token_returns_integer_value_when_input_is_digit() {
-    let interpreter = Interpreter::new("3".to_string());
-    let next_token = interpreter.get_next_token().unwrap();
+fn lexer_get_next_token_returns_integer_value_when_input_is_digit() {
+    let lexer = Lexer::new(&"3".to_string());
+    let next_token = lexer.get_next_token().unwrap();
     match next_token.value.unwrap() {
         TokenValue::IntegerValue(value) => assert_eq!(3, value),
         TokenValue::OperatorValue(_) => assert!(false),
@@ -439,25 +454,25 @@ fn interpreter_get_next_token_returns_integer_value_when_input_is_digit() {
 }
 
 #[test]
-fn interpreter_get_next_token_returns_next_token_when_called_second_time() {
-    let interpreter = Interpreter::new("+3".to_string());
-    let next_token = interpreter.get_next_token().unwrap();
+fn lexer_get_next_token_returns_next_token_when_called_second_time() {
+    let lexer = Lexer::new(&"+3".to_string());
+    let next_token = lexer.get_next_token().unwrap();
     assert_eq!(TokenType::Operator, next_token.token_type);
-    let next_token = interpreter.get_next_token().unwrap();
+    let next_token = lexer.get_next_token().unwrap();
     assert_eq!(TokenType::Integer, next_token.token_type);
 }
 
 #[test]
-fn interpreter_get_next_token_returns_plus_when_input_is_plus() {
-    let interpreter = Interpreter::new("+".to_string());
-    let next_token = interpreter.get_next_token().unwrap();
+fn lexer_get_next_token_returns_plus_when_input_is_plus() {
+    let lexer = Lexer::new(&"+".to_string());
+    let next_token = lexer.get_next_token().unwrap();
     assert_eq!(TokenType::Operator, next_token.token_type);
 }
 
 #[test]
-fn interpreter_get_next_token_returns_operator_value_plus_when_input_is_operator_plus() {
-    let interpreter = Interpreter::new("+".to_string());
-    let next_token = interpreter.get_next_token().unwrap();
+fn lexer_get_next_token_returns_operator_value_plus_when_input_is_operator_plus() {
+    let lexer = Lexer::new(&"+".to_string());
+    let next_token = lexer.get_next_token().unwrap();
     match next_token.value.unwrap() {
         TokenValue::IntegerValue(_) => assert!(false),
         TokenValue::OperatorValue(value) => assert_eq!(OperatorType::Plus, value),
@@ -465,16 +480,16 @@ fn interpreter_get_next_token_returns_operator_value_plus_when_input_is_operator
 }
 
 #[test]
-fn interpreter_get_next_token_returns_minus_when_input_is_minus() {
-    let interpreter = Interpreter::new('-'.to_string());
-    let next_token = interpreter.get_next_token().unwrap();
+fn lexer_get_next_token_returns_minus_when_input_is_minus() {
+    let lexer = Lexer::new(&"-".to_string());
+    let next_token = lexer.get_next_token().unwrap();
     assert_eq!(TokenType::Operator, next_token.token_type);
 }
 
 #[test]
-fn interpreter_get_next_token_returns_operator_value_minus_when_input_is_operator_minus() {
-    let interpreter = Interpreter::new("-".to_string());
-    let next_token = interpreter.get_next_token().unwrap();
+fn lexer_get_next_token_returns_operator_value_minus_when_input_is_operator_minus() {
+    let lexer = Lexer::new(&"-".to_string());
+    let next_token = lexer.get_next_token().unwrap();
     match next_token.value.unwrap() {
         TokenValue::IntegerValue(_) => assert!(false),
         TokenValue::OperatorValue(value) => assert_eq!(OperatorType::Minus, value),
@@ -482,16 +497,16 @@ fn interpreter_get_next_token_returns_operator_value_minus_when_input_is_operato
 }
 
 #[test]
-fn interpreter_get_next_token_returns_times_when_input_is_times() {
-    let interpreter = Interpreter::new('*'.to_string());
-    let next_token = interpreter.get_next_token().unwrap();
+fn lexer_get_next_token_returns_times_when_input_is_times() {
+    let lexer = Lexer::new(&"*".to_string());
+    let next_token = lexer.get_next_token().unwrap();
     assert_eq!(TokenType::Operator, next_token.token_type);
 }
 
 #[test]
-fn interpreter_get_next_token_returns_operator_value_times_when_input_is_operator_times() {
-    let interpreter = Interpreter::new("*".to_string());
-    let next_token = interpreter.get_next_token().unwrap();
+fn lexer_get_next_token_returns_operator_value_times_when_input_is_operator_times() {
+    let lexer = Lexer::new(&"*".to_string());
+    let next_token = lexer.get_next_token().unwrap();
     match next_token.value.unwrap() {
         TokenValue::IntegerValue(_) => assert!(false),
         TokenValue::OperatorValue(value) => assert_eq!(OperatorType::Times, value),
@@ -499,16 +514,16 @@ fn interpreter_get_next_token_returns_operator_value_times_when_input_is_operato
 }
 
 #[test]
-fn interpreter_get_next_token_returns_division_when_input_is_division() {
-    let interpreter = Interpreter::new('/'.to_string());
-    let next_token = interpreter.get_next_token().unwrap();
+fn lexer_get_next_token_returns_division_when_input_is_division() {
+    let lexer = Lexer::new(&"/".to_string());
+    let next_token = lexer.get_next_token().unwrap();
     assert_eq!(TokenType::Operator, next_token.token_type);
 }
 
 #[test]
-fn interpreter_get_next_token_returns_operator_value_division_when_input_is_operator_division() {
-    let interpreter = Interpreter::new("/".to_string());
-    let next_token = interpreter.get_next_token().unwrap();
+fn lexer_get_next_token_returns_operator_value_division_when_input_is_operator_division() {
+    let lexer = Lexer::new(&"/".to_string());
+    let next_token = lexer.get_next_token().unwrap();
     match next_token.value.unwrap() {
         TokenValue::IntegerValue(_) => assert!(false),
         TokenValue::OperatorValue(value) => assert_eq!(OperatorType::Division, value),
@@ -516,9 +531,9 @@ fn interpreter_get_next_token_returns_operator_value_division_when_input_is_oper
 }
 
 #[test]
-fn interpreter_get_next_token_returns_error_when_input_is_letter() {
-    let interpreter = Interpreter::new("a".to_string());
-    let next_token = interpreter.get_next_token();
+fn lexer_get_next_token_returns_error_when_input_is_letter() {
+    let lexer = Lexer::new(&"a".to_string());
+    let next_token = lexer.get_next_token();
     match next_token {
         Ok(_) => assert!(false),
         Err(_) => assert!(true),
@@ -527,8 +542,10 @@ fn interpreter_get_next_token_returns_error_when_input_is_letter() {
 
 #[test]
 fn interpreter_eat_should_consume_token_if_it_has_the_correct_type() {
-    let interpreter = Interpreter::new("+4".to_string());
-    *interpreter.current_token.borrow_mut() = Some(interpreter.get_next_token().unwrap());
+    let input = "+4".to_string();
+    let lexer = Lexer::new(&input);
+    let interpreter = Interpreter::new(input, lexer);
+    *interpreter.current_token.borrow_mut() = Some(interpreter.lexer.get_next_token().unwrap());
     let _op = interpreter.eat(TokenType::Operator);
     let current_token = interpreter.current_token.borrow();
     match *current_token {
@@ -539,8 +556,10 @@ fn interpreter_eat_should_consume_token_if_it_has_the_correct_type() {
 
 #[test]
 fn interpreter_eat_should_not_consume_token_if_it_has_the_wrong_type() {
-    let interpreter = Interpreter::new("+4".to_string());
-    *interpreter.current_token.borrow_mut() = Some(interpreter.get_next_token().unwrap());
+    let input = "+4".to_string();
+    let lexer = Lexer::new(&input);
+    let interpreter = Interpreter::new(input, lexer);
+    *interpreter.current_token.borrow_mut() = Some(interpreter.lexer.get_next_token().unwrap());
     let result = interpreter.eat(TokenType::Integer);
     assert!(result.is_err());
 }
@@ -548,7 +567,9 @@ fn interpreter_eat_should_not_consume_token_if_it_has_the_wrong_type() {
 #[test]
 // expr -> INTEGER OPERATOR INTEGER
 fn interpreter_expr_should_add_values_when_expression_is_addition() {
-    let interpreter = Interpreter::new("3+4".to_string());
+    let input = "3+4".to_string();
+    let lexer = Lexer::new(&input);
+    let interpreter = Interpreter::new(input, lexer);
     assert!(interpreter.load_first_token().is_ok());
     let result = interpreter.expr();
     assert_eq!(7, result.unwrap());
@@ -557,7 +578,9 @@ fn interpreter_expr_should_add_values_when_expression_is_addition() {
 #[test]
 // expr -> INTEGER OPERATOR INTEGER
 fn interpreter_expr_should_subtract_values_when_expression_is_subtraction() {
-    let interpreter = Interpreter::new("4-3".to_string());
+    let input = "4-3".to_string();
+    let lexer = Lexer::new(&input);
+    let interpreter = Interpreter::new(input, lexer);
     assert!(interpreter.load_first_token().is_ok());
     let result = interpreter.expr();
     assert_eq!(1, result.unwrap());
@@ -565,7 +588,9 @@ fn interpreter_expr_should_subtract_values_when_expression_is_subtraction() {
 
 #[test]
 fn interpreter_expr_should_return_negative_number_when_result_of_subtraction_is_negative() {
-    let interpreter = Interpreter::new("3-4".to_string());
+    let input = "3-4".to_string();
+    let lexer = Lexer::new(&input);
+    let interpreter = Interpreter::new(input, lexer);
     assert!(interpreter.load_first_token().is_ok());
     let result = interpreter.expr();
     assert_eq!(-1, result.unwrap() as i64);
@@ -573,7 +598,9 @@ fn interpreter_expr_should_return_negative_number_when_result_of_subtraction_is_
 
 #[test]
 fn interpreter_expr_should_multiply_values_when_expression_is_multiplication() {
-    let interpreter = Interpreter::new("3*4".to_string());
+    let input = "3*4".to_string();
+    let lexer = Lexer::new(&input);
+    let interpreter = Interpreter::new(input, lexer);
     assert!(interpreter.load_first_token().is_ok());
     let result = interpreter.expr();
     assert_eq!(12, result.unwrap());
@@ -581,7 +608,9 @@ fn interpreter_expr_should_multiply_values_when_expression_is_multiplication() {
 
 #[test]
 fn interpreter_expr_should_divide_values_when_expression_is_division() {
-    let interpreter = Interpreter::new("4/2".to_string());
+    let input = "4/2".to_string();
+    let lexer = Lexer::new(&input);
+    let interpreter = Interpreter::new(input, lexer);
     assert!(interpreter.load_first_token().is_ok());
     let result = interpreter.expr();
     assert_eq!(2, result.unwrap());
@@ -589,7 +618,9 @@ fn interpreter_expr_should_divide_values_when_expression_is_division() {
 
 #[test]
 fn interpreter_expr_should_return_error_when_division_by_zero() {
-    let interpreter = Interpreter::new("1 / 0".to_string());
+    let input = "1 / 0".to_string();
+    let lexer = Lexer::new(&input);
+    let interpreter = Interpreter::new(input, lexer);
     assert!(interpreter.load_first_token().is_ok());
     let result = interpreter.expr();
     assert!(result.is_err());
@@ -597,7 +628,9 @@ fn interpreter_expr_should_return_error_when_division_by_zero() {
 
 #[test]
 fn interpreter_expr_should_not_parse_expressions_that_dont_begin_with_an_integer() {
-    let interpreter = Interpreter::new("+4".to_string());
+    let input = "+4".to_string();
+    let lexer = Lexer::new(&input);
+    let interpreter = Interpreter::new(input, lexer);
     assert!(interpreter.load_first_token().is_ok());
     let result = interpreter.expr();
     assert!(result.is_err());
@@ -605,7 +638,9 @@ fn interpreter_expr_should_not_parse_expressions_that_dont_begin_with_an_integer
 
 #[test]
 fn interpreter_expr_should_parse_expressions_that_contain_multi_digit_integer() {
-    let interpreter = Interpreter::new("44+3".to_string());
+    let input = "44+3".to_string();
+    let lexer = Lexer::new(&input);
+    let interpreter = Interpreter::new(input, lexer);
     assert!(interpreter.load_first_token().is_ok());
     let result = interpreter.expr();
     assert_eq!(47, result.unwrap());
@@ -613,7 +648,9 @@ fn interpreter_expr_should_parse_expressions_that_contain_multi_digit_integer() 
 
 #[test]
 fn interpreter_expr_should_not_parse_expressions_that_dont_have_operator_after_integer() {
-    let interpreter = Interpreter::new("4?2".to_string());
+    let input = "4?2".to_string();
+    let lexer = Lexer::new(&input);
+    let interpreter = Interpreter::new(input, lexer);
     assert!(interpreter.load_first_token().is_ok());
     let result = interpreter.expr();
     assert!(result.is_err());
@@ -621,7 +658,9 @@ fn interpreter_expr_should_not_parse_expressions_that_dont_have_operator_after_i
 
 #[test]
 fn interpreter_expr_should_not_parse_expressions_that_dont_have_integer_after_operator() {
-    let interpreter = Interpreter::new("4+a".to_string());
+    let input = "4+a".to_string();
+    let lexer = Lexer::new(&input);
+    let interpreter = Interpreter::new(input, lexer);
     assert!(interpreter.load_first_token().is_ok());
     let result = interpreter.expr();
     assert!(result.is_err());
@@ -629,7 +668,9 @@ fn interpreter_expr_should_not_parse_expressions_that_dont_have_integer_after_op
 
 #[test]
 fn interpreter_expr_should_not_parse_empty_string() {
-    let interpreter = Interpreter::new("".to_string());
+    let input = "".to_string();
+    let lexer = Lexer::new(&input);
+    let interpreter = Interpreter::new(input, lexer);
     assert!(interpreter.load_first_token().is_ok());
     let result = interpreter.expr();
     assert!(result.is_err());
@@ -637,7 +678,9 @@ fn interpreter_expr_should_not_parse_empty_string() {
 
 #[test]
 fn interpreter_expr_should_not_parse_expressions_that_dont_terminate_with_eof() {
-    let interpreter = Interpreter::new("1+3a".to_string());
+    let input = "1+3a".to_string();
+    let lexer = Lexer::new(&input);
+    let interpreter = Interpreter::new(input, lexer);
     assert!(interpreter.load_first_token().is_ok());
     let result = interpreter.expr();
     assert!(result.is_err());
@@ -645,58 +688,62 @@ fn interpreter_expr_should_not_parse_expressions_that_dont_terminate_with_eof() 
 
 #[test]
 fn interpreter_expr_should_not_parse_expressions_that_dont_terminate_with_eof2() {
-    let interpreter = Interpreter::new("1+3-".to_string());
+    let input = "1+3-".to_string();
+    let lexer = Lexer::new(&input);
+    let interpreter = Interpreter::new(input, lexer);
     assert!(interpreter.load_first_token().is_ok());
     let result = interpreter.expr();
     assert!(result.is_err());
 }
 
 #[test]
-fn interpreter_get_integer_returns_multi_digit_integer() {
-    let interpreter = Interpreter::new("123".to_string());
-    let result = interpreter.get_integer();
+fn lexer_get_integer_returns_multi_digit_integer() {
+    let lexer = Lexer::new(&"123".to_string());
+    let result = lexer.get_integer();
     assert_eq!(123, result);
 }
 
 #[test]
-fn interpreter_get_integer_should_advance_position_correctly() {
-    let interpreter = Interpreter::new("123".to_string());
-    let _result = interpreter.get_integer();
-    assert_eq!(3, interpreter.pos.get());
+fn lexer_get_integer_should_advance_position_correctly() {
+    let lexer = Lexer::new(&"123".to_string());
+    let _result = lexer.get_integer();
+    assert_eq!(3, lexer.pos.get());
 }
 
 #[test]
-fn interpreter_get_integer_should_only_advance_as_long_as_there_are_more_digits() {
-    let interpreter = Interpreter::new("12a".to_string());
-    let result = interpreter.get_integer();
+fn lexer_get_integer_should_only_advance_as_long_as_there_are_more_digits() {
+    let lexer = Lexer::new(&"12a".to_string());
+    let result = lexer.get_integer();
     assert_eq!(12, result);
-    assert_eq!(2, interpreter.pos.get());
+    assert_eq!(2, lexer.pos.get());
 }
 
 #[test]
-fn interpreter_skip_whitespace_should_skip_all_whitespaces_until_eof() {
-    let interpreter = Interpreter::new("  \n".to_string());
-    interpreter.skip_whitespace();
-    assert_eq!(3, interpreter.pos.get());
+fn lexer_skip_whitespace_should_skip_all_whitespaces_until_eof() {
+    let lexer = Lexer::new(&"  \n".to_string());
+    lexer.skip_whitespace();
+    assert_eq!(3, lexer.pos.get());
 }
 
 #[test]
-fn interpreter_skip_whitespace_should_skip_all_whitespaces_until_first_non_whitespace_char() {
-    let interpreter = Interpreter::new("  3".to_string());
-    interpreter.skip_whitespace();
-    assert_eq!(2, interpreter.pos.get());
+fn lexer_skip_whitespace_should_skip_all_whitespaces_until_first_non_whitespace_char() {
+    let lexer = Lexer::new(&"  3".to_string());
+    lexer.skip_whitespace();
+    assert_eq!(2, lexer.pos.get());
 }
 
 #[test]
-fn interpreter_skip_whitespace_should_not_skip_non_whitespace_characters() {
-    let interpreter = Interpreter::new("123".to_string());
-    interpreter.skip_whitespace();
-    assert_eq!(0, interpreter.pos.get());
+fn lexer_skip_whitespace_should_not_skip_non_whitespace_characters() {
+    let lexer = Lexer::new(&"123".to_string());
+    lexer.skip_whitespace();
+    assert_eq!(0, lexer.pos.get());
 }
 
 #[test]
 fn interpreter_expr_should_parse_expressions_that_contain_whitespace_characters() {
-    let interpreter = Interpreter::new("2 + 3".to_string());
+    let input = "2 + 3".to_string();
+    let lexer = Lexer::new(&input);
+    let interpreter = Interpreter::new(input, lexer);
     assert!(interpreter.load_first_token().is_ok());
     let result = interpreter.expr();
     assert_eq!(5, result.unwrap());
@@ -704,7 +751,9 @@ fn interpreter_expr_should_parse_expressions_that_contain_whitespace_characters(
 
 #[test]
 fn interpreter_expr_should_parse_expressions_that_begin_with_whitespace_characters() {
-    let interpreter = Interpreter::new(" 2 + 3".to_string());
+    let input = " 2 + 3".to_string();
+    let lexer = Lexer::new(&input);
+    let interpreter = Interpreter::new(input, lexer);
     assert!(interpreter.load_first_token().is_ok());
     let result = interpreter.expr();
     assert_eq!(5, result.unwrap());
@@ -712,7 +761,9 @@ fn interpreter_expr_should_parse_expressions_that_begin_with_whitespace_characte
 
 #[test]
 fn interpreter_load_first_token_should_load_first_token() {
-    let interpreter = Interpreter::new("2+3".to_string());
+    let input = "2+3".to_string();
+    let lexer = Lexer::new(&input);
+    let interpreter = Interpreter::new(input, lexer);
     let _ = interpreter.load_first_token();
     assert_eq!(TokenType::Integer,
                interpreter.current_token.borrow().clone().unwrap().token_type);
@@ -725,7 +776,9 @@ fn interpreter_load_first_token_should_load_first_token() {
 
 #[test]
 fn interpreter_expr_should_return_integer_value_if_input_consists_of_only_integer() {
-    let interpreter = Interpreter::new("42".to_string());
+    let input = "42".to_string();
+    let lexer = Lexer::new(&input);
+    let interpreter = Interpreter::new(input, lexer);
     assert!(interpreter.load_first_token().is_ok());
     let result = interpreter.expr();
     assert_eq!(42, result.unwrap());
@@ -733,7 +786,9 @@ fn interpreter_expr_should_return_integer_value_if_input_consists_of_only_intege
 
 #[test]
 fn interpreter_expr_should_interpret_chained_expressions() {
-    let interpreter = Interpreter::new("1+3+5".to_string());
+    let input = "1+3+5".to_string();
+    let lexer = Lexer::new(&input);
+    let interpreter = Interpreter::new(input, lexer);
     assert!(interpreter.load_first_token().is_ok());
     let result = interpreter.expr();
     assert_eq!(9, result.unwrap());
@@ -741,7 +796,9 @@ fn interpreter_expr_should_interpret_chained_expressions() {
 
 #[test]
 fn interpreter_expr_should_evaluate_chained_expressions_from_left_to_right() {
-    let interpreter = Interpreter::new("1-2+3".to_string());
+    let input = "1-2+3".to_string();
+    let lexer = Lexer::new(&input);
+    let interpreter = Interpreter::new(input, lexer);
     assert!(interpreter.load_first_token().is_ok());
     let result = interpreter.expr();
     assert_eq!(2, result.unwrap());
