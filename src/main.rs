@@ -214,13 +214,15 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use lexer::{Lexer, PascalLexer};
+    use lexer::{Lexer, MockLexer};
     use tokens::*;
 
     #[test]
     fn interpreter_eat_should_consume_token_if_it_has_the_correct_type() {
         let input = "+4".to_string();
-        let lexer = PascalLexer::new(&input);
+        let tokens = vec![(TokenType::Operator, TokenValue::OperatorValue(OperatorType::Plus)),
+                          (TokenType::Integer, TokenValue::IntegerValue(4))];
+        let lexer = MockLexer::new(tokens);
         let interpreter = Interpreter::new(input, lexer);
         *interpreter.current_token.borrow_mut() = Some(interpreter.lexer.get_next_token().unwrap());
         let _op = interpreter.eat(TokenType::Operator);
@@ -234,7 +236,9 @@ mod tests {
     #[test]
     fn interpreter_eat_should_not_consume_token_if_it_has_the_wrong_type() {
         let input = "+4".to_string();
-        let lexer = PascalLexer::new(&input);
+        let tokens = vec![(TokenType::Operator, TokenValue::OperatorValue(OperatorType::Plus)),
+                          (TokenType::Integer, TokenValue::IntegerValue(4))];
+        let lexer = MockLexer::new(tokens);
         let interpreter = Interpreter::new(input, lexer);
         *interpreter.current_token.borrow_mut() = Some(interpreter.lexer.get_next_token().unwrap());
         let result = interpreter.eat(TokenType::Integer);
@@ -245,7 +249,10 @@ mod tests {
     // expr -> INTEGER OPERATOR INTEGER
     fn interpreter_expr_should_add_values_when_expression_is_addition() {
         let input = "3+4".to_string();
-        let lexer = PascalLexer::new(&input);
+        let tokens = vec![(TokenType::Integer, TokenValue::IntegerValue(3)),
+                          (TokenType::Operator, TokenValue::OperatorValue(OperatorType::Plus)),
+                          (TokenType::Integer, TokenValue::IntegerValue(4))];
+        let lexer = MockLexer::new(tokens);
         let interpreter = Interpreter::new(input, lexer);
         assert!(interpreter.load_first_token().is_ok());
         let result = interpreter.expr();
@@ -256,7 +263,10 @@ mod tests {
     // expr -> INTEGER OPERATOR INTEGER
     fn interpreter_expr_should_subtract_values_when_expression_is_subtraction() {
         let input = "4-3".to_string();
-        let lexer = PascalLexer::new(&input);
+        let tokens = vec![(TokenType::Integer, TokenValue::IntegerValue(4)),
+                          (TokenType::Operator, TokenValue::OperatorValue(OperatorType::Minus)),
+                          (TokenType::Integer, TokenValue::IntegerValue(3))];
+        let lexer = MockLexer::new(tokens);
         let interpreter = Interpreter::new(input, lexer);
         assert!(interpreter.load_first_token().is_ok());
         let result = interpreter.expr();
@@ -266,7 +276,10 @@ mod tests {
     #[test]
     fn interpreter_expr_should_return_negative_number_when_result_of_subtraction_is_negative() {
         let input = "3-4".to_string();
-        let lexer = PascalLexer::new(&input);
+        let tokens = vec![(TokenType::Integer, TokenValue::IntegerValue(3)),
+                          (TokenType::Operator, TokenValue::OperatorValue(OperatorType::Minus)),
+                          (TokenType::Integer, TokenValue::IntegerValue(4))];
+        let lexer = MockLexer::new(tokens);
         let interpreter = Interpreter::new(input, lexer);
         assert!(interpreter.load_first_token().is_ok());
         let result = interpreter.expr();
@@ -276,7 +289,10 @@ mod tests {
     #[test]
     fn interpreter_expr_should_multiply_values_when_expression_is_multiplication() {
         let input = "3*4".to_string();
-        let lexer = PascalLexer::new(&input);
+        let tokens = vec![(TokenType::Integer, TokenValue::IntegerValue(3)),
+                          (TokenType::Operator, TokenValue::OperatorValue(OperatorType::Times)),
+                          (TokenType::Integer, TokenValue::IntegerValue(4))];
+        let lexer = MockLexer::new(tokens);
         let interpreter = Interpreter::new(input, lexer);
         assert!(interpreter.load_first_token().is_ok());
         let result = interpreter.expr();
@@ -286,7 +302,10 @@ mod tests {
     #[test]
     fn interpreter_expr_should_divide_values_when_expression_is_division() {
         let input = "4/2".to_string();
-        let lexer = PascalLexer::new(&input);
+        let tokens = vec![(TokenType::Integer, TokenValue::IntegerValue(4)),
+                          (TokenType::Operator, TokenValue::OperatorValue(OperatorType::Division)),
+                          (TokenType::Integer, TokenValue::IntegerValue(2))];
+        let lexer = MockLexer::new(tokens);
         let interpreter = Interpreter::new(input, lexer);
         assert!(interpreter.load_first_token().is_ok());
         let result = interpreter.expr();
@@ -295,8 +314,11 @@ mod tests {
 
     #[test]
     fn interpreter_expr_should_return_error_when_division_by_zero() {
-        let input = "1 / 0".to_string();
-        let lexer = PascalLexer::new(&input);
+        let input = "1/0".to_string();
+        let tokens = vec![(TokenType::Integer, TokenValue::IntegerValue(1)),
+                          (TokenType::Operator, TokenValue::OperatorValue(OperatorType::Division)),
+                          (TokenType::Integer, TokenValue::IntegerValue(0))];
+        let lexer = MockLexer::new(tokens);
         let interpreter = Interpreter::new(input, lexer);
         assert!(interpreter.load_first_token().is_ok());
         let result = interpreter.expr();
@@ -306,7 +328,9 @@ mod tests {
     #[test]
     fn interpreter_expr_should_not_parse_expressions_that_dont_begin_with_an_integer() {
         let input = "+4".to_string();
-        let lexer = PascalLexer::new(&input);
+        let tokens = vec![(TokenType::Operator, TokenValue::OperatorValue(OperatorType::Plus)),
+                          (TokenType::Integer, TokenValue::IntegerValue(4))];
+        let lexer = MockLexer::new(tokens);
         let interpreter = Interpreter::new(input, lexer);
         assert!(interpreter.load_first_token().is_ok());
         let result = interpreter.expr();
@@ -314,19 +338,21 @@ mod tests {
     }
 
     #[test]
-    fn interpreter_expr_should_parse_expressions_that_contain_multi_digit_integer() {
-        let input = "44+3".to_string();
-        let lexer = PascalLexer::new(&input);
-        let interpreter = Interpreter::new(input, lexer);
-        assert!(interpreter.load_first_token().is_ok());
-        let result = interpreter.expr();
-        assert_eq!(47, result.unwrap());
-    }
-
+    // TODO: move to integration test
+    // fn interpreter_expr_should_parse_expressions_that_contain_multi_digit_integer() {
+    //     let input = "44+3".to_string();
+    //     let lexer = PascalLexer::new(&input);
+    //     let interpreter = Interpreter::new(input, lexer);
+    //     assert!(interpreter.load_first_token().is_ok());
+    //     let result = interpreter.expr();
+    //     assert_eq!(47, result.unwrap());
+    // }
     #[test]
     fn interpreter_expr_should_not_parse_expressions_that_dont_have_operator_after_integer() {
-        let input = "4?2".to_string();
-        let lexer = PascalLexer::new(&input);
+        let input = "4 2".to_string();
+        let tokens = vec![(TokenType::Integer, TokenValue::IntegerValue(4)),
+                          (TokenType::Integer, TokenValue::IntegerValue(2))];
+        let lexer = MockLexer::new(tokens);
         let interpreter = Interpreter::new(input, lexer);
         assert!(interpreter.load_first_token().is_ok());
         let result = interpreter.expr();
@@ -335,8 +361,11 @@ mod tests {
 
     #[test]
     fn interpreter_expr_should_not_parse_expressions_that_dont_have_integer_after_operator() {
-        let input = "4+a".to_string();
-        let lexer = PascalLexer::new(&input);
+        let input = "4+-".to_string();
+        let tokens = vec![(TokenType::Integer, TokenValue::IntegerValue(4)),
+                          (TokenType::Operator, TokenValue::OperatorValue(OperatorType::Plus)),
+                          (TokenType::Operator, TokenValue::OperatorValue(OperatorType::Minus))];
+        let lexer = MockLexer::new(tokens);
         let interpreter = Interpreter::new(input, lexer);
         assert!(interpreter.load_first_token().is_ok());
         let result = interpreter.expr();
@@ -346,7 +375,8 @@ mod tests {
     #[test]
     fn interpreter_expr_should_not_parse_empty_string() {
         let input = "".to_string();
-        let lexer = PascalLexer::new(&input);
+        let tokens = vec![];
+        let lexer = MockLexer::new(tokens);
         let interpreter = Interpreter::new(input, lexer);
         assert!(interpreter.load_first_token().is_ok());
         let result = interpreter.expr();
@@ -355,8 +385,12 @@ mod tests {
 
     #[test]
     fn interpreter_expr_should_not_parse_expressions_that_dont_terminate_with_eof() {
-        let input = "1+3a".to_string();
-        let lexer = PascalLexer::new(&input);
+        let input = "1+3/".to_string();
+        let tokens = vec![(TokenType::Integer, TokenValue::IntegerValue(1)),
+                          (TokenType::Operator, TokenValue::OperatorValue(OperatorType::Plus)),
+                          (TokenType::Integer, TokenValue::IntegerValue(3)),
+                          (TokenType::Operator, TokenValue::OperatorValue(OperatorType::Times))];
+        let lexer = MockLexer::new(tokens);
         let interpreter = Interpreter::new(input, lexer);
         assert!(interpreter.load_first_token().is_ok());
         let result = interpreter.expr();
@@ -364,39 +398,31 @@ mod tests {
     }
 
     #[test]
-    fn interpreter_expr_should_not_parse_expressions_that_dont_terminate_with_eof2() {
-        let input = "1+3-".to_string();
-        let lexer = PascalLexer::new(&input);
-        let interpreter = Interpreter::new(input, lexer);
-        assert!(interpreter.load_first_token().is_ok());
-        let result = interpreter.expr();
-        assert!(result.is_err());
-    }
-
+    // TODO: move to integration test
+    // fn interpreter_expr_should_parse_expressions_that_contain_whitespace_characters() {
+    //     let input = "2 + 3".to_string();
+    //     let lexer = PascalLexer::new(&input);
+    //     let interpreter = Interpreter::new(input, lexer);
+    //     assert!(interpreter.load_first_token().is_ok());
+    //     let result = interpreter.expr();
+    //     assert_eq!(5, result.unwrap());
+    // }
     #[test]
-    fn interpreter_expr_should_parse_expressions_that_contain_whitespace_characters() {
-        let input = "2 + 3".to_string();
-        let lexer = PascalLexer::new(&input);
-        let interpreter = Interpreter::new(input, lexer);
-        assert!(interpreter.load_first_token().is_ok());
-        let result = interpreter.expr();
-        assert_eq!(5, result.unwrap());
-    }
-
-    #[test]
-    fn interpreter_expr_should_parse_expressions_that_begin_with_whitespace_characters() {
-        let input = " 2 + 3".to_string();
-        let lexer = PascalLexer::new(&input);
-        let interpreter = Interpreter::new(input, lexer);
-        assert!(interpreter.load_first_token().is_ok());
-        let result = interpreter.expr();
-        assert_eq!(5, result.unwrap());
-    }
-
+    // fn interpreter_expr_should_parse_expressions_that_begin_with_whitespace_characters() {
+    //     let input = " 2 + 3".to_string();
+    //     let lexer = PascalLexer::new(&input);
+    //     let interpreter = Interpreter::new(input, lexer);
+    //     assert!(interpreter.load_first_token().is_ok());
+    //     let result = interpreter.expr();
+    //     assert_eq!(5, result.unwrap());
+    // }
     #[test]
     fn interpreter_load_first_token_should_load_first_token() {
         let input = "2+3".to_string();
-        let lexer = PascalLexer::new(&input);
+        let tokens = vec![(TokenType::Integer, TokenValue::IntegerValue(2)),
+                          (TokenType::Operator, TokenValue::OperatorValue(OperatorType::Plus)),
+                          (TokenType::Integer, TokenValue::IntegerValue(3))];
+        let lexer = MockLexer::new(tokens);
         let interpreter = Interpreter::new(input, lexer);
         let _ = interpreter.load_first_token();
         assert_eq!(TokenType::Integer,
@@ -411,7 +437,8 @@ mod tests {
     #[test]
     fn interpreter_expr_should_return_integer_value_if_input_consists_of_only_integer() {
         let input = "42".to_string();
-        let lexer = PascalLexer::new(&input);
+        let tokens = vec![(TokenType::Integer, TokenValue::IntegerValue(42))];
+        let lexer = MockLexer::new(tokens);
         let interpreter = Interpreter::new(input, lexer);
         assert!(interpreter.load_first_token().is_ok());
         let result = interpreter.expr();
@@ -421,7 +448,12 @@ mod tests {
     #[test]
     fn interpreter_expr_should_interpret_chained_expressions() {
         let input = "1+3+5".to_string();
-        let lexer = PascalLexer::new(&input);
+        let tokens = vec![(TokenType::Integer, TokenValue::IntegerValue(1)),
+                          (TokenType::Operator, TokenValue::OperatorValue(OperatorType::Plus)),
+                          (TokenType::Integer, TokenValue::IntegerValue(3)),
+                          (TokenType::Operator, TokenValue::OperatorValue(OperatorType::Plus)),
+                          (TokenType::Integer, TokenValue::IntegerValue(5))];
+        let lexer = MockLexer::new(tokens);
         let interpreter = Interpreter::new(input, lexer);
         assert!(interpreter.load_first_token().is_ok());
         let result = interpreter.expr();
@@ -431,7 +463,12 @@ mod tests {
     #[test]
     fn interpreter_expr_should_evaluate_chained_expressions_from_left_to_right() {
         let input = "1-2+3".to_string();
-        let lexer = PascalLexer::new(&input);
+        let tokens = vec![(TokenType::Integer, TokenValue::IntegerValue(1)),
+                          (TokenType::Operator, TokenValue::OperatorValue(OperatorType::Minus)),
+                          (TokenType::Integer, TokenValue::IntegerValue(2)),
+                          (TokenType::Operator, TokenValue::OperatorValue(OperatorType::Plus)),
+                          (TokenType::Integer, TokenValue::IntegerValue(3))];
+        let lexer = MockLexer::new(tokens);
         let interpreter = Interpreter::new(input, lexer);
         assert!(interpreter.load_first_token().is_ok());
         let result = interpreter.expr();
