@@ -8,17 +8,17 @@ mod lexer;
 
 use tokens::{TokenType, OperatorType, TokenValue, Token};
 use errors::SyntaxError;
-use lexer::Lexer;
+use lexer::{Lexer, PascalLexer};
 
 #[derive(Debug)]
-pub struct Interpreter {
+pub struct Interpreter<L> {
     text: String,
     current_token: RefCell<Option<Token>>,
-    lexer: Lexer,
+    lexer: L,
 }
 
-impl Interpreter {
-    fn new(text: String, lexer: Lexer) -> Interpreter {
+impl<L: Lexer> Interpreter<L> {
+    fn new(text: String, lexer: L) -> Interpreter<L> {
         Interpreter {
             text: text,
             current_token: RefCell::new(None),
@@ -188,7 +188,7 @@ fn main() {
         match line {
             Ok(_) => {
                 let input = line.unwrap();
-                let lexer = Lexer::new(&input);
+                let lexer = PascalLexer::new(&input);
                 let interpreter = Interpreter::new(input, lexer);
                 match interpreter.load_first_token() {
                     Ok(()) => {
@@ -214,13 +214,13 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use lexer::Lexer;
+    use lexer::{Lexer, PascalLexer};
     use tokens::*;
 
     #[test]
     fn interpreter_eat_should_consume_token_if_it_has_the_correct_type() {
         let input = "+4".to_string();
-        let lexer = Lexer::new(&input);
+        let lexer = PascalLexer::new(&input);
         let interpreter = Interpreter::new(input, lexer);
         *interpreter.current_token.borrow_mut() = Some(interpreter.lexer.get_next_token().unwrap());
         let _op = interpreter.eat(TokenType::Operator);
@@ -234,7 +234,7 @@ mod tests {
     #[test]
     fn interpreter_eat_should_not_consume_token_if_it_has_the_wrong_type() {
         let input = "+4".to_string();
-        let lexer = Lexer::new(&input);
+        let lexer = PascalLexer::new(&input);
         let interpreter = Interpreter::new(input, lexer);
         *interpreter.current_token.borrow_mut() = Some(interpreter.lexer.get_next_token().unwrap());
         let result = interpreter.eat(TokenType::Integer);
@@ -245,7 +245,7 @@ mod tests {
     // expr -> INTEGER OPERATOR INTEGER
     fn interpreter_expr_should_add_values_when_expression_is_addition() {
         let input = "3+4".to_string();
-        let lexer = Lexer::new(&input);
+        let lexer = PascalLexer::new(&input);
         let interpreter = Interpreter::new(input, lexer);
         assert!(interpreter.load_first_token().is_ok());
         let result = interpreter.expr();
@@ -256,7 +256,7 @@ mod tests {
     // expr -> INTEGER OPERATOR INTEGER
     fn interpreter_expr_should_subtract_values_when_expression_is_subtraction() {
         let input = "4-3".to_string();
-        let lexer = Lexer::new(&input);
+        let lexer = PascalLexer::new(&input);
         let interpreter = Interpreter::new(input, lexer);
         assert!(interpreter.load_first_token().is_ok());
         let result = interpreter.expr();
@@ -266,7 +266,7 @@ mod tests {
     #[test]
     fn interpreter_expr_should_return_negative_number_when_result_of_subtraction_is_negative() {
         let input = "3-4".to_string();
-        let lexer = Lexer::new(&input);
+        let lexer = PascalLexer::new(&input);
         let interpreter = Interpreter::new(input, lexer);
         assert!(interpreter.load_first_token().is_ok());
         let result = interpreter.expr();
@@ -276,7 +276,7 @@ mod tests {
     #[test]
     fn interpreter_expr_should_multiply_values_when_expression_is_multiplication() {
         let input = "3*4".to_string();
-        let lexer = Lexer::new(&input);
+        let lexer = PascalLexer::new(&input);
         let interpreter = Interpreter::new(input, lexer);
         assert!(interpreter.load_first_token().is_ok());
         let result = interpreter.expr();
@@ -286,7 +286,7 @@ mod tests {
     #[test]
     fn interpreter_expr_should_divide_values_when_expression_is_division() {
         let input = "4/2".to_string();
-        let lexer = Lexer::new(&input);
+        let lexer = PascalLexer::new(&input);
         let interpreter = Interpreter::new(input, lexer);
         assert!(interpreter.load_first_token().is_ok());
         let result = interpreter.expr();
@@ -296,7 +296,7 @@ mod tests {
     #[test]
     fn interpreter_expr_should_return_error_when_division_by_zero() {
         let input = "1 / 0".to_string();
-        let lexer = Lexer::new(&input);
+        let lexer = PascalLexer::new(&input);
         let interpreter = Interpreter::new(input, lexer);
         assert!(interpreter.load_first_token().is_ok());
         let result = interpreter.expr();
@@ -306,7 +306,7 @@ mod tests {
     #[test]
     fn interpreter_expr_should_not_parse_expressions_that_dont_begin_with_an_integer() {
         let input = "+4".to_string();
-        let lexer = Lexer::new(&input);
+        let lexer = PascalLexer::new(&input);
         let interpreter = Interpreter::new(input, lexer);
         assert!(interpreter.load_first_token().is_ok());
         let result = interpreter.expr();
@@ -316,7 +316,7 @@ mod tests {
     #[test]
     fn interpreter_expr_should_parse_expressions_that_contain_multi_digit_integer() {
         let input = "44+3".to_string();
-        let lexer = Lexer::new(&input);
+        let lexer = PascalLexer::new(&input);
         let interpreter = Interpreter::new(input, lexer);
         assert!(interpreter.load_first_token().is_ok());
         let result = interpreter.expr();
@@ -326,7 +326,7 @@ mod tests {
     #[test]
     fn interpreter_expr_should_not_parse_expressions_that_dont_have_operator_after_integer() {
         let input = "4?2".to_string();
-        let lexer = Lexer::new(&input);
+        let lexer = PascalLexer::new(&input);
         let interpreter = Interpreter::new(input, lexer);
         assert!(interpreter.load_first_token().is_ok());
         let result = interpreter.expr();
@@ -336,7 +336,7 @@ mod tests {
     #[test]
     fn interpreter_expr_should_not_parse_expressions_that_dont_have_integer_after_operator() {
         let input = "4+a".to_string();
-        let lexer = Lexer::new(&input);
+        let lexer = PascalLexer::new(&input);
         let interpreter = Interpreter::new(input, lexer);
         assert!(interpreter.load_first_token().is_ok());
         let result = interpreter.expr();
@@ -346,7 +346,7 @@ mod tests {
     #[test]
     fn interpreter_expr_should_not_parse_empty_string() {
         let input = "".to_string();
-        let lexer = Lexer::new(&input);
+        let lexer = PascalLexer::new(&input);
         let interpreter = Interpreter::new(input, lexer);
         assert!(interpreter.load_first_token().is_ok());
         let result = interpreter.expr();
@@ -356,7 +356,7 @@ mod tests {
     #[test]
     fn interpreter_expr_should_not_parse_expressions_that_dont_terminate_with_eof() {
         let input = "1+3a".to_string();
-        let lexer = Lexer::new(&input);
+        let lexer = PascalLexer::new(&input);
         let interpreter = Interpreter::new(input, lexer);
         assert!(interpreter.load_first_token().is_ok());
         let result = interpreter.expr();
@@ -366,7 +366,7 @@ mod tests {
     #[test]
     fn interpreter_expr_should_not_parse_expressions_that_dont_terminate_with_eof2() {
         let input = "1+3-".to_string();
-        let lexer = Lexer::new(&input);
+        let lexer = PascalLexer::new(&input);
         let interpreter = Interpreter::new(input, lexer);
         assert!(interpreter.load_first_token().is_ok());
         let result = interpreter.expr();
@@ -376,7 +376,7 @@ mod tests {
     #[test]
     fn interpreter_expr_should_parse_expressions_that_contain_whitespace_characters() {
         let input = "2 + 3".to_string();
-        let lexer = Lexer::new(&input);
+        let lexer = PascalLexer::new(&input);
         let interpreter = Interpreter::new(input, lexer);
         assert!(interpreter.load_first_token().is_ok());
         let result = interpreter.expr();
@@ -386,7 +386,7 @@ mod tests {
     #[test]
     fn interpreter_expr_should_parse_expressions_that_begin_with_whitespace_characters() {
         let input = " 2 + 3".to_string();
-        let lexer = Lexer::new(&input);
+        let lexer = PascalLexer::new(&input);
         let interpreter = Interpreter::new(input, lexer);
         assert!(interpreter.load_first_token().is_ok());
         let result = interpreter.expr();
@@ -396,7 +396,7 @@ mod tests {
     #[test]
     fn interpreter_load_first_token_should_load_first_token() {
         let input = "2+3".to_string();
-        let lexer = Lexer::new(&input);
+        let lexer = PascalLexer::new(&input);
         let interpreter = Interpreter::new(input, lexer);
         let _ = interpreter.load_first_token();
         assert_eq!(TokenType::Integer,
@@ -411,7 +411,7 @@ mod tests {
     #[test]
     fn interpreter_expr_should_return_integer_value_if_input_consists_of_only_integer() {
         let input = "42".to_string();
-        let lexer = Lexer::new(&input);
+        let lexer = PascalLexer::new(&input);
         let interpreter = Interpreter::new(input, lexer);
         assert!(interpreter.load_first_token().is_ok());
         let result = interpreter.expr();
@@ -421,7 +421,7 @@ mod tests {
     #[test]
     fn interpreter_expr_should_interpret_chained_expressions() {
         let input = "1+3+5".to_string();
-        let lexer = Lexer::new(&input);
+        let lexer = PascalLexer::new(&input);
         let interpreter = Interpreter::new(input, lexer);
         assert!(interpreter.load_first_token().is_ok());
         let result = interpreter.expr();
@@ -431,7 +431,7 @@ mod tests {
     #[test]
     fn interpreter_expr_should_evaluate_chained_expressions_from_left_to_right() {
         let input = "1-2+3".to_string();
-        let lexer = Lexer::new(&input);
+        let lexer = PascalLexer::new(&input);
         let interpreter = Interpreter::new(input, lexer);
         assert!(interpreter.load_first_token().is_ok());
         let result = interpreter.expr();
