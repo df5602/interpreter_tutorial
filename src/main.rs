@@ -338,16 +338,6 @@ mod tests {
     }
 
     #[test]
-    // TODO: move to integration test
-    // fn interpreter_expr_should_parse_expressions_that_contain_multi_digit_integer() {
-    //     let input = "44+3".to_string();
-    //     let lexer = PascalLexer::new(&input);
-    //     let interpreter = Interpreter::new(input, lexer);
-    //     assert!(interpreter.load_first_token().is_ok());
-    //     let result = interpreter.expr();
-    //     assert_eq!(47, result.unwrap());
-    // }
-    #[test]
     fn interpreter_expr_should_not_parse_expressions_that_dont_have_operator_after_integer() {
         let input = "4 2".to_string();
         let tokens = vec![(TokenType::Integer, TokenValue::IntegerValue(4)),
@@ -397,25 +387,6 @@ mod tests {
         assert!(result.is_err());
     }
 
-    #[test]
-    // TODO: move to integration test
-    // fn interpreter_expr_should_parse_expressions_that_contain_whitespace_characters() {
-    //     let input = "2 + 3".to_string();
-    //     let lexer = PascalLexer::new(&input);
-    //     let interpreter = Interpreter::new(input, lexer);
-    //     assert!(interpreter.load_first_token().is_ok());
-    //     let result = interpreter.expr();
-    //     assert_eq!(5, result.unwrap());
-    // }
-    #[test]
-    // fn interpreter_expr_should_parse_expressions_that_begin_with_whitespace_characters() {
-    //     let input = " 2 + 3".to_string();
-    //     let lexer = PascalLexer::new(&input);
-    //     let interpreter = Interpreter::new(input, lexer);
-    //     assert!(interpreter.load_first_token().is_ok());
-    //     let result = interpreter.expr();
-    //     assert_eq!(5, result.unwrap());
-    // }
     #[test]
     fn interpreter_load_first_token_should_load_first_token() {
         let input = "2+3".to_string();
@@ -473,5 +444,41 @@ mod tests {
         assert!(interpreter.load_first_token().is_ok());
         let result = interpreter.expr();
         assert_eq!(2, result.unwrap());
+    }
+}
+
+#[cfg(test)]
+mod integration_tests {
+    use super::*;
+    use lexer::PascalLexer;
+
+    #[test]
+    fn interpreter_expr_should_parse_expressions_that_contain_multi_digit_integer() {
+        let input = "44+3".to_string();
+        let lexer = PascalLexer::new(&input);
+        let interpreter = Interpreter::new(input, lexer);
+        assert!(interpreter.load_first_token().is_ok());
+        let result = interpreter.expr();
+        assert_eq!(47, result.unwrap());
+    }
+
+    #[test]
+    fn interpreter_expr_should_parse_expressions_that_contain_whitespace_characters() {
+        let input = "2 + 3".to_string();
+        let lexer = PascalLexer::new(&input);
+        let interpreter = Interpreter::new(input, lexer);
+        assert!(interpreter.load_first_token().is_ok());
+        let result = interpreter.expr();
+        assert_eq!(5, result.unwrap());
+    }
+
+    #[test]
+    fn interpreter_expr_should_parse_expressions_that_begin_with_whitespace_characters() {
+        let input = " 2 + 3".to_string();
+        let lexer = PascalLexer::new(&input);
+        let interpreter = Interpreter::new(input, lexer);
+        assert!(interpreter.load_first_token().is_ok());
+        let result = interpreter.expr();
+        assert_eq!(5, result.unwrap());
     }
 }
