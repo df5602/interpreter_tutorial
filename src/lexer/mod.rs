@@ -140,6 +140,7 @@ impl Lexer {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tokens::*;
 
     #[test]
     fn lexer_get_next_token_returns_eof_when_input_is_empty() {

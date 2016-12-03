@@ -11,7 +11,7 @@ use errors::SyntaxError;
 use lexer::Lexer;
 
 #[derive(Debug)]
-struct Interpreter {
+pub struct Interpreter {
     text: String,
     current_token: RefCell<Option<Token>>,
     lexer: Lexer,
@@ -214,6 +214,8 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use lexer::Lexer;
+    use tokens::*;
 
     #[test]
     fn interpreter_eat_should_consume_token_if_it_has_the_correct_type() {
