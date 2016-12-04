@@ -32,6 +32,7 @@ impl fmt::Display for TokenType {
 //-- Minus      :   '-' (Subtraction)
 //-- Times      :   '*' (Multiplication)
 //-- Division   :   '/' (Division)
+//-- Dummy      :   to get around some "use of possibly uninitialized variable" errors
 //---------------------------------------------------------------------------//
 
 #[derive(Clone, Debug, PartialEq)]
@@ -40,6 +41,7 @@ pub enum OperatorType {
     Minus,
     Times,
     Division,
+    Dummy,
 }
 
 impl fmt::Display for OperatorType {
@@ -49,6 +51,7 @@ impl fmt::Display for OperatorType {
             OperatorType::Minus => write!(f, "'-'"),
             OperatorType::Times => write!(f, "'*'"),
             OperatorType::Division => write!(f, "'/'"),
+            OperatorType::Dummy => write!(f, "DUMMY"),
         }
     }
 }

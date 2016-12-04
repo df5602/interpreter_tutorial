@@ -88,15 +88,54 @@ impl<L: Lexer> Interpreter<L> {
     }
 
     // Evaluates an expression:
-    // expr -> INTEGER
-    //       | INTEGER OPERATOR EXPR
+    // expr -> term ((PLUS | MINUS) term)*
     //
     // Precondition: First token has been loaded
     fn expr(&self) -> Result<i64, SyntaxError> {
-        let mut result: i64;
 
         // Precondition: First token has been loaded
         assert!(self.current_token.borrow().is_some());
+
+        // Expect a term on the left hand side
+        let mut result = self.term()?;
+
+        loop {
+            // Return if next token is EOF
+            if self.get_current_token().token_type == TokenType::Eof {
+                return Ok(result);
+            }
+
+            // Otherwise, expect next token to be an operator
+            // (Handle the case that the operator is not PLUS or MINUS further down)
+            let op = self.get_current_token().value;
+            self.eat(TokenType::Operator)?;
+
+            // Extract value
+            let op_type = op.unwrap().extract_operator_type();
+
+            // Expect a term on the right hand side
+            let rhs = self.term()?;
+
+            // Update result of expression
+            result = if op_type == OperatorType::Plus {
+                result + rhs
+            } else if op_type == OperatorType::Minus {
+                result - rhs
+            } else {
+                return Err(SyntaxError {
+                    msg: "Internal Error (Unexpected operator type)".to_string(),
+                    position: (self.lexer.get_position(), self.lexer.get_position() + 1),
+                });
+            }
+        }
+    }
+
+    // Evaluates a term:
+    // term -> INTEGER ((TIMES | DIVISION) INTEGER)*
+    //
+    // Precondition: First token has been loaded
+    fn term(&self) -> Result<i64, SyntaxError> {
+        let mut result: i64;
 
         // First token should be an integer
         let lhs = self.get_current_token().value;
@@ -111,12 +150,17 @@ impl<L: Lexer> Interpreter<L> {
                 return Ok(result);
             }
 
-            // Otherwise, expect next token to be an operator
-            let op = self.get_current_token().value;
+            // Otherwise, expect next token to be an operator TIMES or DIVISION
+            let op = self.get_current_token();
+            let mut op_type = OperatorType::Dummy;  //UGLY: how to get around this?
+            if op.token_type == TokenType::Operator {
+                // Extract value
+                op_type = op.value.unwrap().extract_operator_type();
+                if op_type != OperatorType::Times && op_type != OperatorType::Division {
+                    return Ok(result);
+                }
+            }
             self.eat(TokenType::Operator)?;
-
-            // Extract value
-            let op_type = op.unwrap().extract_operator_type();
 
             // Expect next token to be an integer
             let rhs = self.get_current_token();
@@ -126,11 +170,7 @@ impl<L: Lexer> Interpreter<L> {
             let rhs_val = rhs.value.unwrap().extract_integer_value() as i64;
 
             // Update result of expression
-            result = if op_type == OperatorType::Plus {
-                result + rhs_val
-            } else if op_type == OperatorType::Minus {
-                result - rhs_val
-            } else if op_type == OperatorType::Times {
+            result = if op_type == OperatorType::Times {
                 result * rhs_val
             } else if op_type == OperatorType::Division {
                 if rhs_val == 0 {
@@ -143,7 +183,7 @@ impl<L: Lexer> Interpreter<L> {
                 }
             } else {
                 return Err(SyntaxError {
-                    msg: "Internal Error (Unknown operator type)".to_string(),
+                    msg: "Internal Error (Unexpected operator type)".to_string(),
                     position: (self.lexer.get_position(), self.lexer.get_position() + 1),
                 });
             }
@@ -266,45 +306,6 @@ mod tests {
     }
 
     #[test]
-    fn interpreter_expr_should_multiply_values_when_expression_is_multiplication() {
-        let input = "3*4".to_string();
-        let tokens = vec![(TokenType::Integer, TokenValue::IntegerValue(3)),
-                          (TokenType::Operator, TokenValue::OperatorValue(OperatorType::Times)),
-                          (TokenType::Integer, TokenValue::IntegerValue(4))];
-        let lexer = MockLexer::new(tokens);
-        let interpreter = Interpreter::new(input, lexer);
-        assert!(interpreter.load_first_token().is_ok());
-        let result = interpreter.expr();
-        assert_eq!(12, result.unwrap());
-    }
-
-    #[test]
-    fn interpreter_expr_should_divide_values_when_expression_is_division() {
-        let input = "4/2".to_string();
-        let tokens = vec![(TokenType::Integer, TokenValue::IntegerValue(4)),
-                          (TokenType::Operator, TokenValue::OperatorValue(OperatorType::Division)),
-                          (TokenType::Integer, TokenValue::IntegerValue(2))];
-        let lexer = MockLexer::new(tokens);
-        let interpreter = Interpreter::new(input, lexer);
-        assert!(interpreter.load_first_token().is_ok());
-        let result = interpreter.expr();
-        assert_eq!(2, result.unwrap());
-    }
-
-    #[test]
-    fn interpreter_expr_should_return_error_when_division_by_zero() {
-        let input = "1/0".to_string();
-        let tokens = vec![(TokenType::Integer, TokenValue::IntegerValue(1)),
-                          (TokenType::Operator, TokenValue::OperatorValue(OperatorType::Division)),
-                          (TokenType::Integer, TokenValue::IntegerValue(0))];
-        let lexer = MockLexer::new(tokens);
-        let interpreter = Interpreter::new(input, lexer);
-        assert!(interpreter.load_first_token().is_ok());
-        let result = interpreter.expr();
-        assert!(result.is_err());
-    }
-
-    #[test]
     fn interpreter_expr_should_not_parse_expressions_that_dont_begin_with_an_integer() {
         let input = "+4".to_string();
         let tokens = vec![(TokenType::Operator, TokenValue::OperatorValue(OperatorType::Plus)),
@@ -358,7 +359,7 @@ mod tests {
         let tokens = vec![(TokenType::Integer, TokenValue::IntegerValue(1)),
                           (TokenType::Operator, TokenValue::OperatorValue(OperatorType::Plus)),
                           (TokenType::Integer, TokenValue::IntegerValue(3)),
-                          (TokenType::Operator, TokenValue::OperatorValue(OperatorType::Times))];
+                          (TokenType::Operator, TokenValue::OperatorValue(OperatorType::Division))];
         let lexer = MockLexer::new(tokens);
         let interpreter = Interpreter::new(input, lexer);
         assert!(interpreter.load_first_token().is_ok());
@@ -423,6 +424,167 @@ mod tests {
         assert!(interpreter.load_first_token().is_ok());
         let result = interpreter.expr();
         assert_eq!(2, result.unwrap());
+    }
+
+    #[test]
+    fn interpreter_term_should_multiply_values_when_expression_is_multiplication() {
+        let input = "3*4".to_string();
+        let tokens = vec![(TokenType::Integer, TokenValue::IntegerValue(3)),
+                          (TokenType::Operator, TokenValue::OperatorValue(OperatorType::Times)),
+                          (TokenType::Integer, TokenValue::IntegerValue(4))];
+        let lexer = MockLexer::new(tokens);
+        let interpreter = Interpreter::new(input, lexer);
+        assert!(interpreter.load_first_token().is_ok());
+        let result = interpreter.term();
+        assert_eq!(12, result.unwrap());
+    }
+
+    #[test]
+    fn interpreter_term_should_divide_values_when_expression_is_division() {
+        let input = "4/2".to_string();
+        let tokens = vec![(TokenType::Integer, TokenValue::IntegerValue(4)),
+                          (TokenType::Operator, TokenValue::OperatorValue(OperatorType::Division)),
+                          (TokenType::Integer, TokenValue::IntegerValue(2))];
+        let lexer = MockLexer::new(tokens);
+        let interpreter = Interpreter::new(input, lexer);
+        assert!(interpreter.load_first_token().is_ok());
+        let result = interpreter.term();
+        assert_eq!(2, result.unwrap());
+    }
+
+    #[test]
+    fn interpreter_term_should_return_error_when_division_by_zero() {
+        let input = "1/0".to_string();
+        let tokens = vec![(TokenType::Integer, TokenValue::IntegerValue(1)),
+                          (TokenType::Operator, TokenValue::OperatorValue(OperatorType::Division)),
+                          (TokenType::Integer, TokenValue::IntegerValue(0))];
+        let lexer = MockLexer::new(tokens);
+        let interpreter = Interpreter::new(input, lexer);
+        assert!(interpreter.load_first_token().is_ok());
+        let result = interpreter.term();
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn interpreter_term_should_return_integer_value_if_input_consists_of_only_integer() {
+        let input = "42".to_string();
+        let tokens = vec![(TokenType::Integer, TokenValue::IntegerValue(42))];
+        let lexer = MockLexer::new(tokens);
+        let interpreter = Interpreter::new(input, lexer);
+        assert!(interpreter.load_first_token().is_ok());
+        let result = interpreter.term();
+        assert_eq!(42, result.unwrap());
+    }
+
+    #[test]
+    fn interpreter_term_should_not_parse_expressions_that_dont_begin_with_an_integer() {
+        let input = "+4".to_string();
+        let tokens = vec![(TokenType::Operator, TokenValue::OperatorValue(OperatorType::Plus)),
+                          (TokenType::Integer, TokenValue::IntegerValue(4))];
+        let lexer = MockLexer::new(tokens);
+        let interpreter = Interpreter::new(input, lexer);
+        assert!(interpreter.load_first_token().is_ok());
+        let result = interpreter.term();
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn interpreter_term_should_not_parse_expressions_that_dont_have_operator_after_integer() {
+        let input = "4 2".to_string();
+        let tokens = vec![(TokenType::Integer, TokenValue::IntegerValue(4)),
+                          (TokenType::Integer, TokenValue::IntegerValue(2))];
+        let lexer = MockLexer::new(tokens);
+        let interpreter = Interpreter::new(input, lexer);
+        assert!(interpreter.load_first_token().is_ok());
+        let result = interpreter.term();
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn interpreter_term_should_not_parse_expressions_that_dont_have_integer_after_operator() {
+        let input = "4*/".to_string();
+        let tokens = vec![(TokenType::Integer, TokenValue::IntegerValue(4)),
+                          (TokenType::Operator, TokenValue::OperatorValue(OperatorType::Times)),
+                          (TokenType::Operator, TokenValue::OperatorValue(OperatorType::Division))];
+        let lexer = MockLexer::new(tokens);
+        let interpreter = Interpreter::new(input, lexer);
+        assert!(interpreter.load_first_token().is_ok());
+        let result = interpreter.term();
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn interpreter_term_should_not_parse_empty_string() {
+        let input = "".to_string();
+        let tokens = vec![];
+        let lexer = MockLexer::new(tokens);
+        let interpreter = Interpreter::new(input, lexer);
+        assert!(interpreter.load_first_token().is_ok());
+        let result = interpreter.term();
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn interpreter_term_should_not_parse_expressions_that_dont_terminate_with_eof() {
+        let input = "1*3/".to_string();
+        let tokens = vec![(TokenType::Integer, TokenValue::IntegerValue(1)),
+                          (TokenType::Operator, TokenValue::OperatorValue(OperatorType::Times)),
+                          (TokenType::Integer, TokenValue::IntegerValue(3)),
+                          (TokenType::Operator, TokenValue::OperatorValue(OperatorType::Division))];
+        let lexer = MockLexer::new(tokens);
+        let interpreter = Interpreter::new(input, lexer);
+        assert!(interpreter.load_first_token().is_ok());
+        let result = interpreter.term();
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn interpreter_term_should_interpret_chained_expressions() {
+        let input = "1*3*5".to_string();
+        let tokens = vec![(TokenType::Integer, TokenValue::IntegerValue(1)),
+                          (TokenType::Operator, TokenValue::OperatorValue(OperatorType::Times)),
+                          (TokenType::Integer, TokenValue::IntegerValue(3)),
+                          (TokenType::Operator, TokenValue::OperatorValue(OperatorType::Times)),
+                          (TokenType::Integer, TokenValue::IntegerValue(5))];
+        let lexer = MockLexer::new(tokens);
+        let interpreter = Interpreter::new(input, lexer);
+        assert!(interpreter.load_first_token().is_ok());
+        let result = interpreter.term();
+        assert_eq!(15, result.unwrap());
+    }
+
+    #[test]
+    fn interpreter_term_should_evaluate_chained_expressions_from_left_to_right() {
+        let input = "6/2*3".to_string();
+        let tokens = vec![(TokenType::Integer, TokenValue::IntegerValue(6)),
+                          (TokenType::Operator, TokenValue::OperatorValue(OperatorType::Division)),
+                          (TokenType::Integer, TokenValue::IntegerValue(2)),
+                          (TokenType::Operator, TokenValue::OperatorValue(OperatorType::Times)),
+                          (TokenType::Integer, TokenValue::IntegerValue(3))];
+        let lexer = MockLexer::new(tokens);
+        let interpreter = Interpreter::new(input, lexer);
+        assert!(interpreter.load_first_token().is_ok());
+        let result = interpreter.term();
+        assert_eq!(9, result.unwrap());
+    }
+
+    #[test]
+    fn interpreter_expr_should_give_precedence_to_multiplication_and_division() {
+        let input = "14+2*3-6/2".to_string();
+        let tokens = vec![(TokenType::Integer, TokenValue::IntegerValue(14)),
+                          (TokenType::Operator, TokenValue::OperatorValue(OperatorType::Plus)),
+                          (TokenType::Integer, TokenValue::IntegerValue(2)),
+                          (TokenType::Operator, TokenValue::OperatorValue(OperatorType::Times)),
+                          (TokenType::Integer, TokenValue::IntegerValue(3)),
+                          (TokenType::Operator, TokenValue::OperatorValue(OperatorType::Minus)),
+                          (TokenType::Integer, TokenValue::IntegerValue(6)),
+                          (TokenType::Operator, TokenValue::OperatorValue(OperatorType::Division)),
+                          (TokenType::Integer, TokenValue::IntegerValue(2))];
+        let lexer = MockLexer::new(tokens);
+        let interpreter = Interpreter::new(input, lexer);
+        assert!(interpreter.load_first_token().is_ok());
+        let result = interpreter.expr();
+        assert_eq!(17, result.unwrap());
     }
 }
 
