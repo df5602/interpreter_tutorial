@@ -6,7 +6,7 @@ mod tokens;
 mod errors;
 mod lexer;
 
-use tokens::{TokenType, OperatorType, TokenValue, Token};
+use tokens::{TokenType, OperatorType, Token};
 use errors::SyntaxError;
 use lexer::{Lexer, PascalLexer};
 
@@ -81,70 +81,49 @@ impl<L: Lexer> Interpreter<L> {
         }
     }
 
+    // Gets a clone of the current token
+    // Precondition: First token has been loaded
+    fn get_current_token(&self) -> Token {
+        self.current_token.borrow().clone().unwrap()
+    }
+
     // Evaluates an expression:
     // expr -> INTEGER
     //       | INTEGER OPERATOR EXPR
     //
     // Precondition: First token has been loaded
     fn expr(&self) -> Result<i64, SyntaxError> {
-        let lhs: Option<TokenValue>;
-        let mut rhs: Token;
-        let mut op: Option<TokenValue>;
         let mut result: i64;
 
         // Precondition: First token has been loaded
         assert!(self.current_token.borrow().is_some());
 
         // First token should be an integer
-        {
-            lhs = self.current_token.borrow().clone().unwrap().value;
-        }
-        let mut eaten = self.eat(TokenType::Integer);
-        if eaten.is_err() {
-            return Err(eaten.unwrap_err());
-        }
+        let lhs = self.get_current_token().value;
+        self.eat(TokenType::Integer)?;
 
         // Extract value
-        result = match lhs.unwrap() {
-            TokenValue::IntegerValue(value) => value as i64,
-            _ => panic!("Internal Error (Integer value has wrong type)"),
-        };
+        result = lhs.unwrap().extract_integer_value() as i64;
 
         loop {
             // Return if next token is EOF
-            if self.current_token.borrow().clone().unwrap().token_type == TokenType::Eof {
+            if self.get_current_token().token_type == TokenType::Eof {
                 return Ok(result);
             }
 
             // Otherwise, expect next token to be an operator
-            {
-                op = self.current_token.borrow().clone().unwrap().value;
-            }
-            eaten = self.eat(TokenType::Operator);
-            if eaten.is_err() {
-                return Err(eaten.unwrap_err());
-            }
+            let op = self.get_current_token().value;
+            self.eat(TokenType::Operator)?;
 
             // Extract value
-            let op_type = match op.unwrap() {
-                TokenValue::OperatorValue(value) => value,
-                _ => panic!("Internal Error (Operator value has wrong type)"),
-            };
+            let op_type = op.unwrap().extract_operator_type();
 
             // Expect next token to be an integer
-            {
-                rhs = self.current_token.borrow().clone().unwrap();
-            }
-            eaten = self.eat(TokenType::Integer);
-            if eaten.is_err() {
-                return Err(eaten.unwrap_err());
-            }
+            let rhs = self.get_current_token();
+            self.eat(TokenType::Integer)?;
 
             // Extract value
-            let rhs_val = match rhs.value.unwrap() {
-                TokenValue::IntegerValue(value) => value as i64,
-                _ => panic!("Internal Error (Integer value has wrong type)"),
-            };
+            let rhs_val = rhs.value.unwrap().extract_integer_value() as i64;
 
             // Update result of expression
             result = if op_type == OperatorType::Plus {

@@ -66,6 +66,22 @@ pub enum TokenValue {
     OperatorValue(OperatorType),
 }
 
+impl TokenValue {
+    pub fn extract_integer_value(&self) -> u64 {
+        match *self {
+            TokenValue::IntegerValue(value) => value,
+            _ => panic!("Internal Error (Integer value has wrong type)"),
+        }
+    }
+
+    pub fn extract_operator_type(&self) -> OperatorType {
+        match *self {
+            TokenValue::OperatorValue(ref value) => value.clone(),
+            _ => panic!("Internal Error (Operator value has wrong type)"),
+        }
+    }
+}
+
 //---------------------------------------------------------------------------//
 //-Token:
 //-Each Token consists of the following elements:
