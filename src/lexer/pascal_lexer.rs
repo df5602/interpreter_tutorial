@@ -66,6 +66,18 @@ impl Lexer for PascalLexer {
                                  (pos, pos + 1)));
         }
 
+        // Return LPAREN when the next character is '('
+        if current_char == '(' {
+            self.pos.set(pos + 1);
+            return Ok(Token::new(TokenType::LParen, None, (pos, pos + 1)));
+        }
+
+        // Return RPAREN when the next character is ')'
+        if current_char == ')' {
+            self.pos.set(pos + 1);
+            return Ok(Token::new(TokenType::RParen, None, (pos, pos + 1)));
+        }
+
         // Current character didn't match any known token, return error
         Err(SyntaxError {
             msg: "Invalid token".to_string(),
@@ -176,7 +188,7 @@ mod tests {
         let next_token = lexer.get_next_token().unwrap();
         match next_token.value.unwrap() {
             TokenValue::IntegerValue(value) => assert_eq!(3, value),
-            TokenValue::OperatorValue(_) => assert!(false),
+            _ => assert!(false),
         }
     }
 
@@ -201,8 +213,8 @@ mod tests {
         let lexer = PascalLexer::new(&"+".to_string());
         let next_token = lexer.get_next_token().unwrap();
         match next_token.value.unwrap() {
-            TokenValue::IntegerValue(_) => assert!(false),
             TokenValue::OperatorValue(value) => assert_eq!(OperatorType::Plus, value),
+            _ => assert!(false),
         }
     }
 
@@ -218,8 +230,8 @@ mod tests {
         let lexer = PascalLexer::new(&"-".to_string());
         let next_token = lexer.get_next_token().unwrap();
         match next_token.value.unwrap() {
-            TokenValue::IntegerValue(_) => assert!(false),
             TokenValue::OperatorValue(value) => assert_eq!(OperatorType::Minus, value),
+            _ => assert!(false),
         }
     }
 
@@ -235,8 +247,8 @@ mod tests {
         let lexer = PascalLexer::new(&"*".to_string());
         let next_token = lexer.get_next_token().unwrap();
         match next_token.value.unwrap() {
-            TokenValue::IntegerValue(_) => assert!(false),
             TokenValue::OperatorValue(value) => assert_eq!(OperatorType::Times, value),
+            _ => assert!(false),
         }
     }
 
@@ -252,8 +264,8 @@ mod tests {
         let lexer = PascalLexer::new(&"/".to_string());
         let next_token = lexer.get_next_token().unwrap();
         match next_token.value.unwrap() {
-            TokenValue::IntegerValue(_) => assert!(false),
             TokenValue::OperatorValue(value) => assert_eq!(OperatorType::Division, value),
+            _ => assert!(false),
         }
     }
 
@@ -308,5 +320,19 @@ mod tests {
         let lexer = PascalLexer::new(&"123".to_string());
         lexer.skip_whitespace();
         assert_eq!(0, lexer.pos.get());
+    }
+
+    #[test]
+    fn lexer_get_next_token_returns_left_parenthesis_when_input_is_left_parenthesis() {
+        let lexer = PascalLexer::new(&"(".to_string());
+        let next_token = lexer.get_next_token().unwrap();
+        assert_eq!(TokenType::LParen, next_token.token_type);
+    }
+
+    #[test]
+    fn lexer_get_next_token_returns_right_parenthesis_when_input_is_right_parenthesis() {
+        let lexer = PascalLexer::new(&")".to_string());
+        let next_token = lexer.get_next_token().unwrap();
+        assert_eq!(TokenType::RParen, next_token.token_type);
     }
 }

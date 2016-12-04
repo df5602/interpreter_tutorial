@@ -3,15 +3,19 @@ use std::fmt;
 //---------------------------------------------------------------------------//
 //-TokenType:
 //-Each token contains a TokenType, where
-//-- Integer    :   A (multi-digit, base 10) unsigned integer
-//-- Operator   :   '+' | '-' | '*' | '/'
-//-- Eof        :   End of file
+//-Integer      :   A (multi-digit, base 10) unsigned integer
+//-Operator     :   '+' | '-' | '*' | '/'
+//-LParen       :   '('
+//-RParen       :   ')'
+//-Eof          :   End of file
 //---------------------------------------------------------------------------//
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum TokenType {
     Integer,
     Operator,
+    LParen,
+    RParen,
     Eof,
 }
 
@@ -20,6 +24,8 @@ impl fmt::Display for TokenType {
         match *self {
             TokenType::Integer => write!(f, "INTEGER"),
             TokenType::Operator => write!(f, "OPERATOR"),
+            TokenType::LParen => write!(f, "LPAREN"),
+            TokenType::RParen => write!(f, "RPAREN"),
             TokenType::Eof => write!(f, "EOF"),
         }
     }
@@ -28,11 +34,11 @@ impl fmt::Display for TokenType {
 //---------------------------------------------------------------------------//
 //-OperatorType:
 //-Each operator has one of the following values:
-//-- Plus       :   '+' (Addition)
-//-- Minus      :   '-' (Subtraction)
-//-- Times      :   '*' (Multiplication)
-//-- Division   :   '/' (Division)
-//-- Dummy      :   to get around some "use of possibly uninitialized variable" errors
+//-Plus       :   '+' (Addition)
+//-Minus      :   '-' (Subtraction)
+//-Times      :   '*' (Multiplication)
+//-Division   :   '/' (Division)
+//-Dummy      :   to get around some "use of possibly uninitialized variable" errors
 //---------------------------------------------------------------------------//
 
 #[derive(Clone, Debug, PartialEq)]
@@ -59,14 +65,16 @@ impl fmt::Display for OperatorType {
 //---------------------------------------------------------------------------//
 //-TokenValue:
 //-Each Token can have a value:
-//-- IntegerValue   :   Unsigned integer as u64
-//-- OperatorValue  :   An operator (see OperatorType)
+//-IntegerValue     :   Unsigned integer as u64
+//-OperatorValue    :   An operator (see OperatorType)
+//-NoValue          :   No value (testing only)
 //---------------------------------------------------------------------------//
 
 #[derive(Clone, Debug)]
 pub enum TokenValue {
     IntegerValue(u64),
     OperatorValue(OperatorType),
+    NoValue,
 }
 
 impl TokenValue {
@@ -88,9 +96,9 @@ impl TokenValue {
 //---------------------------------------------------------------------------//
 //-Token:
 //-Each Token consists of the following elements:
-//-- token_type :   The type of the token (see TokenType)
-//-- value      :   An optional value (see TokenValue)
-//-- position   :   A position in the input stream (for diagnostics reasons)
+//-token_type :   The type of the token (see TokenType)
+//-value      :   An optional value (see TokenValue)
+//-position   :   A position in the input stream (for diagnostics reasons)
 //---------------------------------------------------------------------------//
 
 #[derive(Clone, Debug)]
@@ -111,6 +119,7 @@ impl fmt::Display for Token {
                     TokenValue::OperatorValue(ref val) => {
                         write!(f, "Token({}, {})", self.token_type, val)
                     }
+                    TokenValue::NoValue => write!(f, "Token({})", self.token_type),
                 }
             }
             None => write!(f, "Token({})", self.token_type),

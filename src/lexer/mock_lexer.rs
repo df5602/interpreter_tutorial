@@ -15,9 +15,16 @@ impl Lexer for MockLexer {
         if pos + 1 > self.tokens.len() {
             Ok(Token::new(TokenType::Eof, None, (pos, pos + 1)))
         } else {
-            Ok(Token::new(self.tokens[pos].0.clone(),
-                          Some(self.tokens[pos].1.clone()),
-                          (pos, pos + 1)))
+            match self.tokens[pos].1 {
+                TokenValue::NoValue => {
+                    Ok(Token::new(self.tokens[pos].0.clone(), None, (pos, pos + 1)))
+                }
+                _ => {
+                    Ok(Token::new(self.tokens[pos].0.clone(),
+                                  Some(self.tokens[pos].1.clone()),
+                                  (pos, pos + 1)))
+                }
+            }
         }
     }
 
@@ -49,7 +56,7 @@ mod tests {
         assert_eq!(token.token_type, TokenType::Integer);
         match token.value.unwrap() {
             TokenValue::IntegerValue(value) => assert_eq!(42, value),
-            TokenValue::OperatorValue(_) => assert!(false),
+            _ => assert!(false),
         }
     }
 
@@ -62,9 +69,18 @@ mod tests {
         let token = mocklexer.get_next_token().unwrap();
         assert_eq!(token.token_type, TokenType::Operator);
         match token.value.unwrap() {
-            TokenValue::IntegerValue(_) => assert!(false),
             TokenValue::OperatorValue(value) => assert_eq!(OperatorType::Plus, value),
+            _ => assert!(false),
         }
+    }
+
+    #[test]
+    fn mocklexer_returns_token_with_value_none_when_encountering_novalue() {
+        let tokens = vec![(TokenType::LParen, TokenValue::NoValue)];
+        let mocklexer = MockLexer::new(tokens);
+        let token = mocklexer.get_next_token().unwrap();
+        assert_eq!(token.token_type, TokenType::LParen);
+        assert!(token.value.is_none());
     }
 
     #[test]
