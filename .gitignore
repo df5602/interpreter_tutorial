@@ -3,3 +3,6 @@ main
 .DS_Store
 .gitignore.swp
 .gitignore~
+*.sublime-workspace
+*.sublime-project
+
