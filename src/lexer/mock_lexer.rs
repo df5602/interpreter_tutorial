@@ -16,7 +16,7 @@ impl Lexer for MockLexer {
             Ok(Token::new(TokenType::Eof, None, (pos, pos + 1)))
         } else {
             match self.tokens[pos].1 {
-                TokenValue::NoValue => {
+                TokenValue::Empty => {
                     Ok(Token::new(self.tokens[pos].0.clone(), None, (pos, pos + 1)))
                 }
                 _ => {
@@ -50,33 +50,33 @@ mod tests {
 
     #[test]
     fn mocklexer_returns_first_token_when_calling_get_next_token_for_the_first_time() {
-        let tokens = vec![(TokenType::Integer, TokenValue::IntegerValue(42))];
+        let tokens = vec![(TokenType::Integer, TokenValue::Integer(42))];
         let mocklexer = MockLexer::new(tokens);
         let token = mocklexer.get_next_token().unwrap();
         assert_eq!(token.token_type, TokenType::Integer);
         match token.value.unwrap() {
-            TokenValue::IntegerValue(value) => assert_eq!(42, value),
+            TokenValue::Integer(value) => assert_eq!(42, value),
             _ => assert!(false),
         }
     }
 
     #[test]
     fn mocklexer_returns_second_token_when_calling_get_next_token_for_the_second_time() {
-        let tokens = vec![(TokenType::Integer, TokenValue::IntegerValue(42)),
-                          (TokenType::Operator, TokenValue::OperatorValue(OperatorType::Plus))];
+        let tokens = vec![(TokenType::Integer, TokenValue::Integer(42)),
+                          (TokenType::Operator, TokenValue::Operator(OperatorType::Plus))];
         let mocklexer = MockLexer::new(tokens);
         let _tmp = mocklexer.get_next_token().unwrap();
         let token = mocklexer.get_next_token().unwrap();
         assert_eq!(token.token_type, TokenType::Operator);
         match token.value.unwrap() {
-            TokenValue::OperatorValue(value) => assert_eq!(OperatorType::Plus, value),
+            TokenValue::Operator(value) => assert_eq!(OperatorType::Plus, value),
             _ => assert!(false),
         }
     }
 
     #[test]
     fn mocklexer_returns_token_with_value_none_when_encountering_novalue() {
-        let tokens = vec![(TokenType::LParen, TokenValue::NoValue)];
+        let tokens = vec![(TokenType::LParen, TokenValue::Empty)];
         let mocklexer = MockLexer::new(tokens);
         let token = mocklexer.get_next_token().unwrap();
         assert_eq!(token.token_type, TokenType::LParen);
@@ -85,7 +85,7 @@ mod tests {
 
     #[test]
     fn mocklexer_returns_eof_when_no_more_tokens_are_available() {
-        let tokens = vec![(TokenType::Integer, TokenValue::IntegerValue(42))];
+        let tokens = vec![(TokenType::Integer, TokenValue::Integer(42))];
         let mocklexer = MockLexer::new(tokens);
         let _tmp = mocklexer.get_next_token().unwrap();
         let token = mocklexer.get_next_token().unwrap();

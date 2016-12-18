@@ -30,7 +30,7 @@ impl Lexer for PascalLexer {
         if current_char.is_digit(10) {
             let value = self.get_integer();
             return Ok(Token::new(TokenType::Integer,
-                                 Some(TokenValue::IntegerValue(value)),
+                                 Some(TokenValue::Integer(value)),
                                  (pos, self.pos.get())));
         }
 
@@ -38,7 +38,7 @@ impl Lexer for PascalLexer {
         if current_char == '+' {
             self.pos.set(pos + 1);
             return Ok(Token::new(TokenType::Operator,
-                                 Some(TokenValue::OperatorValue(OperatorType::Plus)),
+                                 Some(TokenValue::Operator(OperatorType::Plus)),
                                  (pos, pos + 1)));
         }
 
@@ -46,7 +46,7 @@ impl Lexer for PascalLexer {
         if current_char == '-' {
             self.pos.set(pos + 1);
             return Ok(Token::new(TokenType::Operator,
-                                 Some(TokenValue::OperatorValue(OperatorType::Minus)),
+                                 Some(TokenValue::Operator(OperatorType::Minus)),
                                  (pos, pos + 1)));
         }
 
@@ -54,7 +54,7 @@ impl Lexer for PascalLexer {
         if current_char == '*' {
             self.pos.set(pos + 1);
             return Ok(Token::new(TokenType::Operator,
-                                 Some(TokenValue::OperatorValue(OperatorType::Times)),
+                                 Some(TokenValue::Operator(OperatorType::Times)),
                                  (pos, pos + 1)));
         }
 
@@ -62,7 +62,7 @@ impl Lexer for PascalLexer {
         if current_char == '/' {
             self.pos.set(pos + 1);
             return Ok(Token::new(TokenType::Operator,
-                                 Some(TokenValue::OperatorValue(OperatorType::Division)),
+                                 Some(TokenValue::Operator(OperatorType::Division)),
                                  (pos, pos + 1)));
         }
 
@@ -187,7 +187,7 @@ mod tests {
         let lexer = PascalLexer::new(&"3".to_string());
         let next_token = lexer.get_next_token().unwrap();
         match next_token.value.unwrap() {
-            TokenValue::IntegerValue(value) => assert_eq!(3, value),
+            TokenValue::Integer(value) => assert_eq!(3, value),
             _ => assert!(false),
         }
     }
@@ -213,7 +213,7 @@ mod tests {
         let lexer = PascalLexer::new(&"+".to_string());
         let next_token = lexer.get_next_token().unwrap();
         match next_token.value.unwrap() {
-            TokenValue::OperatorValue(value) => assert_eq!(OperatorType::Plus, value),
+            TokenValue::Operator(value) => assert_eq!(OperatorType::Plus, value),
             _ => assert!(false),
         }
     }
@@ -230,7 +230,7 @@ mod tests {
         let lexer = PascalLexer::new(&"-".to_string());
         let next_token = lexer.get_next_token().unwrap();
         match next_token.value.unwrap() {
-            TokenValue::OperatorValue(value) => assert_eq!(OperatorType::Minus, value),
+            TokenValue::Operator(value) => assert_eq!(OperatorType::Minus, value),
             _ => assert!(false),
         }
     }
@@ -247,7 +247,7 @@ mod tests {
         let lexer = PascalLexer::new(&"*".to_string());
         let next_token = lexer.get_next_token().unwrap();
         match next_token.value.unwrap() {
-            TokenValue::OperatorValue(value) => assert_eq!(OperatorType::Times, value),
+            TokenValue::Operator(value) => assert_eq!(OperatorType::Times, value),
             _ => assert!(false),
         }
     }
@@ -264,7 +264,7 @@ mod tests {
         let lexer = PascalLexer::new(&"/".to_string());
         let next_token = lexer.get_next_token().unwrap();
         match next_token.value.unwrap() {
-            TokenValue::OperatorValue(value) => assert_eq!(OperatorType::Division, value),
+            TokenValue::Operator(value) => assert_eq!(OperatorType::Division, value),
             _ => assert!(false),
         }
     }

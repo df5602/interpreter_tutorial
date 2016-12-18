@@ -65,29 +65,29 @@ impl fmt::Display for OperatorType {
 //---------------------------------------------------------------------------//
 //-TokenValue:
 //-Each Token can have a value:
-//-IntegerValue     :   Unsigned integer as u64
-//-OperatorValue    :   An operator (see OperatorType)
-//-NoValue          :   No value (testing only)
+//-Integer      :   Unsigned integer as u64
+//-Operator     :   An operator (see OperatorType)
+//-Empty        :   No value (testing only)
 //---------------------------------------------------------------------------//
 
 #[derive(Clone, Debug)]
 pub enum TokenValue {
-    IntegerValue(u64),
-    OperatorValue(OperatorType),
-    NoValue,
+    Integer(u64),
+    Operator(OperatorType),
+    Empty,
 }
 
 impl TokenValue {
     pub fn extract_integer_value(&self) -> u64 {
         match *self {
-            TokenValue::IntegerValue(value) => value,
+            TokenValue::Integer(value) => value,
             _ => panic!("Internal Error (Integer value has wrong type)"),
         }
     }
 
     pub fn extract_operator_type(&self) -> OperatorType {
         match *self {
-            TokenValue::OperatorValue(ref value) => value.clone(),
+            TokenValue::Operator(ref value) => value.clone(),
             _ => panic!("Internal Error (Operator value has wrong type)"),
         }
     }
@@ -113,13 +113,11 @@ impl fmt::Display for Token {
         match self.value {
             Some(ref value) => {
                 match *value {
-                    TokenValue::IntegerValue(val) => {
+                    TokenValue::Integer(val) => write!(f, "Token({}, {})", self.token_type, val),
+                    TokenValue::Operator(ref val) => {
                         write!(f, "Token({}, {})", self.token_type, val)
                     }
-                    TokenValue::OperatorValue(ref val) => {
-                        write!(f, "Token({}, {})", self.token_type, val)
-                    }
-                    TokenValue::NoValue => write!(f, "Token({})", self.token_type),
+                    TokenValue::Empty => write!(f, "Token({})", self.token_type),
                 }
             }
             None => write!(f, "Token({})", self.token_type),
