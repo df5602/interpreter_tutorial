@@ -155,15 +155,15 @@ impl<L: Lexer> Interpreter<L> {
 
             // Otherwise, expect next token to be an operator TIMES or DIVISION
             let op = self.get_current_token();
-            let mut op_type = OperatorType::Dummy;  //UGLY: how to get around this?
             if op.token_type == TokenType::Operator {
                 // Extract value
-                op_type = op.value.unwrap().extract_operator_type();
+                let op_type = op.value.as_ref().unwrap().extract_operator_type();
                 if op_type != OperatorType::Times && op_type != OperatorType::Division {
                     return Ok(result);
                 }
             }
             self.eat(TokenType::Operator)?;
+            let op_type = op.value.unwrap().extract_operator_type();
 
             // Expect a factor on the right hand side
             let rhs = self.factor()?;
