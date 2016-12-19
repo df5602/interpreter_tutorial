@@ -3,6 +3,7 @@ use std::io;
 use std::io::{BufRead, Write};
 
 mod tokens;
+mod ast;
 mod errors;
 mod lexer;
 
