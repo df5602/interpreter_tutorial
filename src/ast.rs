@@ -1,14 +1,16 @@
 use std::fmt;
-use tokens::{Token, OperatorType};
+use tokens::{Token, TokenValue, OperatorType};
 
-trait AstNode {
+pub trait AstNode {
     fn get_parent(&self) -> Option<AstIndex>;
     fn set_parent(&mut self, parent: AstIndex) -> bool;
     fn get_children(&self) -> Vec<AstIndex>;
+    fn get_value(&self) -> TokenValue;
+    fn print(&self) -> String;
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub struct AstIndex(usize);
+pub struct AstIndex(pub usize);
 
 impl fmt::Display for AstIndex {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -64,6 +66,28 @@ impl AstNode for OperatorNode {
     fn get_children(&self) -> Vec<AstIndex> {
         vec![self.left, self.right]
     }
+
+    fn get_value(&self) -> TokenValue {
+        TokenValue::Operator(self.operator.clone())
+    }
+
+    fn print(&self) -> String {
+        match self.parent {
+            Some(ref i) => {
+                format!("Operator(left: {}, right: {}, parent: {}, op: {})",
+                        self.left,
+                        self.right,
+                        i,
+                        self.operator)
+            }
+            None => {
+                format!("Operator(left: {}, right: {}, parent: None, op: {})",
+                        self.left,
+                        self.right,
+                        self.operator)
+            }
+        }
+    }
 }
 
 impl OperatorNode {
@@ -110,10 +134,21 @@ impl AstNode for IntegerNode {
     fn get_children(&self) -> Vec<AstIndex> {
         Vec::new()
     }
+
+    fn get_value(&self) -> TokenValue {
+        TokenValue::Integer(self.value)
+    }
+
+    fn print(&self) -> String {
+        match self.parent {
+            Some(ref i) => format!("Integer(parent: {}, value: {})", i, self.value),
+            None => format!("Integer(parent: None, value: {})", self.value),
+        }
+    }
 }
 
 impl IntegerNode {
-    fn new(value: u64, token: Token) -> Self {
+    pub fn new(value: u64, token: Token) -> Self {
         IntegerNode {
             value: value,
             parent: None,
@@ -128,8 +163,23 @@ pub struct Ast<'a> {
     non_connected_nodes: Vec<AstIndex>,
 }
 
+impl<'a> fmt::Display for Ast<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut result = writeln!(f,
+                                  "AST: Number of nodes: {}, Root: {:?}, Number of non-connected \
+                                   nodes: {}",
+                                  self.nodes.len(),
+                                  self.root,
+                                  self.non_connected_nodes.len());
+        for node in &self.nodes {
+            result = writeln!(f, "{}", (*node).print());
+        }
+        result
+    }
+}
+
 impl<'a> Ast<'a> {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Ast {
             nodes: Vec::new(),
             root: None,
@@ -137,7 +187,11 @@ impl<'a> Ast<'a> {
         }
     }
 
-    fn add_node<N: AstNode + 'a>(&mut self, node: N) -> AstIndex {
+    pub fn get_node(&self, index: AstIndex) -> &AstNode {
+        &*self.nodes[index.0]
+    }
+
+    pub fn add_node<N: AstNode + 'a>(&mut self, node: N) -> AstIndex {
         self.nodes.push(Box::new(node));
 
         let inserted_index = AstIndex(self.nodes.len() - 1);

@@ -8,22 +8,24 @@ mod errors;
 mod lexer;
 
 use tokens::{TokenType, OperatorType, Token};
+use ast::{Ast, AstIndex, IntegerNode};
 use errors::SyntaxError;
 use lexer::{Lexer, PascalLexer};
 
-#[derive(Debug)]
-pub struct Interpreter<L> {
+pub struct Interpreter<'a, L> {
     text: String,
     current_token: RefCell<Option<Token>>,
     lexer: L,
+    ast: RefCell<Ast<'a>>,
 }
 
-impl<L: Lexer> Interpreter<L> {
-    fn new(text: String, lexer: L) -> Interpreter<L> {
+impl<'a, L: Lexer> Interpreter<'a, L> {
+    fn new(text: String, lexer: L) -> Interpreter<'a, L> {
         Interpreter {
             text: text,
             current_token: RefCell::new(None),
             lexer: lexer,
+            ast: RefCell::new(Ast::new()),
         }
     }
 
@@ -146,7 +148,7 @@ impl<L: Lexer> Interpreter<L> {
     fn term(&self) -> Result<i64, SyntaxError> {
 
         // Expect a factor on the left hand side
-        let mut result = self.factor()?;
+        let mut result = self.factor()?.0;
 
         loop {
             // Return if next token is EOF
@@ -167,7 +169,7 @@ impl<L: Lexer> Interpreter<L> {
             let op_type = op.value.unwrap().extract_operator_type();
 
             // Expect a factor on the right hand side
-            let rhs = self.factor()?;
+            let rhs = self.factor()?.0;
 
             // Update result of expression
             result = if op_type == OperatorType::Times {
@@ -194,14 +196,17 @@ impl<L: Lexer> Interpreter<L> {
     // factor -> INTEGER | LPAREN expr RPAREN
     //
     // Precondition: First token has been loaded
-    fn factor(&self) -> Result<i64, SyntaxError> {
+    fn factor(&self) -> Result<(i64, AstIndex), SyntaxError> {
 
         // First token should be an INTEGER or LPAREN
         let current_token = self.get_current_token();
 
         if current_token.token_type == TokenType::Integer {
             self.eat(TokenType::Integer)?;
-            Ok(current_token.value.unwrap().extract_integer_value() as i64)
+            let mut ast = self.ast.borrow_mut();
+            let value = current_token.value.as_ref().unwrap().extract_integer_value();
+            let node = IntegerNode::new(value, current_token);
+            Ok((value as i64, ast.add_node(node)))
         } else {
             self.eat(TokenType::LParen)?;
 
@@ -209,7 +214,7 @@ impl<L: Lexer> Interpreter<L> {
 
             self.eat(TokenType::RParen)?;
 
-            Ok(result)
+            Ok((result, AstIndex(0)))
         }
     }
 }
@@ -237,6 +242,7 @@ fn main() {
                     Ok(value) => println!("{}", value),
                     Err(e) => interpreter.print_error(e),
                 }
+                print!("{}", *interpreter.ast.borrow());
             }
             Err(error) => {
                 println!("error: {}", error);
@@ -588,7 +594,21 @@ mod tests {
         let interpreter = Interpreter::new(input, lexer);
         assert!(interpreter.load_first_token().is_ok());
         let result = interpreter.factor();
-        assert_eq!(42, result.unwrap());
+        assert_eq!(42, result.unwrap().0);
+    }
+
+    #[test]
+    fn interpreter_factor_should_return_integer_node_if_input_consists_of_only_integer() {
+        let input = "42".to_string();
+        let tokens = vec![(TokenType::Integer, TokenValue::Integer(42))];
+        let lexer = MockLexer::new(tokens);
+        let interpreter = Interpreter::new(input, lexer);
+        assert!(interpreter.load_first_token().is_ok());
+        let result = interpreter.factor();
+        let ast = interpreter.ast.borrow();
+        let node = ast.get_node(result.unwrap().1);
+        assert_eq!(node.get_parent(), None);
+        assert_eq!(node.get_value(), TokenValue::Integer(42));
     }
 
     #[test]
@@ -603,7 +623,7 @@ mod tests {
         let interpreter = Interpreter::new(input, lexer);
         assert!(interpreter.load_first_token().is_ok());
         let result = interpreter.factor();
-        assert_eq!(9, result.unwrap());
+        assert_eq!(9, result.unwrap().0);
     }
 
     #[test]
@@ -616,7 +636,7 @@ mod tests {
         let interpreter = Interpreter::new(input, lexer);
         assert!(interpreter.load_first_token().is_ok());
         let result = interpreter.factor();
-        assert_eq!(6, result.unwrap());
+        assert_eq!(6, result.unwrap().0);
     }
 
     #[test]

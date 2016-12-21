@@ -67,7 +67,7 @@ impl fmt::Display for OperatorType {
 //-Empty        :   No value (testing only)
 //---------------------------------------------------------------------------//
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum TokenValue {
     Integer(u64),
     Operator(OperatorType),
