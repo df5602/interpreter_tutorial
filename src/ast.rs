@@ -14,7 +14,7 @@ pub struct AstIndex(pub usize);
 
 impl fmt::Display for AstIndex {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self)
+        write!(f, "{}", self.0)
     }
 }
 
@@ -91,7 +91,7 @@ impl AstNode for OperatorNode {
 }
 
 impl OperatorNode {
-    fn new(left: AstIndex, right: AstIndex, operator: OperatorType, token: Token) -> Self {
+    pub fn new(left: AstIndex, right: AstIndex, operator: OperatorType, token: Token) -> Self {
         OperatorNode {
             left: left,
             right: right,
@@ -171,8 +171,8 @@ impl<'a> fmt::Display for Ast<'a> {
                                   self.nodes.len(),
                                   self.root,
                                   self.non_connected_nodes.len());
-        for node in &self.nodes {
-            result = writeln!(f, "{}", (*node).print());
+        for (i, node) in self.nodes.iter().enumerate() {
+            result = writeln!(f, "{}: {}", i, (*node).print());
         }
         result
     }
@@ -187,6 +187,7 @@ impl<'a> Ast<'a> {
         }
     }
 
+    #[cfg(test)]
     pub fn get_node(&self, index: AstIndex) -> &AstNode {
         &*self.nodes[index.0]
     }
@@ -244,7 +245,7 @@ impl<'a> Ast<'a> {
         self.root == Some(current)
     }
 
-    fn is_contiguous(&self) -> bool {
+    pub fn is_contiguous(&self) -> bool {
         self.non_connected_nodes.is_empty()
     }
 }

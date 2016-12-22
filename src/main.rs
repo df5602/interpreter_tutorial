@@ -8,24 +8,22 @@ mod errors;
 mod lexer;
 
 use tokens::{TokenType, OperatorType, Token};
-use ast::{Ast, AstIndex, IntegerNode};
+use ast::{Ast, AstIndex, IntegerNode, OperatorNode};
 use errors::SyntaxError;
 use lexer::{Lexer, PascalLexer};
 
-pub struct Interpreter<'a, L> {
+pub struct Interpreter<L> {
     text: String,
     current_token: RefCell<Option<Token>>,
     lexer: L,
-    ast: RefCell<Ast<'a>>,
 }
 
-impl<'a, L: Lexer> Interpreter<'a, L> {
-    fn new(text: String, lexer: L) -> Interpreter<'a, L> {
+impl<L: Lexer> Interpreter<L> {
+    fn new(text: String, lexer: L) -> Interpreter<L> {
         Interpreter {
             text: text,
             current_token: RefCell::new(None),
             lexer: lexer,
-            ast: RefCell::new(Ast::new()),
         }
     }
 
@@ -91,24 +89,31 @@ impl<'a, L: Lexer> Interpreter<'a, L> {
     }
 
     // Start symbol, loads first token, calls expr() and checks that last token is an EOF
-    fn start(&self) -> Result<i64, SyntaxError> {
+    fn start(&self, ast: &mut Ast) -> Result<i64, SyntaxError> {
         self.load_first_token()?;
 
-        let result = self.expr()?;
+        let result = self.expr(ast)?;
 
         self.eat(TokenType::Eof)?;
 
-        Ok(result)
+        if ast.is_contiguous() {
+            Ok((result.0))
+        } else {
+            Err(SyntaxError {
+                msg: format!("Internal Error (AST is not contiguous)"),
+                position: (0, 0),
+            })
+        }
     }
 
     // Evaluates an expression:
     // expr -> term ((PLUS | MINUS) term)*
     //
     // Precondition: First token has been loaded
-    fn expr(&self) -> Result<i64, SyntaxError> {
+    fn expr(&self, ast: &mut Ast) -> Result<(i64, AstIndex), SyntaxError> {
 
         // Expect a term on the left hand side
-        let mut result = self.term()?;
+        let mut result = self.term(ast)?;
 
         loop {
             // Return if next token is not an OPERATOR
@@ -118,20 +123,26 @@ impl<'a, L: Lexer> Interpreter<'a, L> {
 
             // Otherwise, expect next token to be an operator
             // (Handle the case that the operator is not PLUS or MINUS further down)
-            let op = self.get_current_token().value;
+            let op = self.get_current_token();
             self.eat(TokenType::Operator)?;
 
             // Extract value
-            let op_type = op.unwrap().extract_operator_type();
+            let op_type = op.value.as_ref().unwrap().extract_operator_type();
+            let op_type_2 = op_type.clone();   // Temporary hack to guarantee it is cleaned up
+                                               // when modifications are complete
 
             // Expect a term on the right hand side
-            let rhs = self.term()?;
+            let rhs = self.term(ast)?;
+
+            // Construct AST node
+            let node = OperatorNode::new(result.1, rhs.1, op_type, op);
+            result.1 = ast.add_node(node);
 
             // Update result of expression
-            result = if op_type == OperatorType::Plus {
-                result + rhs
-            } else if op_type == OperatorType::Minus {
-                result - rhs
+            result.0 = if op_type_2 == OperatorType::Plus {
+                result.0 + rhs.0
+            } else if op_type_2 == OperatorType::Minus {
+                result.0 - rhs.0
             } else {
                 return Err(SyntaxError {
                     msg: "Internal Error (Unexpected operator type)".to_string(),
@@ -145,10 +156,10 @@ impl<'a, L: Lexer> Interpreter<'a, L> {
     // term -> factor ((TIMES | DIVISION) factor)*
     //
     // Precondition: First token has been loaded
-    fn term(&self) -> Result<i64, SyntaxError> {
+    fn term(&self, ast: &mut Ast) -> Result<(i64, AstIndex), SyntaxError> {
 
         // Expect a factor on the left hand side
-        let mut result = self.factor()?.0;
+        let mut result = self.factor(ast)?;
 
         loop {
             // Return if next token is EOF
@@ -166,22 +177,28 @@ impl<'a, L: Lexer> Interpreter<'a, L> {
                 }
             }
             self.eat(TokenType::Operator)?;
-            let op_type = op.value.unwrap().extract_operator_type();
+            let op_type = op.value.as_ref().unwrap().extract_operator_type();
+            let op_type_2 = op_type.clone();   // Temporary hack to guarantee it is cleaned up
+                                               // when modifications are complete
 
             // Expect a factor on the right hand side
-            let rhs = self.factor()?.0;
+            let rhs = self.factor(ast)?;
+
+            // Construct AST node
+            let node = OperatorNode::new(result.1, rhs.1, op_type, op);
+            result.1 = ast.add_node(node);
 
             // Update result of expression
-            result = if op_type == OperatorType::Times {
-                result * rhs
-            } else if op_type == OperatorType::Division {
-                if rhs == 0 {
+            result.0 = if op_type_2 == OperatorType::Times {
+                result.0 * rhs.0
+            } else if op_type_2 == OperatorType::Division {
+                if rhs.0 == 0 {
                     return Err(SyntaxError {
                         msg: "Division by zero".to_string(),
                         position: (self.lexer.get_position(), self.lexer.get_position() + 1),
                     });
                 } else {
-                    result / rhs
+                    result.0 / rhs.0
                 }
             } else {
                 return Err(SyntaxError {
@@ -196,25 +213,24 @@ impl<'a, L: Lexer> Interpreter<'a, L> {
     // factor -> INTEGER | LPAREN expr RPAREN
     //
     // Precondition: First token has been loaded
-    fn factor(&self) -> Result<(i64, AstIndex), SyntaxError> {
+    fn factor(&self, ast: &mut Ast) -> Result<(i64, AstIndex), SyntaxError> {
 
         // First token should be an INTEGER or LPAREN
         let current_token = self.get_current_token();
 
         if current_token.token_type == TokenType::Integer {
             self.eat(TokenType::Integer)?;
-            let mut ast = self.ast.borrow_mut();
             let value = current_token.value.as_ref().unwrap().extract_integer_value();
             let node = IntegerNode::new(value, current_token);
             Ok((value as i64, ast.add_node(node)))
         } else {
             self.eat(TokenType::LParen)?;
 
-            let result = self.expr()?;
+            let result = self.expr(ast)?;
 
             self.eat(TokenType::RParen)?;
 
-            Ok((result, AstIndex(0)))
+            Ok(result)
         }
     }
 }
@@ -237,12 +253,13 @@ fn main() {
                 let input = line.unwrap();
                 let lexer = PascalLexer::new(&input);
                 let interpreter = Interpreter::new(input, lexer);
-                let result = interpreter.start();
+                let mut ast = Ast::new();
+                let result = interpreter.start(&mut ast);
                 match result {
                     Ok(value) => println!("{}", value),
                     Err(e) => interpreter.print_error(e),
                 }
-                print!("{}", *interpreter.ast.borrow());
+                print!("{}", ast);
             }
             Err(error) => {
                 println!("error: {}", error);
@@ -258,6 +275,7 @@ mod tests {
     use super::*;
     use lexer::{Lexer, MockLexer};
     use tokens::*;
+    use ast::Ast;
 
     #[test]
     fn interpreter_eat_should_consume_token_if_it_has_the_correct_type() {
@@ -297,8 +315,34 @@ mod tests {
         let lexer = MockLexer::new(tokens);
         let interpreter = Interpreter::new(input, lexer);
         assert!(interpreter.load_first_token().is_ok());
-        let result = interpreter.expr();
-        assert_eq!(7, result.unwrap());
+        let mut ast = Ast::new();
+        let result = interpreter.expr(&mut ast);
+        assert_eq!(7, result.unwrap().0);
+    }
+
+    #[test]
+    // expr -> INTEGER OPERATOR INTEGER
+    fn interpreter_expr_should_create_operator_node_when_expression_is_addition() {
+        let input = "3+4".to_string();
+        let tokens = vec![(TokenType::Integer, TokenValue::Integer(3)),
+                          (TokenType::Operator, TokenValue::Operator(OperatorType::Plus)),
+                          (TokenType::Integer, TokenValue::Integer(4))];
+        let lexer = MockLexer::new(tokens);
+        let interpreter = Interpreter::new(input, lexer);
+        assert!(interpreter.load_first_token().is_ok());
+        let mut ast = Ast::new();
+        let result = interpreter.expr(&mut ast);
+        let op_index = result.unwrap().1;
+        let node = ast.get_node(op_index);
+        assert_eq!(node.get_parent(), None);
+        assert_eq!(node.get_value(), TokenValue::Operator(OperatorType::Plus));
+        let operands = node.get_children();
+        let lhs = ast.get_node(operands[0]);
+        assert_eq!(lhs.get_parent(), Some(op_index));
+        assert_eq!(lhs.get_value(), TokenValue::Integer(3));
+        let rhs = ast.get_node(operands[1]);
+        assert_eq!(rhs.get_parent(), Some(op_index));
+        assert_eq!(rhs.get_value(), TokenValue::Integer(4));
     }
 
     #[test]
@@ -311,8 +355,34 @@ mod tests {
         let lexer = MockLexer::new(tokens);
         let interpreter = Interpreter::new(input, lexer);
         assert!(interpreter.load_first_token().is_ok());
-        let result = interpreter.expr();
-        assert_eq!(1, result.unwrap());
+        let mut ast = Ast::new();
+        let result = interpreter.expr(&mut ast);
+        assert_eq!(1, result.unwrap().0);
+    }
+
+    #[test]
+    // expr -> INTEGER OPERATOR INTEGER
+    fn interpreter_expr_should_create_operator_node_when_expression_is_subtraction() {
+        let input = "4-3".to_string();
+        let tokens = vec![(TokenType::Integer, TokenValue::Integer(4)),
+                          (TokenType::Operator, TokenValue::Operator(OperatorType::Minus)),
+                          (TokenType::Integer, TokenValue::Integer(3))];
+        let lexer = MockLexer::new(tokens);
+        let interpreter = Interpreter::new(input, lexer);
+        assert!(interpreter.load_first_token().is_ok());
+        let mut ast = Ast::new();
+        let result = interpreter.expr(&mut ast);
+        let op_index = result.unwrap().1;
+        let node = ast.get_node(op_index);
+        assert_eq!(node.get_parent(), None);
+        assert_eq!(node.get_value(), TokenValue::Operator(OperatorType::Minus));
+        let operands = node.get_children();
+        let lhs = ast.get_node(operands[0]);
+        assert_eq!(lhs.get_parent(), Some(op_index));
+        assert_eq!(lhs.get_value(), TokenValue::Integer(4));
+        let rhs = ast.get_node(operands[1]);
+        assert_eq!(rhs.get_parent(), Some(op_index));
+        assert_eq!(rhs.get_value(), TokenValue::Integer(3));
     }
 
     #[test]
@@ -324,8 +394,9 @@ mod tests {
         let lexer = MockLexer::new(tokens);
         let interpreter = Interpreter::new(input, lexer);
         assert!(interpreter.load_first_token().is_ok());
-        let result = interpreter.expr();
-        assert_eq!(-1, result.unwrap() as i64);
+        let mut ast = Ast::new();
+        let result = interpreter.expr(&mut ast);
+        assert_eq!(-1, result.unwrap().0 as i64);
     }
 
     #[test]
@@ -336,7 +407,8 @@ mod tests {
         let lexer = MockLexer::new(tokens);
         let interpreter = Interpreter::new(input, lexer);
         assert!(interpreter.load_first_token().is_ok());
-        let result = interpreter.expr();
+        let mut ast = Ast::new();
+        let result = interpreter.expr(&mut ast);
         assert!(result.is_err());
     }
 
@@ -349,7 +421,8 @@ mod tests {
         let lexer = MockLexer::new(tokens);
         let interpreter = Interpreter::new(input, lexer);
         assert!(interpreter.load_first_token().is_ok());
-        let result = interpreter.expr();
+        let mut ast = Ast::new();
+        let result = interpreter.expr(&mut ast);
         assert!(result.is_err());
     }
 
@@ -360,7 +433,8 @@ mod tests {
         let lexer = MockLexer::new(tokens);
         let interpreter = Interpreter::new(input, lexer);
         assert!(interpreter.load_first_token().is_ok());
-        let result = interpreter.expr();
+        let mut ast = Ast::new();
+        let result = interpreter.expr(&mut ast);
         assert!(result.is_err());
     }
 
@@ -374,7 +448,8 @@ mod tests {
         let lexer = MockLexer::new(tokens);
         let interpreter = Interpreter::new(input, lexer);
         assert!(interpreter.load_first_token().is_ok());
-        let result = interpreter.expr();
+        let mut ast = Ast::new();
+        let result = interpreter.expr(&mut ast);
         assert!(result.is_err());
     }
 
@@ -403,8 +478,23 @@ mod tests {
         let lexer = MockLexer::new(tokens);
         let interpreter = Interpreter::new(input, lexer);
         assert!(interpreter.load_first_token().is_ok());
-        let result = interpreter.expr();
-        assert_eq!(42, result.unwrap());
+        let mut ast = Ast::new();
+        let result = interpreter.expr(&mut ast);
+        assert_eq!(42, result.unwrap().0);
+    }
+
+    #[test]
+    fn interpreter_expr_should_create_integer_node_if_input_consists_of_only_integer() {
+        let input = "42".to_string();
+        let tokens = vec![(TokenType::Integer, TokenValue::Integer(42))];
+        let lexer = MockLexer::new(tokens);
+        let interpreter = Interpreter::new(input, lexer);
+        assert!(interpreter.load_first_token().is_ok());
+        let mut ast = Ast::new();
+        let result = interpreter.expr(&mut ast);
+        let node = ast.get_node(result.unwrap().1);
+        assert_eq!(node.get_parent(), None);
+        assert_eq!(node.get_value(), TokenValue::Integer(42));
     }
 
     #[test]
@@ -418,8 +508,9 @@ mod tests {
         let lexer = MockLexer::new(tokens);
         let interpreter = Interpreter::new(input, lexer);
         assert!(interpreter.load_first_token().is_ok());
-        let result = interpreter.expr();
-        assert_eq!(9, result.unwrap());
+        let mut ast = Ast::new();
+        let result = interpreter.expr(&mut ast);
+        assert_eq!(9, result.unwrap().0);
     }
 
     #[test]
@@ -433,8 +524,9 @@ mod tests {
         let lexer = MockLexer::new(tokens);
         let interpreter = Interpreter::new(input, lexer);
         assert!(interpreter.load_first_token().is_ok());
-        let result = interpreter.expr();
-        assert_eq!(2, result.unwrap());
+        let mut ast = Ast::new();
+        let result = interpreter.expr(&mut ast);
+        assert_eq!(2, result.unwrap().0);
     }
 
     #[test]
@@ -446,8 +538,33 @@ mod tests {
         let lexer = MockLexer::new(tokens);
         let interpreter = Interpreter::new(input, lexer);
         assert!(interpreter.load_first_token().is_ok());
-        let result = interpreter.term();
-        assert_eq!(12, result.unwrap());
+        let mut ast = Ast::new();
+        let result = interpreter.term(&mut ast);
+        assert_eq!(12, result.unwrap().0);
+    }
+
+    #[test]
+    fn interpreter_term_should_create_operator_node_when_expression_is_multiplication() {
+        let input = "3*4".to_string();
+        let tokens = vec![(TokenType::Integer, TokenValue::Integer(3)),
+                          (TokenType::Operator, TokenValue::Operator(OperatorType::Times)),
+                          (TokenType::Integer, TokenValue::Integer(4))];
+        let lexer = MockLexer::new(tokens);
+        let interpreter = Interpreter::new(input, lexer);
+        assert!(interpreter.load_first_token().is_ok());
+        let mut ast = Ast::new();
+        let result = interpreter.term(&mut ast);
+        let op_index = result.unwrap().1;
+        let node = ast.get_node(op_index);
+        assert_eq!(node.get_parent(), None);
+        assert_eq!(node.get_value(), TokenValue::Operator(OperatorType::Times));
+        let operands = node.get_children();
+        let lhs = ast.get_node(operands[0]);
+        assert_eq!(lhs.get_parent(), Some(op_index));
+        assert_eq!(lhs.get_value(), TokenValue::Integer(3));
+        let rhs = ast.get_node(operands[1]);
+        assert_eq!(rhs.get_parent(), Some(op_index));
+        assert_eq!(rhs.get_value(), TokenValue::Integer(4));
     }
 
     #[test]
@@ -459,8 +576,34 @@ mod tests {
         let lexer = MockLexer::new(tokens);
         let interpreter = Interpreter::new(input, lexer);
         assert!(interpreter.load_first_token().is_ok());
-        let result = interpreter.term();
-        assert_eq!(2, result.unwrap());
+        let mut ast = Ast::new();
+        let result = interpreter.term(&mut ast);
+        assert_eq!(2, result.unwrap().0);
+    }
+
+    #[test]
+    fn interpreter_term_should_create_operator_node_when_expression_is_division() {
+        let input = "4/2".to_string();
+        let tokens = vec![(TokenType::Integer, TokenValue::Integer(4)),
+                          (TokenType::Operator, TokenValue::Operator(OperatorType::Division)),
+                          (TokenType::Integer, TokenValue::Integer(2))];
+        let lexer = MockLexer::new(tokens);
+        let interpreter = Interpreter::new(input, lexer);
+        assert!(interpreter.load_first_token().is_ok());
+        let mut ast = Ast::new();
+        let result = interpreter.term(&mut ast);
+        let op_index = result.unwrap().1;
+        let node = ast.get_node(op_index);
+        assert_eq!(node.get_parent(), None);
+        assert_eq!(node.get_value(),
+                   TokenValue::Operator(OperatorType::Division));
+        let operands = node.get_children();
+        let lhs = ast.get_node(operands[0]);
+        assert_eq!(lhs.get_parent(), Some(op_index));
+        assert_eq!(lhs.get_value(), TokenValue::Integer(4));
+        let rhs = ast.get_node(operands[1]);
+        assert_eq!(rhs.get_parent(), Some(op_index));
+        assert_eq!(rhs.get_value(), TokenValue::Integer(2));
     }
 
     #[test]
@@ -472,7 +615,8 @@ mod tests {
         let lexer = MockLexer::new(tokens);
         let interpreter = Interpreter::new(input, lexer);
         assert!(interpreter.load_first_token().is_ok());
-        let result = interpreter.term();
+        let mut ast = Ast::new();
+        let result = interpreter.term(&mut ast);
         assert!(result.is_err());
     }
 
@@ -483,8 +627,23 @@ mod tests {
         let lexer = MockLexer::new(tokens);
         let interpreter = Interpreter::new(input, lexer);
         assert!(interpreter.load_first_token().is_ok());
-        let result = interpreter.term();
-        assert_eq!(42, result.unwrap());
+        let mut ast = Ast::new();
+        let result = interpreter.term(&mut ast);
+        assert_eq!(42, result.unwrap().0);
+    }
+
+    #[test]
+    fn interpreter_term_should_return_integer_node_if_input_consists_of_only_integer() {
+        let input = "42".to_string();
+        let tokens = vec![(TokenType::Integer, TokenValue::Integer(42))];
+        let lexer = MockLexer::new(tokens);
+        let interpreter = Interpreter::new(input, lexer);
+        assert!(interpreter.load_first_token().is_ok());
+        let mut ast = Ast::new();
+        let result = interpreter.term(&mut ast);
+        let node = ast.get_node(result.unwrap().1);
+        assert_eq!(node.get_parent(), None);
+        assert_eq!(node.get_value(), TokenValue::Integer(42));
     }
 
     #[test]
@@ -495,7 +654,8 @@ mod tests {
         let lexer = MockLexer::new(tokens);
         let interpreter = Interpreter::new(input, lexer);
         assert!(interpreter.load_first_token().is_ok());
-        let result = interpreter.term();
+        let mut ast = Ast::new();
+        let result = interpreter.term(&mut ast);
         assert!(result.is_err());
     }
 
@@ -508,7 +668,8 @@ mod tests {
         let lexer = MockLexer::new(tokens);
         let interpreter = Interpreter::new(input, lexer);
         assert!(interpreter.load_first_token().is_ok());
-        let result = interpreter.term();
+        let mut ast = Ast::new();
+        let result = interpreter.term(&mut ast);
         assert!(result.is_err());
     }
 
@@ -519,7 +680,8 @@ mod tests {
         let lexer = MockLexer::new(tokens);
         let interpreter = Interpreter::new(input, lexer);
         assert!(interpreter.load_first_token().is_ok());
-        let result = interpreter.term();
+        let mut ast = Ast::new();
+        let result = interpreter.term(&mut ast);
         assert!(result.is_err());
     }
 
@@ -533,7 +695,8 @@ mod tests {
         let lexer = MockLexer::new(tokens);
         let interpreter = Interpreter::new(input, lexer);
         assert!(interpreter.load_first_token().is_ok());
-        let result = interpreter.term();
+        let mut ast = Ast::new();
+        let result = interpreter.term(&mut ast);
         assert!(result.is_err());
     }
 
@@ -548,8 +711,9 @@ mod tests {
         let lexer = MockLexer::new(tokens);
         let interpreter = Interpreter::new(input, lexer);
         assert!(interpreter.load_first_token().is_ok());
-        let result = interpreter.term();
-        assert_eq!(15, result.unwrap());
+        let mut ast = Ast::new();
+        let result = interpreter.term(&mut ast);
+        assert_eq!(15, result.unwrap().0);
     }
 
     #[test]
@@ -563,8 +727,9 @@ mod tests {
         let lexer = MockLexer::new(tokens);
         let interpreter = Interpreter::new(input, lexer);
         assert!(interpreter.load_first_token().is_ok());
-        let result = interpreter.term();
-        assert_eq!(9, result.unwrap());
+        let mut ast = Ast::new();
+        let result = interpreter.term(&mut ast);
+        assert_eq!(9, result.unwrap().0);
     }
 
     #[test]
@@ -582,8 +747,9 @@ mod tests {
         let lexer = MockLexer::new(tokens);
         let interpreter = Interpreter::new(input, lexer);
         assert!(interpreter.load_first_token().is_ok());
-        let result = interpreter.expr();
-        assert_eq!(17, result.unwrap());
+        let mut ast = Ast::new();
+        let result = interpreter.expr(&mut ast);
+        assert_eq!(17, result.unwrap().0);
     }
 
     #[test]
@@ -593,7 +759,8 @@ mod tests {
         let lexer = MockLexer::new(tokens);
         let interpreter = Interpreter::new(input, lexer);
         assert!(interpreter.load_first_token().is_ok());
-        let result = interpreter.factor();
+        let mut ast = Ast::new();
+        let result = interpreter.factor(&mut ast);
         assert_eq!(42, result.unwrap().0);
     }
 
@@ -604,8 +771,8 @@ mod tests {
         let lexer = MockLexer::new(tokens);
         let interpreter = Interpreter::new(input, lexer);
         assert!(interpreter.load_first_token().is_ok());
-        let result = interpreter.factor();
-        let ast = interpreter.ast.borrow();
+        let mut ast = Ast::new();
+        let result = interpreter.factor(&mut ast);
         let node = ast.get_node(result.unwrap().1);
         assert_eq!(node.get_parent(), None);
         assert_eq!(node.get_value(), TokenValue::Integer(42));
@@ -622,8 +789,35 @@ mod tests {
         let lexer = MockLexer::new(tokens);
         let interpreter = Interpreter::new(input, lexer);
         assert!(interpreter.load_first_token().is_ok());
-        let result = interpreter.factor();
+        let mut ast = Ast::new();
+        let result = interpreter.factor(&mut ast);
         assert_eq!(9, result.unwrap().0);
+    }
+
+    #[test]
+    fn interpreter_factor_creates_graph_of_expr_if_input_consists_of_expr_in_parentheses() {
+        let input = "(6+3)".to_string();
+        let tokens = vec![(TokenType::LParen, TokenValue::Empty),
+                          (TokenType::Integer, TokenValue::Integer(6)),
+                          (TokenType::Operator, TokenValue::Operator(OperatorType::Plus)),
+                          (TokenType::Integer, TokenValue::Integer(3)),
+                          (TokenType::RParen, TokenValue::Empty)];
+        let lexer = MockLexer::new(tokens);
+        let interpreter = Interpreter::new(input, lexer);
+        assert!(interpreter.load_first_token().is_ok());
+        let mut ast = Ast::new();
+        let result = interpreter.factor(&mut ast);
+        let op_index = result.unwrap().1;
+        let node = ast.get_node(op_index);
+        assert_eq!(node.get_parent(), None);
+        assert_eq!(node.get_value(), TokenValue::Operator(OperatorType::Plus));
+        let operands = node.get_children();
+        let lhs = ast.get_node(operands[0]);
+        assert_eq!(lhs.get_parent(), Some(op_index));
+        assert_eq!(lhs.get_value(), TokenValue::Integer(6));
+        let rhs = ast.get_node(operands[1]);
+        assert_eq!(rhs.get_parent(), Some(op_index));
+        assert_eq!(rhs.get_value(), TokenValue::Integer(3));
     }
 
     #[test]
@@ -635,8 +829,25 @@ mod tests {
         let lexer = MockLexer::new(tokens);
         let interpreter = Interpreter::new(input, lexer);
         assert!(interpreter.load_first_token().is_ok());
-        let result = interpreter.factor();
+        let mut ast = Ast::new();
+        let result = interpreter.factor(&mut ast);
         assert_eq!(6, result.unwrap().0);
+    }
+
+    #[test]
+    fn interpreter_factor_creates_integer_node_if_input_consists_of_integer_in_parentheses() {
+        let input = "(6)".to_string();
+        let tokens = vec![(TokenType::LParen, TokenValue::Empty),
+                          (TokenType::Integer, TokenValue::Integer(6)),
+                          (TokenType::RParen, TokenValue::Empty)];
+        let lexer = MockLexer::new(tokens);
+        let interpreter = Interpreter::new(input, lexer);
+        assert!(interpreter.load_first_token().is_ok());
+        let mut ast = Ast::new();
+        let result = interpreter.factor(&mut ast);
+        let node = ast.get_node(result.unwrap().1);
+        assert_eq!(node.get_parent(), None);
+        assert_eq!(node.get_value(), TokenValue::Integer(6));
     }
 
     #[test]
@@ -649,7 +860,8 @@ mod tests {
         let lexer = MockLexer::new(tokens);
         let interpreter = Interpreter::new(input, lexer);
         assert!(interpreter.load_first_token().is_ok());
-        let result = interpreter.factor();
+        let mut ast = Ast::new();
+        let result = interpreter.factor(&mut ast);
         assert!(result.is_err());
     }
 
@@ -663,7 +875,8 @@ mod tests {
         let lexer = MockLexer::new(tokens);
         let interpreter = Interpreter::new(input, lexer);
         assert!(interpreter.load_first_token().is_ok());
-        let result = interpreter.factor();
+        let mut ast = Ast::new();
+        let result = interpreter.factor(&mut ast);
         assert!(result.is_err());
     }
 
@@ -677,7 +890,8 @@ mod tests {
         let lexer = MockLexer::new(tokens);
         let interpreter = Interpreter::new(input, lexer);
         assert!(interpreter.load_first_token().is_ok());
-        let result = interpreter.factor();
+        let mut ast = Ast::new();
+        let result = interpreter.factor(&mut ast);
         assert!(result.is_err());
     }
 
@@ -706,8 +920,9 @@ mod tests {
         let lexer = MockLexer::new(tokens);
         let interpreter = Interpreter::new(input, lexer);
         assert!(interpreter.load_first_token().is_ok());
-        let result = interpreter.expr();
-        assert_eq!(22, result.unwrap());
+        let mut ast = Ast::new();
+        let result = interpreter.expr(&mut ast);
+        assert_eq!(22, result.unwrap().0);
     }
 
     #[test]
@@ -721,7 +936,8 @@ mod tests {
                           (TokenType::RParen, TokenValue::Empty)];
         let lexer = MockLexer::new(tokens);
         let interpreter = Interpreter::new(input, lexer);
-        let result = interpreter.start();
+        let mut ast = Ast::new();
+        let result = interpreter.start(&mut ast);
         assert!(result.is_err());
     }
 }
@@ -730,6 +946,7 @@ mod tests {
 mod integration_tests {
     use super::*;
     use lexer::PascalLexer;
+    use ast::Ast;
 
     #[test]
     fn interpreter_expr_should_parse_expressions_that_contain_multi_digit_integer() {
@@ -737,8 +954,9 @@ mod integration_tests {
         let lexer = PascalLexer::new(&input);
         let interpreter = Interpreter::new(input, lexer);
         assert!(interpreter.load_first_token().is_ok());
-        let result = interpreter.expr();
-        assert_eq!(47, result.unwrap());
+        let mut ast = Ast::new();
+        let result = interpreter.expr(&mut ast);
+        assert_eq!(47, result.unwrap().0);
     }
 
     #[test]
@@ -747,8 +965,9 @@ mod integration_tests {
         let lexer = PascalLexer::new(&input);
         let interpreter = Interpreter::new(input, lexer);
         assert!(interpreter.load_first_token().is_ok());
-        let result = interpreter.expr();
-        assert_eq!(5, result.unwrap());
+        let mut ast = Ast::new();
+        let result = interpreter.expr(&mut ast);
+        assert_eq!(5, result.unwrap().0);
     }
 
     #[test]
@@ -757,7 +976,8 @@ mod integration_tests {
         let lexer = PascalLexer::new(&input);
         let interpreter = Interpreter::new(input, lexer);
         assert!(interpreter.load_first_token().is_ok());
-        let result = interpreter.expr();
-        assert_eq!(5, result.unwrap());
+        let mut ast = Ast::new();
+        let result = interpreter.expr(&mut ast);
+        assert_eq!(5, result.unwrap().0);
     }
 }
