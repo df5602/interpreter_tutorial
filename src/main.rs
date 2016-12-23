@@ -67,7 +67,7 @@ mod integration_tests {
     use parser::Parser;
 
     #[test]
-    fn parser_expr_should_parse_expressions_that_contain_multi_digit_integer() {
+    fn parser_should_parse_expressions_that_contain_multi_digit_integer() {
         let input = "44+3".to_string();
         let lexer = PascalLexer::new(&input);
         let parser = Parser::new(lexer);
@@ -77,7 +77,7 @@ mod integration_tests {
     }
 
     #[test]
-    fn parser_expr_should_parse_expressions_that_contain_whitespace_characters() {
+    fn parser_should_parse_expressions_that_contain_whitespace_characters() {
         let input = "2 + 3".to_string();
         let lexer = PascalLexer::new(&input);
         let parser = Parser::new(lexer);
@@ -87,7 +87,7 @@ mod integration_tests {
     }
 
     #[test]
-    fn parser_expr_should_parse_expressions_that_begin_with_whitespace_characters() {
+    fn parser_should_parse_expressions_that_begin_with_whitespace_characters() {
         let input = " 2 + 3".to_string();
         let lexer = PascalLexer::new(&input);
         let parser = Parser::new(lexer);
