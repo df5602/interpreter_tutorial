@@ -6,6 +6,7 @@ mod ast;
 mod errors;
 mod lexer;
 mod parser;
+mod interpreter;
 
 use ast::Ast;
 use errors::SyntaxError;

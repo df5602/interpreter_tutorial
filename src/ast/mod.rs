@@ -1,7 +1,9 @@
 use std::fmt;
-use tokens::{Token, TokenValue, OperatorType};
 
-pub trait AstNode {
+use tokens::TokenValue;
+use interpreter::NodeVisitor;
+
+pub trait AstNode: NodeVisitor {
     fn get_parent(&self) -> Option<AstIndex>;
     fn set_parent(&mut self, parent: AstIndex) -> bool;
     fn get_children(&self) -> Vec<AstIndex>;
@@ -18,144 +20,11 @@ impl fmt::Display for AstIndex {
     }
 }
 
+mod operator_node;
+pub use self::operator_node::OperatorNode;
 
-#[derive(Debug)]
-pub struct OperatorNode {
-    left: AstIndex,
-    right: AstIndex,
-    operator: OperatorType,
-    parent: Option<AstIndex>,
-    token: Token,
-}
-
-impl fmt::Display for OperatorNode {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self.parent {
-            Some(ref i) => {
-                write!(f,
-                       "Operator(left: {}, right: {}, parent: {}, op: {})",
-                       self.left,
-                       self.right,
-                       i,
-                       self.operator)
-            }
-            None => {
-                write!(f,
-                       "Operator(left: {}, right: {}, parent: None, op: {})",
-                       self.left,
-                       self.right,
-                       self.operator)
-            }
-        }
-    }
-}
-
-impl AstNode for OperatorNode {
-    fn get_parent(&self) -> Option<AstIndex> {
-        self.parent
-    }
-
-    fn set_parent(&mut self, parent: AstIndex) -> bool {
-        if self.parent != None {
-            return false;
-        }
-        self.parent = Some(parent);
-        true
-    }
-
-    fn get_children(&self) -> Vec<AstIndex> {
-        vec![self.left, self.right]
-    }
-
-    fn get_value(&self) -> TokenValue {
-        TokenValue::Operator(self.operator.clone())
-    }
-
-    fn print(&self) -> String {
-        match self.parent {
-            Some(ref i) => {
-                format!("Operator(left: {}, right: {}, parent: {}, op: {})",
-                        self.left,
-                        self.right,
-                        i,
-                        self.operator)
-            }
-            None => {
-                format!("Operator(left: {}, right: {}, parent: None, op: {})",
-                        self.left,
-                        self.right,
-                        self.operator)
-            }
-        }
-    }
-}
-
-impl OperatorNode {
-    pub fn new(left: AstIndex, right: AstIndex, operator: OperatorType, token: Token) -> Self {
-        OperatorNode {
-            left: left,
-            right: right,
-            operator: operator,
-            parent: None,
-            token: token,
-        }
-    }
-}
-
-#[derive(Debug)]
-pub struct IntegerNode {
-    value: u64,
-    parent: Option<AstIndex>,
-    token: Token,
-}
-
-impl fmt::Display for IntegerNode {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self.parent {
-            Some(ref i) => write!(f, "Integer(parent: {}, value: {})", i, self.value),
-            None => write!(f, "Integer(parent: None, value: {})", self.value),
-        }
-    }
-}
-
-impl AstNode for IntegerNode {
-    fn get_parent(&self) -> Option<AstIndex> {
-        self.parent
-    }
-
-    fn set_parent(&mut self, parent: AstIndex) -> bool {
-        if self.parent != None {
-            return false;
-        }
-        self.parent = Some(parent);
-        true
-    }
-
-    fn get_children(&self) -> Vec<AstIndex> {
-        Vec::new()
-    }
-
-    fn get_value(&self) -> TokenValue {
-        TokenValue::Integer(self.value)
-    }
-
-    fn print(&self) -> String {
-        match self.parent {
-            Some(ref i) => format!("Integer(parent: {}, value: {})", i, self.value),
-            None => format!("Integer(parent: None, value: {})", self.value),
-        }
-    }
-}
-
-impl IntegerNode {
-    pub fn new(value: u64, token: Token) -> Self {
-        IntegerNode {
-            value: value,
-            parent: None,
-            token: token,
-        }
-    }
-}
+mod integer_node;
+pub use self::integer_node::IntegerNode;
 
 pub struct Ast<'a> {
     nodes: Vec<Box<AstNode + 'a>>,
