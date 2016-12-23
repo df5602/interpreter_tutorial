@@ -71,6 +71,7 @@ impl fmt::Display for OperatorType {
 pub enum TokenValue {
     Integer(u64),
     Operator(OperatorType),
+    #[cfg(test)]
     Empty,
 }
 
@@ -114,6 +115,7 @@ impl fmt::Display for Token {
                     TokenValue::Operator(ref val) => {
                         write!(f, "Token({}, {})", self.token_type, val)
                     }
+                    #[cfg(test)]
                     TokenValue::Empty => write!(f, "Token({})", self.token_type),
                 }
             }
