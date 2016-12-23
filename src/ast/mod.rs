@@ -56,7 +56,6 @@ impl<'a> Ast<'a> {
         }
     }
 
-    #[cfg(test)]
     pub fn get_node(&self, index: AstIndex) -> &AstNode {
         &*self.nodes[index.0]
     }

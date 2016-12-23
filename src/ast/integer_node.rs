@@ -1,6 +1,6 @@
 use std::fmt;
 
-use ast::{AstIndex, AstNode};
+use ast::{Ast, AstIndex, AstNode};
 use tokens::{Token, TokenValue};
 use errors::SyntaxError;
 use interpreter::NodeVisitor;
@@ -51,8 +51,8 @@ impl AstNode for IntegerNode {
 }
 
 impl NodeVisitor for IntegerNode {
-    fn visit(&self) -> Result<i64, SyntaxError> {
-        unimplemented!();
+    fn visit(&self, _ast: &Ast) -> Result<i64, SyntaxError> {
+        Ok(self.value as i64)
     }
 }
 
@@ -69,8 +69,9 @@ impl IntegerNode {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ast::{AstNode, AstIndex};
+    use ast::{Ast, AstNode, AstIndex};
     use tokens::{Token, TokenType, TokenValue};
+    use interpreter::NodeVisitor;
 
     #[test]
     fn integer_node_get_parent_returns_none_when_node_has_no_parent() {
@@ -113,5 +114,14 @@ mod tests {
             IntegerNode::new(42,
                              Token::new(TokenType::Integer, Some(TokenValue::Integer(42)), (0, 0)));
         assert_eq!(int_node.get_value(), TokenValue::Integer(42));
+    }
+
+    #[test]
+    fn integer_node_visit_returns_value() {
+        let int_node =
+            IntegerNode::new(42,
+                             Token::new(TokenType::Integer, Some(TokenValue::Integer(42)), (0, 0)));
+        let ast = Ast::new();
+        assert_eq!(int_node.visit(&ast).unwrap(), 42);
     }
 }

@@ -1,6 +1,6 @@
 use std::fmt;
 
-use ast::{AstNode, AstIndex};
+use ast::{Ast, AstNode, AstIndex};
 use tokens::{Token, TokenValue, OperatorType};
 use errors::SyntaxError;
 use interpreter::NodeVisitor;
@@ -77,8 +77,25 @@ impl AstNode for OperatorNode {
 }
 
 impl NodeVisitor for OperatorNode {
-    fn visit(&self) -> Result<i64, SyntaxError> {
-        unimplemented!();
+    fn visit(&self, ast: &Ast) -> Result<i64, SyntaxError> {
+        let lhs = ast.get_node(self.left).visit(ast)?;
+        let rhs = ast.get_node(self.right).visit(ast)?;
+
+        match self.operator {
+            OperatorType::Plus => Ok(lhs + rhs),
+            OperatorType::Minus => Ok(lhs - rhs),
+            OperatorType::Times => Ok(lhs * rhs),
+            OperatorType::Division => {
+                if rhs == 0 {
+                    Err(SyntaxError {
+                        msg: "Division by zero".to_string(),
+                        position: (0, 1),
+                    })
+                } else {
+                    Ok(lhs / rhs)
+                }
+            }
+        }
     }
 }
 
@@ -97,7 +114,7 @@ impl OperatorNode {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ast::{AstNode, AstIndex};
+    use ast::{Ast, AstNode, AstIndex, IntegerNode};
     use tokens::{Token, TokenType, TokenValue, OperatorType};
 
     #[test]
@@ -160,5 +177,119 @@ mod tests {
                                                    (0, 0)));
         assert_eq!(op_node.get_value(),
                    TokenValue::Operator(OperatorType::Plus));
+    }
+
+    #[test]
+    fn operator_node_visit_returns_sum_of_integer_nodes_when_op_is_addition() {
+        let int_node_left =
+            IntegerNode::new(2,
+                             Token::new(TokenType::Integer, Some(TokenValue::Integer(2)), (0, 0)));
+        let int_node_right =
+            IntegerNode::new(4,
+                             Token::new(TokenType::Integer, Some(TokenValue::Integer(4)), (0, 0)));
+        let mut ast = Ast::new();
+        let index_left = ast.add_node(int_node_left);
+        let index_right = ast.add_node(int_node_right);
+
+        let op_node = OperatorNode::new(index_left,
+                                        index_right,
+                                        OperatorType::Plus,
+                                        Token::new(TokenType::Operator,
+                                                   Some(TokenValue::Operator(OperatorType::Plus)),
+                                                   (0, 0)));
+        let index_op = ast.add_node(op_node);
+        assert_eq!(ast.get_node(index_op).visit(&ast).unwrap(), 6);
+    }
+
+    #[test]
+    fn operator_node_visit_returns_difference_of_integer_nodes_when_op_is_subtraction() {
+        let int_node_left =
+            IntegerNode::new(4,
+                             Token::new(TokenType::Integer, Some(TokenValue::Integer(4)), (0, 0)));
+        let int_node_right =
+            IntegerNode::new(2,
+                             Token::new(TokenType::Integer, Some(TokenValue::Integer(2)), (0, 0)));
+        let mut ast = Ast::new();
+        let index_left = ast.add_node(int_node_left);
+        let index_right = ast.add_node(int_node_right);
+
+        let op_node =
+            OperatorNode::new(index_left,
+                              index_right,
+                              OperatorType::Minus,
+                              Token::new(TokenType::Operator,
+                                         Some(TokenValue::Operator(OperatorType::Minus)),
+                                         (0, 0)));
+        let index_op = ast.add_node(op_node);
+        assert_eq!(ast.get_node(index_op).visit(&ast).unwrap(), 2);
+    }
+
+    #[test]
+    fn operator_node_visit_returns_product_of_integer_nodes_when_op_is_multiplication() {
+        let int_node_left =
+            IntegerNode::new(4,
+                             Token::new(TokenType::Integer, Some(TokenValue::Integer(4)), (0, 0)));
+        let int_node_right =
+            IntegerNode::new(2,
+                             Token::new(TokenType::Integer, Some(TokenValue::Integer(2)), (0, 0)));
+        let mut ast = Ast::new();
+        let index_left = ast.add_node(int_node_left);
+        let index_right = ast.add_node(int_node_right);
+
+        let op_node =
+            OperatorNode::new(index_left,
+                              index_right,
+                              OperatorType::Times,
+                              Token::new(TokenType::Operator,
+                                         Some(TokenValue::Operator(OperatorType::Times)),
+                                         (0, 0)));
+        let index_op = ast.add_node(op_node);
+        assert_eq!(ast.get_node(index_op).visit(&ast).unwrap(), 8);
+    }
+
+    #[test]
+    fn operator_node_visit_returns_quotient_of_integer_nodes_when_op_is_division() {
+        let int_node_left =
+            IntegerNode::new(4,
+                             Token::new(TokenType::Integer, Some(TokenValue::Integer(4)), (0, 0)));
+        let int_node_right =
+            IntegerNode::new(2,
+                             Token::new(TokenType::Integer, Some(TokenValue::Integer(2)), (0, 0)));
+        let mut ast = Ast::new();
+        let index_left = ast.add_node(int_node_left);
+        let index_right = ast.add_node(int_node_right);
+
+        let op_node =
+            OperatorNode::new(index_left,
+                              index_right,
+                              OperatorType::Division,
+                              Token::new(TokenType::Operator,
+                                         Some(TokenValue::Operator(OperatorType::Division)),
+                                         (0, 0)));
+        let index_op = ast.add_node(op_node);
+        assert_eq!(ast.get_node(index_op).visit(&ast).unwrap(), 2);
+    }
+
+    #[test]
+    fn operator_node_visit_returns_error_when_op_is_division_and_rhs_is_zero() {
+        let int_node_left =
+            IntegerNode::new(4,
+                             Token::new(TokenType::Integer, Some(TokenValue::Integer(4)), (0, 0)));
+        let int_node_right =
+            IntegerNode::new(0,
+                             Token::new(TokenType::Integer, Some(TokenValue::Integer(0)), (0, 0)));
+        let mut ast = Ast::new();
+        let index_left = ast.add_node(int_node_left);
+        let index_right = ast.add_node(int_node_right);
+
+        let op_node =
+            OperatorNode::new(index_left,
+                              index_right,
+                              OperatorType::Division,
+                              Token::new(TokenType::Operator,
+                                         Some(TokenValue::Operator(OperatorType::Division)),
+                                         (0, 0)));
+        let index_op = ast.add_node(op_node);
+        assert!(ast.get_node(index_op).visit(&ast).is_err());
     }
 }
