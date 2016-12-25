@@ -60,6 +60,10 @@ impl<'a> Ast<'a> {
         &*self.nodes[index.0]
     }
 
+    pub fn get_root(&self) -> Option<&AstNode> {
+        self.root.as_ref().map(|index| &*self.nodes[index.0])
+    }
+
     pub fn add_node<N: AstNode + 'a>(&mut self, node: N) -> AstIndex {
         self.nodes.push(Box::new(node));
 

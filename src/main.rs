@@ -46,11 +46,11 @@ fn main() {
                 let parser = Parser::new(lexer);
                 let mut ast = Ast::new();
                 let result = parser.parse(&mut ast);
-                match result {
-                    Ok(value) => println!("{}", value),
-                    Err(e) => print_error(&input, e),
-                }
                 print!("{}", ast);
+                if result.is_err() {
+                    print_error(&input, result.unwrap_err());
+                    continue;
+                }
             }
             Err(error) => {
                 println!("error: {}", error);
@@ -66,6 +66,7 @@ mod integration_tests {
     use ast::Ast;
     use lexer::PascalLexer;
     use parser::Parser;
+    use interpreter::Interpreter;
 
     #[test]
     fn parser_should_parse_expressions_that_contain_multi_digit_integer() {
@@ -74,7 +75,10 @@ mod integration_tests {
         let parser = Parser::new(lexer);
         let mut ast = Ast::new();
         let result = parser.parse(&mut ast);
-        assert_eq!(47, result.unwrap());
+        assert!(result.is_ok());
+        let interpreter = Interpreter::new(&ast);
+        let result_i = interpreter.interpret();
+        assert_eq!(47, result_i.unwrap());
     }
 
     #[test]
@@ -84,7 +88,10 @@ mod integration_tests {
         let parser = Parser::new(lexer);
         let mut ast = Ast::new();
         let result = parser.parse(&mut ast);
-        assert_eq!(5, result.unwrap());
+        assert!(result.is_ok());
+        let interpreter = Interpreter::new(&ast);
+        let result_i = interpreter.interpret();
+        assert_eq!(5, result_i.unwrap());
     }
 
     #[test]
@@ -94,6 +101,9 @@ mod integration_tests {
         let parser = Parser::new(lexer);
         let mut ast = Ast::new();
         let result = parser.parse(&mut ast);
-        assert_eq!(5, result.unwrap());
+        assert!(result.is_ok());
+        let interpreter = Interpreter::new(&ast);
+        let result_i = interpreter.interpret();
+        assert_eq!(5, result_i.unwrap());
     }
 }
