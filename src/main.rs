@@ -12,6 +12,7 @@ use ast::Ast;
 use errors::SyntaxError;
 use lexer::PascalLexer;
 use parser::Parser;
+use interpreter::Interpreter;
 
 #[allow(unused_must_use)]
 fn print_preamble() {
@@ -45,11 +46,22 @@ fn main() {
                 let lexer = PascalLexer::new(&input);
                 let parser = Parser::new(lexer);
                 let mut ast = Ast::new();
-                let result = parser.parse(&mut ast);
-                print!("{}", ast);
-                if result.is_err() {
-                    print_error(&input, result.unwrap_err());
-                    continue;
+
+                // Parse input
+                match parser.parse(&mut ast) {
+                    Ok(_) => {}
+                    Err(e) => {
+                        print_error(&input, e);
+                        print_preamble();
+                        continue;
+                    }
+                }
+
+                // Evaluate input
+                let interpreter = Interpreter::new(&ast);
+                match interpreter.interpret() {
+                    Ok(result) => println!("{}", result),
+                    Err(e) => print_error(&input, e),
                 }
             }
             Err(error) => {
