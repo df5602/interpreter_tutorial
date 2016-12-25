@@ -9,6 +9,7 @@ use interpreter::NodeVisitor;
 pub struct IntegerNode {
     value: u64,
     parent: Option<AstIndex>,
+    position: (usize, usize),
     token: Token,
 }
 
@@ -42,6 +43,14 @@ impl AstNode for IntegerNode {
         TokenValue::Integer(self.value)
     }
 
+    fn get_position(&self) -> (usize, usize) {
+        self.position
+    }
+
+    fn set_position(&mut self, position: (usize, usize)) {
+        self.position = position;
+    }
+
     fn print(&self) -> String {
         match self.parent {
             Some(ref i) => format!("Integer(parent: {}, value: {})", i, self.value),
@@ -61,6 +70,7 @@ impl IntegerNode {
         IntegerNode {
             value: value,
             parent: None,
+            position: token.position,
             token: token,
         }
     }
@@ -72,6 +82,14 @@ mod tests {
     use ast::{Ast, AstNode, AstIndex};
     use tokens::{Token, TokenType, TokenValue};
     use interpreter::NodeVisitor;
+
+    #[test]
+    fn integer_node_new_should_set_position_to_token_position() {
+        let int_node =
+            IntegerNode::new(42,
+                             Token::new(TokenType::Integer, Some(TokenValue::Integer(42)), (3, 5)));
+        assert_eq!(int_node.position, (3, 5));
+    }
 
     #[test]
     fn integer_node_get_parent_returns_none_when_node_has_no_parent() {
@@ -114,6 +132,14 @@ mod tests {
             IntegerNode::new(42,
                              Token::new(TokenType::Integer, Some(TokenValue::Integer(42)), (0, 0)));
         assert_eq!(int_node.get_value(), TokenValue::Integer(42));
+    }
+
+    #[test]
+    fn integer_node_get_position_returns_position() {
+        let int_node =
+            IntegerNode::new(42,
+                             Token::new(TokenType::Integer, Some(TokenValue::Integer(42)), (3, 5)));
+        assert_eq!(int_node.get_position(), (3, 5));
     }
 
     #[test]

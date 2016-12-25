@@ -30,7 +30,7 @@ fn print_error(input: &str, e: SyntaxError) {
     let s = std::iter::repeat(" ").take(e.position.0).collect::<String>();
     let m = std::iter::repeat("^").take(e.position.1 - e.position.0).collect::<String>();
 
-    println!("Error parsing input: {}", e.msg);
+    println!("Error evaluating input: {}", e.msg);
     println!(">>> {}", input);
     println!(">>> {}{}", s, m);
 }

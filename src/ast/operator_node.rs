@@ -11,6 +11,7 @@ pub struct OperatorNode {
     right: AstIndex,
     operator: OperatorType,
     parent: Option<AstIndex>,
+    position: (usize, usize),
     token: Token,
 }
 
@@ -57,6 +58,14 @@ impl AstNode for OperatorNode {
         TokenValue::Operator(self.operator.clone())
     }
 
+    fn get_position(&self) -> (usize, usize) {
+        self.position
+    }
+
+    fn set_position(&mut self, position: (usize, usize)) {
+        self.position = position;
+    }
+
     fn print(&self) -> String {
         match self.parent {
             Some(ref i) => {
@@ -89,7 +98,7 @@ impl NodeVisitor for OperatorNode {
                 if rhs == 0 {
                     Err(SyntaxError {
                         msg: "Division by zero".to_string(),
-                        position: (0, 1),
+                        position: self.position,
                     })
                 } else {
                     Ok(lhs / rhs)
@@ -106,6 +115,7 @@ impl OperatorNode {
             right: right,
             operator: operator,
             parent: None,
+            position: (0, 0),
             token: token,
         }
     }
@@ -177,6 +187,19 @@ mod tests {
                                                    (0, 0)));
         assert_eq!(op_node.get_value(),
                    TokenValue::Operator(OperatorType::Plus));
+    }
+
+    #[test]
+    fn operator_node_get_position_returns_position() {
+        let mut op_node =
+            OperatorNode::new(AstIndex(0),
+                              AstIndex(1),
+                              OperatorType::Plus,
+                              Token::new(TokenType::Operator,
+                                         Some(TokenValue::Operator(OperatorType::Plus)),
+                                         (3, 5)));
+        op_node.set_position((4, 5));
+        assert_eq!(op_node.get_position(), (4, 5));
     }
 
     #[test]

@@ -1,4 +1,5 @@
 use std::fmt;
+use std::{usize, cmp};
 
 use tokens::TokenValue;
 use interpreter::NodeVisitor;
@@ -8,6 +9,8 @@ pub trait AstNode: NodeVisitor {
     fn set_parent(&mut self, parent: AstIndex) -> bool;
     fn get_children(&self) -> Vec<AstIndex>;
     fn get_value(&self) -> TokenValue;
+    fn get_position(&self) -> (usize, usize);
+    fn set_position(&mut self, position: (usize, usize));
     fn print(&self) -> String;
 }
 
@@ -69,7 +72,7 @@ impl<'a> Ast<'a> {
 
         let inserted_index = AstIndex(self.nodes.len() - 1);
 
-        self.update_parents(inserted_index);
+        self.set_as_parent(inserted_index);
 
         if self.root.is_none() {
             self.root = Some(inserted_index);
@@ -90,17 +93,30 @@ impl<'a> Ast<'a> {
         inserted_index
     }
 
-    fn update_parents(&mut self, index: AstIndex) {
+    fn set_as_parent(&mut self, index: AstIndex) {
         let children = (*self.nodes[index.0]).get_children();
+        if children.is_empty() {
+            return;
+        }
+
+        let mut pos_min = usize::MAX;
+        let mut pos_max = usize::MIN;
 
         for child in children {
+            // Update parent links of child
             if !(*self.nodes[child.0]).set_parent(index) {
                 panic!("Internal Error (cannot add multiple parents to AST node)");
             }
             if let Some(i) = self.non_connected_nodes.iter().position(|&n| n == child) {
                 self.non_connected_nodes.remove(i);
             }
+            // Get position of child
+            let position = (*self.nodes[child.0]).get_position();
+            pos_min = cmp::min(pos_min, position.0);
+            pos_max = cmp::max(pos_max, position.1);
         }
+
+        (*self.nodes[index.0]).set_position((pos_min, pos_max));
     }
 
     fn is_connected_to_root(&self, index: AstIndex) -> bool {
