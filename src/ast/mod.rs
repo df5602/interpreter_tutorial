@@ -23,8 +23,11 @@ impl fmt::Display for AstIndex {
     }
 }
 
-mod operator_node;
-pub use self::operator_node::OperatorNode;
+mod binary_operator_node;
+pub use self::binary_operator_node::BinaryOperatorNode;
+
+mod unary_operator_node;
+pub use self::unary_operator_node::UnaryOperatorNode;
 
 mod integer_node;
 pub use self::integer_node::IntegerNode;
@@ -233,12 +236,12 @@ mod tests {
                              Token::new(TokenType::Integer, Some(TokenValue::Integer(7)), (0, 0)));
         let index2 = ast.add_node(int_node2);
         let op_node =
-            OperatorNode::new(index1,
-                              index2,
-                              OperatorType::Times,
-                              Token::new(TokenType::Operator,
-                                         Some(TokenValue::Operator(OperatorType::Times)),
-                                         (0, 0)));
+            BinaryOperatorNode::new(index1,
+                                    index2,
+                                    OperatorType::Times,
+                                    Token::new(TokenType::Operator,
+                                               Some(TokenValue::Operator(OperatorType::Times)),
+                                               (0, 0)));
         let index_op = ast.add_node(op_node);
 
         assert_eq!((*ast.nodes[index1.0]).get_parent().unwrap(), index_op);
@@ -257,12 +260,12 @@ mod tests {
                              Token::new(TokenType::Integer, Some(TokenValue::Integer(7)), (0, 0)));
         let index2 = ast.add_node(int_node2);
         let op_node =
-            OperatorNode::new(index1,
-                              index2,
-                              OperatorType::Times,
-                              Token::new(TokenType::Operator,
-                                         Some(TokenValue::Operator(OperatorType::Times)),
-                                         (0, 0)));
+            BinaryOperatorNode::new(index1,
+                                    index2,
+                                    OperatorType::Times,
+                                    Token::new(TokenType::Operator,
+                                               Some(TokenValue::Operator(OperatorType::Times)),
+                                               (0, 0)));
         let index_op = ast.add_node(op_node);
 
         assert_eq!(ast.root.unwrap(), index_op);
@@ -281,12 +284,12 @@ mod tests {
                              Token::new(TokenType::Integer, Some(TokenValue::Integer(7)), (0, 0)));
         let index2 = ast.add_node(int_node2);
         let op_node =
-            OperatorNode::new(index1,
-                              index2,
-                              OperatorType::Times,
-                              Token::new(TokenType::Operator,
-                                         Some(TokenValue::Operator(OperatorType::Times)),
-                                         (0, 0)));
+            BinaryOperatorNode::new(index1,
+                                    index2,
+                                    OperatorType::Times,
+                                    Token::new(TokenType::Operator,
+                                               Some(TokenValue::Operator(OperatorType::Times)),
+                                               (0, 0)));
         let _index_op = ast.add_node(op_node);
 
         assert!(ast.is_contiguous());
@@ -304,12 +307,12 @@ mod tests {
                              Token::new(TokenType::Integer, Some(TokenValue::Integer(7)), (0, 0)));
         let index2 = ast.add_node(int_node2);
         let op_node1 =
-            OperatorNode::new(index1,
-                              index2,
-                              OperatorType::Times,
-                              Token::new(TokenType::Operator,
-                                         Some(TokenValue::Operator(OperatorType::Times)),
-                                         (0, 0)));
+            BinaryOperatorNode::new(index1,
+                                    index2,
+                                    OperatorType::Times,
+                                    Token::new(TokenType::Operator,
+                                               Some(TokenValue::Operator(OperatorType::Times)),
+                                               (0, 0)));
         let _index_op1 = ast.add_node(op_node1);
         let int_node3 =
             IntegerNode::new(2,
@@ -320,12 +323,12 @@ mod tests {
                              Token::new(TokenType::Integer, Some(TokenValue::Integer(7)), (0, 0)));
         let index4 = ast.add_node(int_node4);
         let op_node2 =
-            OperatorNode::new(index3,
-                              index4,
-                              OperatorType::Times,
-                              Token::new(TokenType::Operator,
-                                         Some(TokenValue::Operator(OperatorType::Times)),
-                                         (0, 0)));
+            BinaryOperatorNode::new(index3,
+                                    index4,
+                                    OperatorType::Times,
+                                    Token::new(TokenType::Operator,
+                                               Some(TokenValue::Operator(OperatorType::Times)),
+                                               (0, 0)));
         let _index_op2 = ast.add_node(op_node2);
 
         assert!(!ast.is_contiguous());
@@ -344,24 +347,24 @@ mod tests {
                              Token::new(TokenType::Integer, Some(TokenValue::Integer(7)), (0, 0)));
         let index2 = ast.add_node(int_node2);
         let op_node1 =
-            OperatorNode::new(index1,
-                              index2,
-                              OperatorType::Times,
-                              Token::new(TokenType::Operator,
-                                         Some(TokenValue::Operator(OperatorType::Times)),
-                                         (0, 0)));
+            BinaryOperatorNode::new(index1,
+                                    index2,
+                                    OperatorType::Times,
+                                    Token::new(TokenType::Operator,
+                                               Some(TokenValue::Operator(OperatorType::Times)),
+                                               (0, 0)));
         let _index_op1 = ast.add_node(op_node1);
         let int_node3 =
             IntegerNode::new(3,
                              Token::new(TokenType::Integer, Some(TokenValue::Integer(3)), (0, 0)));
         let index3 = ast.add_node(int_node3);
         let op_node2 =
-            OperatorNode::new(index2,
-                              index3,
-                              OperatorType::Plus,
-                              Token::new(TokenType::Operator,
-                                         Some(TokenValue::Operator(OperatorType::Plus)),
-                                         (0, 0)));
+            BinaryOperatorNode::new(index2,
+                                    index3,
+                                    OperatorType::Plus,
+                                    Token::new(TokenType::Operator,
+                                               Some(TokenValue::Operator(OperatorType::Plus)),
+                                               (0, 0)));
         let _index_op2 = ast.add_node(op_node2);
     }
 }

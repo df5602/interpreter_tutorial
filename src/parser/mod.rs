@@ -1,6 +1,6 @@
 use std::cell::RefCell;
 use tokens::{Token, TokenType, OperatorType};
-use ast::{Ast, AstIndex, OperatorNode, IntegerNode};
+use ast::{Ast, AstIndex, BinaryOperatorNode, IntegerNode};
 use errors::SyntaxError;
 use lexer::Lexer;
 
@@ -111,7 +111,7 @@ impl<L: Lexer> Parser<L> {
             let rhs = self.term(ast)?;
 
             // Construct AST node
-            let node = OperatorNode::new(result, rhs, op_type, op);
+            let node = BinaryOperatorNode::new(result, rhs, op_type, op);
             result = ast.add_node(node);
         }
     }
@@ -147,7 +147,7 @@ impl<L: Lexer> Parser<L> {
             let rhs = self.factor(ast)?;
 
             // Construct AST node
-            let node = OperatorNode::new(result, rhs, op_type, op);
+            let node = BinaryOperatorNode::new(result, rhs, op_type, op);
             result = ast.add_node(node);
         }
     }
