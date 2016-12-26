@@ -289,4 +289,69 @@ mod tests {
         let result = interpreter.interpret();
         assert_eq!(3, result.unwrap());
     }
+
+    #[test]
+    fn interpreter_should_negate_integer_when_expression_is_unary_minus() {
+        // Input: -2
+        let tokens = vec![(TokenType::Operator, TokenValue::Operator(OperatorType::Minus)),
+                          (TokenType::Integer, TokenValue::Integer(2))];
+        let lexer = MockLexer::new(tokens);
+        let parser = Parser::new(lexer);
+        let mut ast = Ast::new();
+        assert!(parser.parse(&mut ast).is_ok());
+        let interpreter = Interpreter::new(&ast);
+        let result = interpreter.interpret();
+        assert_eq!(-2, result.unwrap());
+    }
+
+    #[test]
+    fn interpreter_should_negate_expression_when_expression_is_prefixed_with_unary_minus() {
+        // Input: -(2+3)
+        let tokens = vec![(TokenType::Operator, TokenValue::Operator(OperatorType::Minus)),
+                          (TokenType::LParen, TokenValue::Empty),
+                          (TokenType::Integer, TokenValue::Integer(2)),
+                          (TokenType::Operator, TokenValue::Operator(OperatorType::Plus)),
+                          (TokenType::Integer, TokenValue::Integer(3)),
+                          (TokenType::RParen, TokenValue::Empty)];
+        let lexer = MockLexer::new(tokens);
+        let parser = Parser::new(lexer);
+        let mut ast = Ast::new();
+        assert!(parser.parse(&mut ast).is_ok());
+        let interpreter = Interpreter::new(&ast);
+        let result = interpreter.interpret();
+        assert_eq!(-5, result.unwrap());
+    }
+
+    #[test]
+    fn interpreter_should_return_integer_when_expression_is_unary_plus() {
+        // Input: +2
+        let tokens = vec![(TokenType::Operator, TokenValue::Operator(OperatorType::Plus)),
+                          (TokenType::Integer, TokenValue::Integer(2))];
+        let lexer = MockLexer::new(tokens);
+        let parser = Parser::new(lexer);
+        let mut ast = Ast::new();
+        assert!(parser.parse(&mut ast).is_ok());
+        let interpreter = Interpreter::new(&ast);
+        let result = interpreter.interpret();
+        assert_eq!(2, result.unwrap());
+    }
+
+    #[test]
+    fn interpreter_should_evaluate_chained_unary_operators() {
+        // Input: 5 - - - + - 3
+        let tokens = vec![(TokenType::Integer, TokenValue::Integer(5)),
+                          (TokenType::Operator, TokenValue::Operator(OperatorType::Minus)),
+                          (TokenType::Operator, TokenValue::Operator(OperatorType::Minus)),
+                          (TokenType::Operator, TokenValue::Operator(OperatorType::Minus)),
+                          (TokenType::Operator, TokenValue::Operator(OperatorType::Plus)),
+                          (TokenType::Operator, TokenValue::Operator(OperatorType::Minus)),
+                          (TokenType::Integer, TokenValue::Integer(3))];
+        let lexer = MockLexer::new(tokens);
+        let parser = Parser::new(lexer);
+        let mut ast = Ast::new();
+        assert!(parser.parse(&mut ast).is_ok());
+        let interpreter = Interpreter::new(&ast);
+        let result = interpreter.interpret();
+        assert_eq!(8, result.unwrap());
+    }
 }

@@ -1,6 +1,6 @@
 use std::cell::RefCell;
 use tokens::{Token, TokenType, OperatorType};
-use ast::{Ast, AstIndex, BinaryOperatorNode, IntegerNode};
+use ast::{Ast, AstIndex, BinaryOperatorNode, UnaryOperatorNode, IntegerNode};
 use errors::SyntaxError;
 use lexer::Lexer;
 
@@ -153,12 +153,12 @@ impl<L: Lexer> Parser<L> {
     }
 
     // Evaluates a factor:
-    // factor -> INTEGER | LPAREN expr RPAREN
+    // factor -> ( PLUS | MINUS) factor | INTEGER | LPAREN expr RPAREN
     //
     // Precondition: First token has been loaded
     fn factor(&self, ast: &mut Ast) -> Result<AstIndex, SyntaxError> {
 
-        // First token should be an INTEGER or LPAREN
+        // First token should be an INTEGER, PLUS, MINUS or LPAREN
         let current_token = self.get_current_token();
 
         if current_token.token_type == TokenType::Integer {
@@ -168,6 +168,24 @@ impl<L: Lexer> Parser<L> {
             let node = IntegerNode::new(value, current_token);
 
             Ok(ast.add_node(node))
+        } else if current_token.token_type == TokenType::Operator {
+            // Extract value
+            let op_type = current_token.value.as_ref().unwrap().extract_operator_type();
+            if op_type == OperatorType::Minus || op_type == OperatorType::Plus {
+                self.eat(TokenType::Operator)?;
+
+                // Expect a factor
+                let operand = self.factor(ast)?;
+
+                // Construct AST node
+                let node = UnaryOperatorNode::new(operand, op_type, current_token);
+                Ok(ast.add_node(node))
+            } else {
+                Err(SyntaxError {
+                    msg: format!("Expected '+' or '-', got {}", op_type),
+                    position: current_token.position,
+                })
+            }
         } else {
             self.eat(TokenType::LParen)?;
 
@@ -263,19 +281,6 @@ mod tests {
         let rhs = ast.get_node(operands[1]);
         assert_eq!(rhs.get_parent(), Some(op_index));
         assert_eq!(rhs.get_value(), TokenValue::Integer(3));
-    }
-
-    #[test]
-    fn parser_expr_should_not_parse_expressions_that_dont_begin_with_an_integer() {
-        // Input: +4
-        let tokens = vec![(TokenType::Operator, TokenValue::Operator(OperatorType::Plus)),
-                          (TokenType::Integer, TokenValue::Integer(4))];
-        let lexer = MockLexer::new(tokens);
-        let parser = Parser::new(lexer);
-        assert!(parser.load_first_token().is_ok());
-        let mut ast = Ast::new();
-        let result = parser.expr(&mut ast);
-        assert!(result.is_err());
     }
 
     #[test]
@@ -415,19 +420,6 @@ mod tests {
     }
 
     #[test]
-    fn parser_term_should_not_parse_expressions_that_dont_begin_with_an_integer() {
-        // Input: +4
-        let tokens = vec![(TokenType::Operator, TokenValue::Operator(OperatorType::Plus)),
-                          (TokenType::Integer, TokenValue::Integer(4))];
-        let lexer = MockLexer::new(tokens);
-        let parser = Parser::new(lexer);
-        assert!(parser.load_first_token().is_ok());
-        let mut ast = Ast::new();
-        let result = parser.term(&mut ast);
-        assert!(result.is_err());
-    }
-
-    #[test]
     fn parser_term_should_not_parse_expressions_that_dont_have_integer_after_operator() {
         // Input: 4*/
         let tokens = vec![(TokenType::Integer, TokenValue::Integer(4)),
@@ -525,11 +517,77 @@ mod tests {
     }
 
     #[test]
-    fn parser_factor_returns_error_if_lparen_is_followed_by_operator() {
-        // Input: (+3)
+    fn parser_factor_creates_unary_operator_node_if_input_consists_of_unary_minus() {
+        // Input: -5
+        let tokens = vec![(TokenType::Operator, TokenValue::Operator(OperatorType::Minus)),
+                          (TokenType::Integer, TokenValue::Integer(5))];
+        let lexer = MockLexer::new(tokens);
+        let parser = Parser::new(lexer);
+        assert!(parser.load_first_token().is_ok());
+        let mut ast = Ast::new();
+        let result = parser.factor(&mut ast);
+        let op_index = result.unwrap();
+        let op_node = ast.get_node(op_index);
+        assert_eq!(op_node.get_parent(), None);
+        assert_eq!(op_node.get_value(),
+                   TokenValue::Operator(OperatorType::Minus));
+        let operand = op_node.get_children()[0];
+        let int_node = ast.get_node(operand);
+        assert_eq!(int_node.get_parent(), Some(op_index));
+        assert_eq!(int_node.get_value(), TokenValue::Integer(5));
+    }
+
+    #[test]
+    fn parser_factor_creates_unary_operator_node_if_input_consists_of_unary_plus() {
+        // Input: +5
+        let tokens = vec![(TokenType::Operator, TokenValue::Operator(OperatorType::Plus)),
+                          (TokenType::Integer, TokenValue::Integer(5))];
+        let lexer = MockLexer::new(tokens);
+        let parser = Parser::new(lexer);
+        assert!(parser.load_first_token().is_ok());
+        let mut ast = Ast::new();
+        let result = parser.factor(&mut ast);
+        let op_index = result.unwrap();
+        let op_node = ast.get_node(op_index);
+        assert_eq!(op_node.get_parent(), None);
+        assert_eq!(op_node.get_value(),
+                   TokenValue::Operator(OperatorType::Plus));
+        let operand = op_node.get_children()[0];
+        let int_node = ast.get_node(operand);
+        assert_eq!(int_node.get_parent(), Some(op_index));
+        assert_eq!(int_node.get_value(), TokenValue::Integer(5));
+    }
+
+    #[test]
+    fn parser_factor_returns_error_if_input_consists_of_unary_times() {
+        // Input: *5
+        let tokens = vec![(TokenType::Operator, TokenValue::Operator(OperatorType::Times)),
+                          (TokenType::Integer, TokenValue::Integer(5))];
+        let lexer = MockLexer::new(tokens);
+        let parser = Parser::new(lexer);
+        assert!(parser.load_first_token().is_ok());
+        let mut ast = Ast::new();
+        let result = parser.factor(&mut ast);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn parser_factor_returns_error_if_input_consists_of_unary_division() {
+        // Input: /5
+        let tokens = vec![(TokenType::Operator, TokenValue::Operator(OperatorType::Division)),
+                          (TokenType::Integer, TokenValue::Integer(5))];
+        let lexer = MockLexer::new(tokens);
+        let parser = Parser::new(lexer);
+        assert!(parser.load_first_token().is_ok());
+        let mut ast = Ast::new();
+        let result = parser.factor(&mut ast);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn parser_factor_returns_error_if_lparen_is_followed_by_rparen() {
+        // Input: ()
         let tokens = vec![(TokenType::LParen, TokenValue::Empty),
-                          (TokenType::Operator, TokenValue::Operator(OperatorType::Plus)),
-                          (TokenType::Integer, TokenValue::Integer(3)),
                           (TokenType::RParen, TokenValue::Empty)];
         let lexer = MockLexer::new(tokens);
         let parser = Parser::new(lexer);

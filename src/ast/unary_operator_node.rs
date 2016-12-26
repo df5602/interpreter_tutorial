@@ -5,6 +5,7 @@ use ast::{Ast, AstNode, AstIndex};
 use errors::SyntaxError;
 use interpreter::NodeVisitor;
 
+#[derive(Debug)]
 pub struct UnaryOperatorNode {
     operand: AstIndex,
     operator: OperatorType,
