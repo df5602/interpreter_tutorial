@@ -1,17 +1,20 @@
+//! This module contains a lexer that recognizes `Token`s in a Pascal program.
 use std::cell::Cell;
 use tokens::*;
 use errors::SyntaxError;
 use lexer::Lexer;
 
 #[derive(Debug)]
+/// Lexer that recognizes `Token`s in a Pascal program.
+/// Implements `Lexer` trait.
 pub struct PascalLexer {
     chars: Vec<char>,
     pos: Cell<usize>,
 }
 
 impl Lexer for PascalLexer {
-    // Returns the next token in the input
-    // Result is the token, if possible, Error "Invalid token" otherwise
+    /// Returns the next token in the input
+    /// Result is the token, if possible, Error "Invalid token" otherwise
     fn get_next_token(&self) -> Result<Token, SyntaxError> {
         // Advance to the next non-whitespace character
         self.skip_whitespace();
@@ -32,6 +35,11 @@ impl Lexer for PascalLexer {
             return Ok(Token::new(TokenType::Integer,
                                  Some(TokenValue::Integer(value)),
                                  (pos, self.pos.get())));
+        }
+
+        // Return IDENTIFIER or keyword when the next character is alphabetic
+        if current_char.is_alphabetic() {
+            return self.recognize_identifier_of_keyword();
         }
 
         // Return PLUS when the next character is '+'
@@ -85,12 +93,14 @@ impl Lexer for PascalLexer {
         })
     }
 
+    /// Returns actual position in the input
     fn get_position(&self) -> usize {
         self.pos.get()
     }
 }
 
 impl PascalLexer {
+    /// Constructs new `PascalLexer` that tokenizes the input passed in `text`.
     pub fn new(text: &str) -> PascalLexer {
         PascalLexer {
             chars: text.chars().collect(),
@@ -98,8 +108,8 @@ impl PascalLexer {
         }
     }
 
-    // Returns a multi-digit (unsigned, base 10) integer
-    // Precondition: First character is digit
+    /// Returns a multi-digit (unsigned, base 10) integer
+    /// Precondition: First character is digit
     fn get_integer(&self) -> u64 {
         let mut pos = self.pos.get();
         let mut current_char = self.chars[pos];
@@ -125,7 +135,45 @@ impl PascalLexer {
         result
     }
 
-    // Advances the position to the next non-whitespace character
+    /// Recognizes an identifier or a keyword
+    /// * Returns a keyword `Token` if the input matches a keyword
+    /// * Returns an IDENTIFIER `Token` otherwise
+    fn recognize_identifier_of_keyword(&self) -> Result<Token, SyntaxError> {
+        let start_pos = self.pos.get();
+        let mut pos = start_pos;
+        let mut current_char = self.chars[pos];
+        let mut result = current_char.to_string();
+
+        loop {
+            pos += 1;
+
+            if pos + 1 > self.chars.len() {
+                break;
+            }
+
+            current_char = self.chars[pos];
+            if current_char.is_alphanumeric() {
+                result.push(current_char);
+            } else {
+                break;
+            }
+        }
+
+        self.pos.set(pos);
+
+        match &result[..] {
+            "BEGIN" => Ok(Token::new(TokenType::Begin, None, (start_pos, pos))),
+            "END" => Ok(Token::new(TokenType::End, None, (start_pos, pos))),
+            s => {
+                Err(SyntaxError {
+                    msg: format!("Invalid identifier: {}", s),
+                    position: (start_pos, pos),
+                })
+            }
+        }
+    }
+
+    /// Advances the position to the next non-whitespace character
     fn skip_whitespace(&self) {
         let mut pos = self.pos.get();
 
@@ -334,5 +382,19 @@ mod tests {
         let lexer = PascalLexer::new(&")".to_string());
         let next_token = lexer.get_next_token().unwrap();
         assert_eq!(TokenType::RParen, next_token.token_type);
+    }
+
+    #[test]
+    fn lexer_get_next_token_returns_begin_token_when_input_is_begin_keyword() {
+        let lexer = PascalLexer::new(&"BEGIN".to_string());
+        let next_token = lexer.get_next_token().unwrap();
+        assert_eq!(TokenType::Begin, next_token.token_type);
+    }
+
+    #[test]
+    fn lexer_get_next_token_returns_end_token_when_input_is_end_keyword() {
+        let lexer = PascalLexer::new(&"END".to_string());
+        let next_token = lexer.get_next_token().unwrap();
+        assert_eq!(TokenType::End, next_token.token_type);
     }
 }
