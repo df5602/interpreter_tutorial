@@ -86,6 +86,26 @@ impl Lexer for PascalLexer {
             return Ok(Token::new(TokenType::RParen, None, (pos, pos + 1)));
         }
 
+        // Return DOT when the next character is '.'
+        if current_char == '.' {
+            self.pos.set(pos + 1);
+            return Ok(Token::new(TokenType::Dot, None, (pos, pos + 1)));
+        }
+
+        // Return SEMICOLON when the next character is ';'
+        if current_char == ';' {
+            self.pos.set(pos + 1);
+            return Ok(Token::new(TokenType::Semicolon, None, (pos, pos + 1)));
+        }
+
+        // Return ASSIGN when the next two characters are ':='
+        if current_char == ':' {
+            if let Some('=') = self.peek(1) {
+                self.pos.set(pos + 2);
+                return Ok(Token::new(TokenType::Assign, None, (pos, pos + 2)));
+            }
+        }
+
         // Current character didn't match any known token, return error
         Err(SyntaxError {
             msg: "Invalid token".to_string(),
@@ -197,6 +217,19 @@ impl PascalLexer {
 
         // Set new position
         self.pos.set(pos);
+    }
+
+    /// Peeks `n` characters in front of the current position.
+    /// Returns the character `n` positions in front of the current position,
+    /// or `None` if end of the input is reached.
+    fn peek(&self, n: usize) -> Option<char> {
+        let pos = self.pos.get();
+
+        if pos + n + 1 > self.chars.len() {
+            None
+        } else {
+            Some(self.chars[pos + n])
+        }
     }
 }
 
@@ -382,6 +415,47 @@ mod tests {
         let lexer = PascalLexer::new(&")".to_string());
         let next_token = lexer.get_next_token().unwrap();
         assert_eq!(TokenType::RParen, next_token.token_type);
+    }
+
+    #[test]
+    fn lexer_get_next_token_returns_dot_token_when_input_is_dot() {
+        let lexer = PascalLexer::new(&".".to_string());
+        let next_token = lexer.get_next_token().unwrap();
+        assert_eq!(TokenType::Dot, next_token.token_type);
+    }
+
+    #[test]
+    fn lexer_get_next_token_returns_semicolon_token_when_input_is_semicolon() {
+        let lexer = PascalLexer::new(&";".to_string());
+        let next_token = lexer.get_next_token().unwrap();
+        assert_eq!(TokenType::Semicolon, next_token.token_type);
+    }
+
+    #[test]
+    fn lexer_get_next_token_returns_assign_token_when_input_is_assignment_operator() {
+        let lexer = PascalLexer::new(&":=".to_string());
+        let next_token = lexer.get_next_token().unwrap();
+        assert_eq!(TokenType::Assign, next_token.token_type);
+    }
+
+    #[test]
+    fn lexer_get_next_token_doesnt_return_assign_token_when_input_is_only_colon() {
+        let lexer = PascalLexer::new(&":".to_string());
+        let next_token = lexer.get_next_token();
+        match next_token {
+            Err(_) => assert!(true),
+            _ => assert!(false),
+        }
+    }
+
+    #[test]
+    fn lexer_get_next_token_doesnt_ret_assign_tok_when_input_is_colon_not_followed_by_eq_sign() {
+        let lexer = PascalLexer::new(&":?".to_string());
+        let next_token = lexer.get_next_token();
+        match next_token {
+            Err(_) => assert!(true),
+            _ => assert!(false),
+        }
     }
 
     #[test]

@@ -12,6 +12,12 @@ pub enum TokenType {
     LParen,
     /// Closing parenthesis: ')'
     RParen,
+    /// Dot: '.'
+    Dot,
+    /// Semicolon: ';'
+    Semicolon,
+    /// Assignment operator: ':='
+    Assign,
     /// 'BEGIN' (to mark the beginning of a compound statement)
     Begin,
     /// 'END' (to mark the end of a compound statement)
@@ -27,6 +33,9 @@ impl fmt::Display for TokenType {
             TokenType::Operator => write!(f, "OPERATOR"),
             TokenType::LParen => write!(f, "LPAREN"),
             TokenType::RParen => write!(f, "RPAREN"),
+            TokenType::Dot => write!(f, "DOT"),
+            TokenType::Semicolon => write!(f, "SEMICOLON"),
+            TokenType::Assign => write!(f, "ASSIGN"),
             TokenType::Begin => write!(f, "BEGIN"),
             TokenType::End => write!(f, "END"),
             TokenType::Eof => write!(f, "EOF"),
