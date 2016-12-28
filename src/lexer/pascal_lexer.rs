@@ -162,6 +162,7 @@ impl PascalLexer {
         let start_pos = self.pos.get();
         let mut pos = start_pos;
         let mut current_char = self.chars[pos];
+        assert!(current_char.is_alphabetic());
         let mut result = current_char.to_string();
 
         loop {
@@ -181,16 +182,17 @@ impl PascalLexer {
 
         self.pos.set(pos);
 
-        match &result[..] {
-            "BEGIN" => Ok(Token::new(TokenType::Begin, None, (start_pos, pos))),
-            "END" => Ok(Token::new(TokenType::End, None, (start_pos, pos))),
-            s => {
-                Err(SyntaxError {
-                    msg: format!("Invalid identifier: {}", s),
-                    position: (start_pos, pos),
-                })
-            }
+        match result.as_ref() {
+            "BEGIN" => return Ok(Token::new(TokenType::Begin, None, (start_pos, pos))),
+            "END" => return Ok(Token::new(TokenType::End, None, (start_pos, pos))),
+            _ => {}
         }
+
+        // Identifier name is stored in a String at the beginning of this function.
+        // Moving the following into the match statement leads to problems with the borrow checker.
+        Ok(Token::new(TokenType::Identifier,
+                      Some(TokenValue::Identifier(result)),
+                      (start_pos, pos)))
     }
 
     /// Advances the position to the next non-whitespace character
@@ -351,16 +353,6 @@ mod tests {
     }
 
     #[test]
-    fn lexer_get_next_token_returns_error_when_input_is_letter() {
-        let lexer = PascalLexer::new(&"a".to_string());
-        let next_token = lexer.get_next_token();
-        match next_token {
-            Ok(_) => assert!(false),
-            Err(_) => assert!(true),
-        }
-    }
-
-    #[test]
     fn lexer_get_integer_returns_multi_digit_integer() {
         let lexer = PascalLexer::new(&"123".to_string());
         let result = lexer.get_integer();
@@ -470,5 +462,48 @@ mod tests {
         let lexer = PascalLexer::new(&"END".to_string());
         let next_token = lexer.get_next_token().unwrap();
         assert_eq!(TokenType::End, next_token.token_type);
+    }
+
+    #[test]
+    fn lexer_get_next_token_returns_identifier_token_when_input_is_string() {
+        let lexer = PascalLexer::new(&"number".to_string());
+        let next_token = lexer.get_next_token().unwrap();
+        assert_eq!(TokenType::Identifier, next_token.token_type);
+        match next_token.value.unwrap() {
+            TokenValue::Identifier(id) => assert_eq!("number", id),
+            _ => assert!(false),
+        }
+    }
+
+    #[test]
+    fn lexer_get_next_token_returns_identifier_token_when_input_contains_digits() {
+        let lexer = PascalLexer::new(&"numb3r".to_string());
+        let next_token = lexer.get_next_token().unwrap();
+        assert_eq!(TokenType::Identifier, next_token.token_type);
+        match next_token.value.unwrap() {
+            TokenValue::Identifier(id) => assert_eq!("numb3r", id),
+            _ => assert!(false),
+        }
+    }
+
+    #[test]
+    fn lexer_get_next_token_non_alphanumeric_characters_are_not_part_of_identifier() {
+        let lexer = PascalLexer::new(&"number?123".to_string());
+        let next_token = lexer.get_next_token().unwrap();
+        assert_eq!(TokenType::Identifier, next_token.token_type);
+        match next_token.value.unwrap() {
+            TokenValue::Identifier(id) => assert_eq!("number", id),
+            _ => assert!(false),
+        }
+    }
+
+    #[test]
+    fn lexer_get_next_token_identifiers_dont_start_with_digit() {
+        let lexer = PascalLexer::new(&"1foo".to_string());
+        let next_token = lexer.get_next_token().unwrap();
+        match next_token.token_type {
+            TokenType::Identifier => assert!(false),
+            _ => assert!(true),
+        }
     }
 }

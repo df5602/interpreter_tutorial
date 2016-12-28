@@ -8,6 +8,9 @@ pub enum TokenType {
     Integer,
     /// One of the following operators: '+', '-', '*', '/'
     Operator,
+    /// Variable name (must start with an alphabetic character,
+    /// followed by any number of alphanumerical characters)
+    Identifier,
     /// Opening parenthesis: '('
     LParen,
     /// Closing parenthesis: ')'
@@ -31,6 +34,7 @@ impl fmt::Display for TokenType {
         match *self {
             TokenType::Integer => write!(f, "INTEGER"),
             TokenType::Operator => write!(f, "OPERATOR"),
+            TokenType::Identifier => write!(f, "IDENTIFIER"),
             TokenType::LParen => write!(f, "LPAREN"),
             TokenType::RParen => write!(f, "RPAREN"),
             TokenType::Dot => write!(f, "DOT"),
@@ -74,6 +78,8 @@ pub enum TokenValue {
     Integer(u64),
     /// An operator
     Operator(OperatorType),
+    /// An identifier name
+    Identifier(String),
     #[cfg(test)]
     /// No value (for testing only)
     Empty,
@@ -123,6 +129,9 @@ impl fmt::Display for Token {
                 match *value {
                     TokenValue::Integer(val) => write!(f, "Token({}, {})", self.token_type, val),
                     TokenValue::Operator(ref val) => {
+                        write!(f, "Token({}, {})", self.token_type, val)
+                    }
+                    TokenValue::Identifier(ref val) => {
                         write!(f, "Token({}, {})", self.token_type, val)
                     }
                     #[cfg(test)]
