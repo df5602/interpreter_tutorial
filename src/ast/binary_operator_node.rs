@@ -5,6 +5,8 @@ use tokens::{Token, TokenValue, OperatorType};
 use errors::SyntaxError;
 use interpreter::NodeVisitor;
 
+/// Binary Operator node.
+/// Binary operators are '+', '-', '*' and '/'.
 #[derive(Debug)]
 pub struct BinaryOperatorNode {
     left: AstIndex,
@@ -109,6 +111,7 @@ impl NodeVisitor for BinaryOperatorNode {
 }
 
 impl BinaryOperatorNode {
+    /// Constructs a new binary operator node.
     pub fn new(left: AstIndex, right: AstIndex, operator: OperatorType, token: Token) -> Self {
         BinaryOperatorNode {
             left: left,

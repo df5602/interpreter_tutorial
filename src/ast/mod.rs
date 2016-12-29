@@ -50,6 +50,9 @@ pub use self::integer_node::IntegerNode;
 mod compound_stmt_node;
 pub use self::compound_stmt_node::CompoundStmtNode;
 
+mod assignment_stmt_node;
+pub use self::assignment_stmt_node::AssignmentStmtNode;
+
 /// AST graph. Nodes are stored in a vector. All references to nodes
 /// go via the index into this vector.
 pub struct Ast<'a> {
