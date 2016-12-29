@@ -5,6 +5,8 @@ use ast::{Ast, AstNode, AstIndex};
 use errors::SyntaxError;
 use interpreter::NodeVisitor;
 
+/// Unary operator node.
+/// Unary operators are '+' and '-' in front of expressions.
 #[derive(Debug)]
 pub struct UnaryOperatorNode {
     operand: AstIndex,
@@ -93,6 +95,7 @@ impl NodeVisitor for UnaryOperatorNode {
 }
 
 impl UnaryOperatorNode {
+    /// Constructs a new unary operator node.
     pub fn new(operand: AstIndex, operator: OperatorType, token: Token) -> Self {
         UnaryOperatorNode {
             operand: operand,

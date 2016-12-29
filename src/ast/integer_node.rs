@@ -5,6 +5,7 @@ use tokens::{Token, TokenValue};
 use errors::SyntaxError;
 use interpreter::NodeVisitor;
 
+/// Represents an integer literal.
 #[derive(Debug)]
 pub struct IntegerNode {
     value: u64,
@@ -66,6 +67,7 @@ impl NodeVisitor for IntegerNode {
 }
 
 impl IntegerNode {
+    /// Constructs a new integer node.
     pub fn new(value: u64, token: Token) -> Self {
         IntegerNode {
             value: value,
