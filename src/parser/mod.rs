@@ -248,14 +248,15 @@ mod tests {
         let op_index = result.unwrap();
         let node = ast.get_node(op_index);
         assert_eq!(node.get_parent(), None);
-        assert_eq!(node.get_value(), TokenValue::Operator(OperatorType::Plus));
+        assert_eq!(node.get_value().unwrap(),
+                   TokenValue::Operator(OperatorType::Plus));
         let operands = node.get_children();
         let lhs = ast.get_node(operands[0]);
         assert_eq!(lhs.get_parent(), Some(op_index));
-        assert_eq!(lhs.get_value(), TokenValue::Integer(3));
+        assert_eq!(lhs.get_value().unwrap(), TokenValue::Integer(3));
         let rhs = ast.get_node(operands[1]);
         assert_eq!(rhs.get_parent(), Some(op_index));
-        assert_eq!(rhs.get_value(), TokenValue::Integer(4));
+        assert_eq!(rhs.get_value().unwrap(), TokenValue::Integer(4));
     }
 
     #[test]
@@ -273,14 +274,15 @@ mod tests {
         let op_index = result.unwrap();
         let node = ast.get_node(op_index);
         assert_eq!(node.get_parent(), None);
-        assert_eq!(node.get_value(), TokenValue::Operator(OperatorType::Minus));
+        assert_eq!(node.get_value().unwrap(),
+                   TokenValue::Operator(OperatorType::Minus));
         let operands = node.get_children();
         let lhs = ast.get_node(operands[0]);
         assert_eq!(lhs.get_parent(), Some(op_index));
-        assert_eq!(lhs.get_value(), TokenValue::Integer(4));
+        assert_eq!(lhs.get_value().unwrap(), TokenValue::Integer(4));
         let rhs = ast.get_node(operands[1]);
         assert_eq!(rhs.get_parent(), Some(op_index));
-        assert_eq!(rhs.get_value(), TokenValue::Integer(3));
+        assert_eq!(rhs.get_value().unwrap(), TokenValue::Integer(3));
     }
 
     #[test]
@@ -353,7 +355,7 @@ mod tests {
         let result = parser.expr(&mut ast);
         let node = ast.get_node(result.unwrap());
         assert_eq!(node.get_parent(), None);
-        assert_eq!(node.get_value(), TokenValue::Integer(42));
+        assert_eq!(node.get_value().unwrap(), TokenValue::Integer(42));
     }
 
     #[test]
@@ -370,14 +372,15 @@ mod tests {
         let op_index = result.unwrap();
         let node = ast.get_node(op_index);
         assert_eq!(node.get_parent(), None);
-        assert_eq!(node.get_value(), TokenValue::Operator(OperatorType::Times));
+        assert_eq!(node.get_value().unwrap(),
+                   TokenValue::Operator(OperatorType::Times));
         let operands = node.get_children();
         let lhs = ast.get_node(operands[0]);
         assert_eq!(lhs.get_parent(), Some(op_index));
-        assert_eq!(lhs.get_value(), TokenValue::Integer(3));
+        assert_eq!(lhs.get_value().unwrap(), TokenValue::Integer(3));
         let rhs = ast.get_node(operands[1]);
         assert_eq!(rhs.get_parent(), Some(op_index));
-        assert_eq!(rhs.get_value(), TokenValue::Integer(4));
+        assert_eq!(rhs.get_value().unwrap(), TokenValue::Integer(4));
     }
 
     #[test]
@@ -394,15 +397,15 @@ mod tests {
         let op_index = result.unwrap();
         let node = ast.get_node(op_index);
         assert_eq!(node.get_parent(), None);
-        assert_eq!(node.get_value(),
+        assert_eq!(node.get_value().unwrap(),
                    TokenValue::Operator(OperatorType::Division));
         let operands = node.get_children();
         let lhs = ast.get_node(operands[0]);
         assert_eq!(lhs.get_parent(), Some(op_index));
-        assert_eq!(lhs.get_value(), TokenValue::Integer(4));
+        assert_eq!(lhs.get_value().unwrap(), TokenValue::Integer(4));
         let rhs = ast.get_node(operands[1]);
         assert_eq!(rhs.get_parent(), Some(op_index));
-        assert_eq!(rhs.get_value(), TokenValue::Integer(2));
+        assert_eq!(rhs.get_value().unwrap(), TokenValue::Integer(2));
     }
 
     #[test]
@@ -416,7 +419,7 @@ mod tests {
         let result = parser.term(&mut ast);
         let node = ast.get_node(result.unwrap());
         assert_eq!(node.get_parent(), None);
-        assert_eq!(node.get_value(), TokenValue::Integer(42));
+        assert_eq!(node.get_value().unwrap(), TokenValue::Integer(42));
     }
 
     #[test]
@@ -471,7 +474,7 @@ mod tests {
         let result = parser.factor(&mut ast);
         let node = ast.get_node(result.unwrap());
         assert_eq!(node.get_parent(), None);
-        assert_eq!(node.get_value(), TokenValue::Integer(42));
+        assert_eq!(node.get_value().unwrap(), TokenValue::Integer(42));
     }
 
     #[test]
@@ -490,14 +493,15 @@ mod tests {
         let op_index = result.unwrap();
         let node = ast.get_node(op_index);
         assert_eq!(node.get_parent(), None);
-        assert_eq!(node.get_value(), TokenValue::Operator(OperatorType::Plus));
+        assert_eq!(node.get_value().unwrap(),
+                   TokenValue::Operator(OperatorType::Plus));
         let operands = node.get_children();
         let lhs = ast.get_node(operands[0]);
         assert_eq!(lhs.get_parent(), Some(op_index));
-        assert_eq!(lhs.get_value(), TokenValue::Integer(6));
+        assert_eq!(lhs.get_value().unwrap(), TokenValue::Integer(6));
         let rhs = ast.get_node(operands[1]);
         assert_eq!(rhs.get_parent(), Some(op_index));
-        assert_eq!(rhs.get_value(), TokenValue::Integer(3));
+        assert_eq!(rhs.get_value().unwrap(), TokenValue::Integer(3));
     }
 
     #[test]
@@ -513,7 +517,7 @@ mod tests {
         let result = parser.factor(&mut ast);
         let node = ast.get_node(result.unwrap());
         assert_eq!(node.get_parent(), None);
-        assert_eq!(node.get_value(), TokenValue::Integer(6));
+        assert_eq!(node.get_value().unwrap(), TokenValue::Integer(6));
     }
 
     #[test]
@@ -529,12 +533,12 @@ mod tests {
         let op_index = result.unwrap();
         let op_node = ast.get_node(op_index);
         assert_eq!(op_node.get_parent(), None);
-        assert_eq!(op_node.get_value(),
+        assert_eq!(op_node.get_value().unwrap(),
                    TokenValue::Operator(OperatorType::Minus));
         let operand = op_node.get_children()[0];
         let int_node = ast.get_node(operand);
         assert_eq!(int_node.get_parent(), Some(op_index));
-        assert_eq!(int_node.get_value(), TokenValue::Integer(5));
+        assert_eq!(int_node.get_value().unwrap(), TokenValue::Integer(5));
     }
 
     #[test]
@@ -550,12 +554,12 @@ mod tests {
         let op_index = result.unwrap();
         let op_node = ast.get_node(op_index);
         assert_eq!(op_node.get_parent(), None);
-        assert_eq!(op_node.get_value(),
+        assert_eq!(op_node.get_value().unwrap(),
                    TokenValue::Operator(OperatorType::Plus));
         let operand = op_node.get_children()[0];
         let int_node = ast.get_node(operand);
         assert_eq!(int_node.get_parent(), Some(op_index));
-        assert_eq!(int_node.get_value(), TokenValue::Integer(5));
+        assert_eq!(int_node.get_value().unwrap(), TokenValue::Integer(5));
     }
 
     #[test]

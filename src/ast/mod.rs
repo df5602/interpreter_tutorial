@@ -1,19 +1,34 @@
+//! This module contains all definitions required for building an
+//! Abstract Syntax Tree (AST).
+
 use std::fmt;
 use std::{usize, cmp};
 
 use tokens::TokenValue;
 use interpreter::NodeVisitor;
 
+/// The `AstNode` trait. Nodes implementing the `AstNode` trait must
+/// also implement the `NodeVisitor` trait.
 pub trait AstNode: NodeVisitor {
+    /// Returns the index of the parent node of `self`, if present, or `None`
     fn get_parent(&self) -> Option<AstIndex>;
+    /// Sets `parent` as parent node of `self`.
+    /// Returns true, if it suceeds (`self` has no parent node yet).
+    /// Returns false, if `self` already has a parent node.
     fn set_parent(&mut self, parent: AstIndex) -> bool;
+    /// Returns a vector of indices of the children of `self`.
     fn get_children(&self) -> Vec<AstIndex>;
-    fn get_value(&self) -> TokenValue;
+    /// Returns the value stored in `self`, if applicable, or `None`.
+    fn get_value(&self) -> Option<TokenValue>;
+    /// Returns the position in the input stream which correspond to `self`.
     fn get_position(&self) -> (usize, usize);
+    /// Sets the position in the input stream which corresponds to `self`.
     fn set_position(&mut self, position: (usize, usize));
+    /// Returns a `String` representing `self`.
     fn print(&self) -> String;
 }
 
+/// Index into the AST.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct AstIndex(pub usize);
 
@@ -32,6 +47,11 @@ pub use self::unary_operator_node::UnaryOperatorNode;
 mod integer_node;
 pub use self::integer_node::IntegerNode;
 
+mod compound_stmt_node;
+pub use self::compound_stmt_node::CompoundStmtNode;
+
+/// AST graph. Nodes are stored in a vector. All references to nodes
+/// go via the index into this vector.
 pub struct Ast<'a> {
     nodes: Vec<Box<AstNode + 'a>>,
     root: Option<AstIndex>,
@@ -54,6 +74,7 @@ impl<'a> fmt::Display for Ast<'a> {
 }
 
 impl<'a> Ast<'a> {
+    /// Creates a new (empty) AST.
     pub fn new() -> Self {
         Ast {
             nodes: Vec::new(),
@@ -62,14 +83,22 @@ impl<'a> Ast<'a> {
         }
     }
 
+    /// Returns a reference to the node stored at `index`.
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if `index` is no valid index of
+    /// the AST.
     pub fn get_node(&self, index: AstIndex) -> &AstNode {
         &*self.nodes[index.0]
     }
 
+    /// Returns a reference to the root node of the AST if available, `None` otherwise.
     pub fn get_root(&self) -> Option<&AstNode> {
         self.root.as_ref().map(|index| &*self.nodes[index.0])
     }
 
+    /// Inserts a node into the AST and returns the index of the new node.
     pub fn add_node<N: AstNode + 'a>(&mut self, node: N) -> AstIndex {
         self.nodes.push(Box::new(node));
 
@@ -96,6 +125,9 @@ impl<'a> Ast<'a> {
         inserted_index
     }
 
+    /// Sets the node stored at `index` as the parent node of its children.
+    /// Updates the position of the node stored at `index` to encompass the
+    /// positions of all child nodes.
     fn set_as_parent(&mut self, index: AstIndex) {
         let children = (*self.nodes[index.0]).get_children();
         if children.is_empty() {
@@ -122,6 +154,8 @@ impl<'a> Ast<'a> {
         (*self.nodes[index.0]).set_position((pos_min, pos_max));
     }
 
+    /// Checks whether the node stored at `index` is connected to the
+    /// root node of the AST.
     fn is_connected_to_root(&self, index: AstIndex) -> bool {
         let mut current = index;
 
@@ -136,6 +170,7 @@ impl<'a> Ast<'a> {
         self.root == Some(current)
     }
 
+    /// Returns true if the AST is contiguous, or false otherwise.
     pub fn is_contiguous(&self) -> bool {
         self.non_connected_nodes.is_empty()
     }

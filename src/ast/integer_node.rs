@@ -39,8 +39,8 @@ impl AstNode for IntegerNode {
         Vec::new()
     }
 
-    fn get_value(&self) -> TokenValue {
-        TokenValue::Integer(self.value)
+    fn get_value(&self) -> Option<TokenValue> {
+        Some(TokenValue::Integer(self.value))
     }
 
     fn get_position(&self) -> (usize, usize) {
@@ -131,7 +131,7 @@ mod tests {
         let int_node =
             IntegerNode::new(42,
                              Token::new(TokenType::Integer, Some(TokenValue::Integer(42)), (0, 0)));
-        assert_eq!(int_node.get_value(), TokenValue::Integer(42));
+        assert_eq!(int_node.get_value().unwrap(), TokenValue::Integer(42));
     }
 
     #[test]

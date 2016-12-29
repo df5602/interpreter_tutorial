@@ -1,10 +1,10 @@
 use std::io;
 use std::io::{BufRead, Write};
 
-pub mod tokens;
+mod tokens;
 mod ast;
-pub mod errors;
-pub mod lexer;
+mod errors;
+mod lexer;
 mod parser;
 mod interpreter;
 

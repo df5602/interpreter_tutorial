@@ -51,8 +51,8 @@ impl AstNode for UnaryOperatorNode {
         vec![self.operand]
     }
 
-    fn get_value(&self) -> TokenValue {
-        TokenValue::Operator(self.operator.clone())
+    fn get_value(&self) -> Option<TokenValue> {
+        Some(TokenValue::Operator(self.operator.clone()))
     }
 
     fn get_position(&self) -> (usize, usize) {
@@ -166,7 +166,7 @@ mod tests {
                                    Token::new(TokenType::Operator,
                                               Some(TokenValue::Operator(OperatorType::Minus)),
                                               (0, 0)));
-        assert_eq!(op_node.get_value(),
+        assert_eq!(op_node.get_value().unwrap(),
                    TokenValue::Operator(OperatorType::Minus));
     }
 
