@@ -3,7 +3,7 @@ use std::fmt;
 use tokens::{Token, OperatorType, TokenValue};
 use ast::{Ast, AstNode, AstIndex};
 use errors::SyntaxError;
-use interpreter::NodeVisitor;
+use interpreter::{NodeVisitor, ReturnValue};
 
 /// Unary operator node.
 /// Unary operators are '+' and '-' in front of expressions.
@@ -83,12 +83,12 @@ impl AstNode for UnaryOperatorNode {
 }
 
 impl NodeVisitor for UnaryOperatorNode {
-    fn visit(&self, ast: &Ast) -> Result<i64, SyntaxError> {
-        let operand = ast.get_node(self.operand).visit(ast)?;
+    fn visit(&self, ast: &Ast) -> Result<ReturnValue, SyntaxError> {
+        let operand = ast.get_node(self.operand).visit(ast)?.extract_integer_value();
 
         match self.operator {
-            OperatorType::Plus => Ok(operand),
-            OperatorType::Minus => Ok(-operand),
+            OperatorType::Plus => Ok(ReturnValue::Integer(operand)),
+            OperatorType::Minus => Ok(ReturnValue::Integer(-operand)),
             _ => panic!("Internal error (Unsupported operator type for unary operator)"),
         }
     }
@@ -201,7 +201,8 @@ mod tests {
                                               Some(TokenValue::Operator(OperatorType::Plus)),
                                               (0, 0)));
         let index_op = ast.add_node(op_node);
-        assert_eq!(ast.get_node(index_op).visit(&ast).unwrap(), 2);
+        assert_eq!(ast.get_node(index_op).visit(&ast).unwrap().extract_integer_value(),
+                   2);
     }
 
     #[test]
@@ -220,6 +221,7 @@ mod tests {
                                               Some(TokenValue::Operator(OperatorType::Minus)),
                                               (0, 0)));
         let index_op = ast.add_node(op_node);
-        assert_eq!(ast.get_node(index_op).visit(&ast).unwrap(), -4);
+        assert_eq!(ast.get_node(index_op).visit(&ast).unwrap().extract_integer_value(),
+                   -4);
     }
 }

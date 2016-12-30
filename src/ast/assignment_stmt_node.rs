@@ -3,7 +3,7 @@ use std::fmt;
 use tokens::{Token, TokenValue};
 use errors::SyntaxError;
 use ast::{Ast, AstNode, AstIndex};
-use interpreter::NodeVisitor;
+use interpreter::{NodeVisitor, ReturnValue};
 
 /// Assignment statement. It consists of the following form:
 /// VARIABLE := EXPRESSION
@@ -83,7 +83,7 @@ impl AstNode for AssignmentStmtNode {
 }
 
 impl NodeVisitor for AssignmentStmtNode {
-    fn visit(&self, ast: &Ast) -> Result<i64, SyntaxError> {
+    fn visit(&self, ast: &Ast) -> Result<ReturnValue, SyntaxError> {
         unimplemented!();
         // let operand = ast.get_node(self.operand).visit(ast)?;
 

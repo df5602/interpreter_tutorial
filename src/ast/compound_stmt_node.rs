@@ -3,7 +3,7 @@ use std::fmt;
 use tokens::{Token, TokenValue};
 use errors::SyntaxError;
 use ast::{Ast, AstNode, AstIndex};
-use interpreter::NodeVisitor;
+use interpreter::{NodeVisitor, ReturnValue};
 
 /// Compound statement node. A compound statement consists of
 /// a 'BEGIN' keyword, followed by a list of statements and the
@@ -80,15 +80,11 @@ impl AstNode for CompoundStmtNode {
 }
 
 impl NodeVisitor for CompoundStmtNode {
-    fn visit(&self, ast: &Ast) -> Result<i64, SyntaxError> {
-        unimplemented!();
-        // let operand = ast.get_node(self.operand).visit(ast)?;
-
-        // match self.operator {
-        //     OperatorType::Plus => Ok(operand),
-        //     OperatorType::Minus => Ok(-operand),
-        //     _ => panic!("Internal error (Unsupported operator type for unary operator)"),
-        // }
+    fn visit(&self, ast: &Ast) -> Result<ReturnValue, SyntaxError> {
+        for statement in &self.statement_list {
+            ast.get_node(*statement).visit(ast)?;
+        }
+        Ok(ReturnValue::Void)
     }
 }
 
@@ -112,8 +108,9 @@ impl CompoundStmtNode {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ast::{AstNode, AstIndex};
-    use tokens::{Token, TokenType};
+    use ast::{Ast, AstNode, AstIndex, IntegerNode, BinaryOperatorNode};
+    use tokens::{Token, TokenType, TokenValue, OperatorType};
+    use interpreter::ReturnValue;
 
     #[test]
     fn compound_statement_node_get_parent_returns_none_when_node_has_no_parent() {
@@ -167,5 +164,35 @@ mod tests {
                                              Token::new(TokenType::End, None, (3, 4)));
         node.set_position((2, 3));
         assert_eq!(node.get_position(), (2, 3));
+    }
+
+    #[test]
+    fn compound_statement_node_visit_returns_void() {
+        let mut ast = Ast::new();
+        let lhs_1 =
+            IntegerNode::new(2,
+                             Token::new(TokenType::Integer, Some(TokenValue::Integer(2)), (0, 0)));
+        let index_lhs_1 = ast.add_node(lhs_1);
+        let lhs_2 =
+            IntegerNode::new(4,
+                             Token::new(TokenType::Integer, Some(TokenValue::Integer(4)), (0, 0)));
+        let index_lhs_2 = ast.add_node(lhs_2);
+
+        let op_node_1 =
+            BinaryOperatorNode::new(index_lhs_1,
+                                    index_lhs_2,
+                                    OperatorType::Plus,
+                                    Token::new(TokenType::Operator,
+                                               Some(TokenValue::Operator(OperatorType::Plus)),
+                                               (0, 0)));
+        let index_op_1 = ast.add_node(op_node_1);
+
+        let stmt_node = CompoundStmtNode::new(vec![index_op_1],
+                                              Token::new(TokenType::Begin, None, (0, 1)),
+                                              Token::new(TokenType::End, None, (3, 4)));
+        let index_stmt = ast.add_node(stmt_node);
+
+        assert_eq!(ast.get_node(index_stmt).visit(&ast).unwrap(),
+                   ReturnValue::Void);
     }
 }

@@ -3,7 +3,7 @@ use std::fmt;
 use ast::{Ast, AstIndex, AstNode};
 use tokens::{Token, TokenValue};
 use errors::SyntaxError;
-use interpreter::NodeVisitor;
+use interpreter::{NodeVisitor, ReturnValue};
 
 /// Represents an integer literal.
 #[derive(Debug)]
@@ -61,8 +61,8 @@ impl AstNode for IntegerNode {
 }
 
 impl NodeVisitor for IntegerNode {
-    fn visit(&self, _ast: &Ast) -> Result<i64, SyntaxError> {
-        Ok(self.value as i64)
+    fn visit(&self, _ast: &Ast) -> Result<ReturnValue, SyntaxError> {
+        Ok(ReturnValue::Integer(self.value as i64))
     }
 }
 
@@ -150,6 +150,6 @@ mod tests {
             IntegerNode::new(42,
                              Token::new(TokenType::Integer, Some(TokenValue::Integer(42)), (0, 0)));
         let ast = Ast::new();
-        assert_eq!(int_node.visit(&ast).unwrap(), 42);
+        assert_eq!(int_node.visit(&ast).unwrap().extract_integer_value(), 42);
     }
 }

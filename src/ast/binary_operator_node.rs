@@ -3,7 +3,7 @@ use std::fmt;
 use ast::{Ast, AstNode, AstIndex};
 use tokens::{Token, TokenValue, OperatorType};
 use errors::SyntaxError;
-use interpreter::NodeVisitor;
+use interpreter::{NodeVisitor, ReturnValue};
 
 /// Binary Operator node.
 /// Binary operators are '+', '-', '*' and '/'.
@@ -88,14 +88,14 @@ impl AstNode for BinaryOperatorNode {
 }
 
 impl NodeVisitor for BinaryOperatorNode {
-    fn visit(&self, ast: &Ast) -> Result<i64, SyntaxError> {
-        let lhs = ast.get_node(self.left).visit(ast)?;
-        let rhs = ast.get_node(self.right).visit(ast)?;
+    fn visit(&self, ast: &Ast) -> Result<ReturnValue, SyntaxError> {
+        let lhs = ast.get_node(self.left).visit(ast)?.extract_integer_value();
+        let rhs = ast.get_node(self.right).visit(ast)?.extract_integer_value();
 
         match self.operator {
-            OperatorType::Plus => Ok(lhs + rhs),
-            OperatorType::Minus => Ok(lhs - rhs),
-            OperatorType::Times => Ok(lhs * rhs),
+            OperatorType::Plus => Ok(ReturnValue::Integer(lhs + rhs)),
+            OperatorType::Minus => Ok(ReturnValue::Integer(lhs - rhs)),
+            OperatorType::Times => Ok(ReturnValue::Integer(lhs * rhs)),
             OperatorType::Division => {
                 if rhs == 0 {
                     Err(SyntaxError {
@@ -103,7 +103,7 @@ impl NodeVisitor for BinaryOperatorNode {
                         position: self.position,
                     })
                 } else {
-                    Ok(lhs / rhs)
+                    Ok(ReturnValue::Integer(lhs / rhs))
                 }
             }
         }
@@ -229,7 +229,8 @@ mod tests {
                                                Some(TokenValue::Operator(OperatorType::Plus)),
                                                (0, 0)));
         let index_op = ast.add_node(op_node);
-        assert_eq!(ast.get_node(index_op).visit(&ast).unwrap(), 6);
+        assert_eq!(ast.get_node(index_op).visit(&ast).unwrap().extract_integer_value(),
+                   6);
     }
 
     #[test]
@@ -252,7 +253,8 @@ mod tests {
                                                Some(TokenValue::Operator(OperatorType::Minus)),
                                                (0, 0)));
         let index_op = ast.add_node(op_node);
-        assert_eq!(ast.get_node(index_op).visit(&ast).unwrap(), 2);
+        assert_eq!(ast.get_node(index_op).visit(&ast).unwrap().extract_integer_value(),
+                   2);
     }
 
     #[test]
@@ -275,7 +277,8 @@ mod tests {
                                                Some(TokenValue::Operator(OperatorType::Times)),
                                                (0, 0)));
         let index_op = ast.add_node(op_node);
-        assert_eq!(ast.get_node(index_op).visit(&ast).unwrap(), 8);
+        assert_eq!(ast.get_node(index_op).visit(&ast).unwrap().extract_integer_value(),
+                   8);
     }
 
     #[test]
@@ -298,7 +301,8 @@ mod tests {
                                                Some(TokenValue::Operator(OperatorType::Division)),
                                                (0, 0)));
         let index_op = ast.add_node(op_node);
-        assert_eq!(ast.get_node(index_op).visit(&ast).unwrap(), 2);
+        assert_eq!(ast.get_node(index_op).visit(&ast).unwrap().extract_integer_value(),
+                   2);
     }
 
     #[test]

@@ -3,7 +3,7 @@ use std::fmt;
 use tokens::{Token, TokenValue};
 use errors::SyntaxError;
 use ast::{Ast, AstNode, AstIndex};
-use interpreter::NodeVisitor;
+use interpreter::{NodeVisitor, ReturnValue};
 
 /// Represents an identifier.
 #[derive(Debug)]
@@ -61,7 +61,7 @@ impl AstNode for VariableNode {
 }
 
 impl NodeVisitor for VariableNode {
-    fn visit(&self, ast: &Ast) -> Result<i64, SyntaxError> {
+    fn visit(&self, ast: &Ast) -> Result<ReturnValue, SyntaxError> {
         unimplemented!();
         // let operand = ast.get_node(self.operand).visit(ast)?;
 

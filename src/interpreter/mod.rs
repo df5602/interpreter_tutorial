@@ -1,8 +1,23 @@
 use errors::SyntaxError;
 use ast::Ast;
 
+#[derive(Debug, PartialEq)]
+pub enum ReturnValue {
+    Void,
+    Integer(i64),
+}
+
+impl ReturnValue {
+    pub fn extract_integer_value(self) -> i64 {
+        match self {
+            ReturnValue::Integer(val) => val,
+            _ => panic!("Internal error (ReturnValue is no Integer)"),
+        }
+    }
+}
+
 pub trait NodeVisitor {
-    fn visit(&self, ast: &Ast) -> Result<i64, SyntaxError>;
+    fn visit(&self, ast: &Ast) -> Result<ReturnValue, SyntaxError>;
 }
 
 pub struct Interpreter<'a> {
@@ -16,7 +31,7 @@ impl<'a> Interpreter<'a> {
 
     pub fn interpret(&self) -> Result<i64, SyntaxError> {
         match self.ast.get_root() {
-            Some(node) => node.visit(self.ast),
+            Some(node) => node.visit(self.ast).map(|val| val.extract_integer_value()),
             None => {
                 Err(SyntaxError {
                     msg: "Internal Error (AST has no root)".to_string(),
