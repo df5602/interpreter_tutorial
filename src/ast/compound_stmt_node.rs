@@ -1,4 +1,5 @@
 use std::fmt;
+use std::collections::HashMap;
 
 use tokens::{Token, TokenValue};
 use errors::SyntaxError;
@@ -80,9 +81,12 @@ impl AstNode for CompoundStmtNode {
 }
 
 impl NodeVisitor for CompoundStmtNode {
-    fn visit(&self, ast: &Ast) -> Result<ReturnValue, SyntaxError> {
+    fn visit(&self,
+             ast: &Ast,
+             sym_tbl: &mut HashMap<String, i64>)
+             -> Result<ReturnValue, SyntaxError> {
         for statement in &self.statement_list {
-            ast.get_node(*statement).visit(ast)?;
+            ast.get_node(*statement).visit(ast, sym_tbl)?;
         }
         Ok(ReturnValue::Void)
     }
@@ -107,6 +111,8 @@ impl CompoundStmtNode {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
+
     use super::*;
     use ast::{Ast, AstNode, AstIndex, IntegerNode, BinaryOperatorNode};
     use tokens::{Token, TokenType, TokenValue, OperatorType};
@@ -191,8 +197,8 @@ mod tests {
                                               Token::new(TokenType::Begin, None, (0, 1)),
                                               Token::new(TokenType::End, None, (3, 4)));
         let index_stmt = ast.add_node(stmt_node);
-
-        assert_eq!(ast.get_node(index_stmt).visit(&ast).unwrap(),
+        let mut sym_tbl = HashMap::new();
+        assert_eq!(ast.get_node(index_stmt).visit(&ast, &mut sym_tbl).unwrap(),
                    ReturnValue::Void);
     }
 }

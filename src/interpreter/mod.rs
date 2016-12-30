@@ -1,13 +1,25 @@
+//! This module contains the interpreter.
+
+use std::collections::HashMap;
+
 use errors::SyntaxError;
 use ast::Ast;
 
+/// The `ReturnValue` type. Used as a generic return value.
 #[derive(Debug, PartialEq)]
 pub enum ReturnValue {
+    /// Return type void
     Void,
+    /// Return type integer
     Integer(i64),
 }
 
 impl ReturnValue {
+    /// Returns the inner value, if `self` is of variant `ReturnValue::Integer`.
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if `self` is not of variant `ReturnValue::Integer`.
     pub fn extract_integer_value(self) -> i64 {
         match self {
             ReturnValue::Integer(val) => val,
@@ -16,22 +28,38 @@ impl ReturnValue {
     }
 }
 
+/// Node visitor trait. Each node in the Abstract Syntax Tree (AST)
+/// must implement this trait to allow the interpreter to traverse the AST.
 pub trait NodeVisitor {
-    fn visit(&self, ast: &Ast) -> Result<ReturnValue, SyntaxError>;
+    /// "Visit" the node and perform a node-specific action (e.g. add two integers
+    /// for the binary operator node).
+    /// Takes a reference to an `Ast` in order to get access to the nodes in the AST.
+    /// Takes a mutable reference to a symbol table to update or access symbols.
+    fn visit(&self,
+             ast: &Ast,
+             sym_tbl: &mut HashMap<String, i64>)
+             -> Result<ReturnValue, SyntaxError>;
 }
 
+/// The `Interpreter` type. Traverses the given AST.
 pub struct Interpreter<'a> {
     ast: &'a Ast<'a>,
 }
 
 impl<'a> Interpreter<'a> {
+    /// Constructs a new `Interpreter` that traverses a given AST.
     pub fn new(ast: &'a Ast<'a>) -> Self {
         Interpreter { ast: ast }
     }
 
+    /// Interprets the given AST.
     pub fn interpret(&self) -> Result<i64, SyntaxError> {
+        let mut symbol_table: HashMap<String, i64> = HashMap::new();
+
         match self.ast.get_root() {
-            Some(node) => node.visit(self.ast).map(|val| val.extract_integer_value()),
+            Some(node) => {
+                node.visit(self.ast, &mut symbol_table).map(|val| val.extract_integer_value())
+            }
             None => {
                 Err(SyntaxError {
                     msg: "Internal Error (AST has no root)".to_string(),

@@ -109,6 +109,18 @@ impl TokenValue {
             _ => panic!("Internal Error (Operator value has wrong type)"),
         }
     }
+
+    /// Returns a copy of the inner value, if `self` is of variant `TokenValue::Identifier`.
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if `self` is not of variant `TokenValue::Identifier`.
+    pub fn extract_identifier_value(&self) -> String {
+        match *self {
+            TokenValue::Identifier(ref value) => value.clone(),
+            _ => panic!("Internal Error (Identifier value has wrong type)"),
+        }
+    }
 }
 
 /// The `Token` type. Contains information about the recognized token.

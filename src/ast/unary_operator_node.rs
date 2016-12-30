@@ -1,4 +1,5 @@
 use std::fmt;
+use std::collections::HashMap;
 
 use tokens::{Token, OperatorType, TokenValue};
 use ast::{Ast, AstNode, AstIndex};
@@ -83,8 +84,11 @@ impl AstNode for UnaryOperatorNode {
 }
 
 impl NodeVisitor for UnaryOperatorNode {
-    fn visit(&self, ast: &Ast) -> Result<ReturnValue, SyntaxError> {
-        let operand = ast.get_node(self.operand).visit(ast)?.extract_integer_value();
+    fn visit(&self,
+             ast: &Ast,
+             sym_tbl: &mut HashMap<String, i64>)
+             -> Result<ReturnValue, SyntaxError> {
+        let operand = ast.get_node(self.operand).visit(ast, sym_tbl)?.extract_integer_value();
 
         match self.operator {
             OperatorType::Plus => Ok(ReturnValue::Integer(operand)),
@@ -109,6 +113,8 @@ impl UnaryOperatorNode {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
+
     use super::*;
     use tokens::{Token, TokenType, OperatorType, TokenValue};
     use ast::{Ast, AstNode, AstIndex, IntegerNode};
@@ -201,7 +207,11 @@ mod tests {
                                               Some(TokenValue::Operator(OperatorType::Plus)),
                                               (0, 0)));
         let index_op = ast.add_node(op_node);
-        assert_eq!(ast.get_node(index_op).visit(&ast).unwrap().extract_integer_value(),
+        let mut sym_tbl = HashMap::new();
+        assert_eq!(ast.get_node(index_op)
+                       .visit(&ast, &mut sym_tbl)
+                       .unwrap()
+                       .extract_integer_value(),
                    2);
     }
 
@@ -221,7 +231,11 @@ mod tests {
                                               Some(TokenValue::Operator(OperatorType::Minus)),
                                               (0, 0)));
         let index_op = ast.add_node(op_node);
-        assert_eq!(ast.get_node(index_op).visit(&ast).unwrap().extract_integer_value(),
+        let mut sym_tbl = HashMap::new();
+        assert_eq!(ast.get_node(index_op)
+                       .visit(&ast, &mut sym_tbl)
+                       .unwrap()
+                       .extract_integer_value(),
                    -4);
     }
 }

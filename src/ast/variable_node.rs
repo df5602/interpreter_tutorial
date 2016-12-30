@@ -1,4 +1,5 @@
 use std::fmt;
+use std::collections::HashMap;
 
 use tokens::{Token, TokenValue};
 use errors::SyntaxError;
@@ -61,7 +62,10 @@ impl AstNode for VariableNode {
 }
 
 impl NodeVisitor for VariableNode {
-    fn visit(&self, ast: &Ast) -> Result<ReturnValue, SyntaxError> {
+    fn visit(&self,
+             ast: &Ast,
+             sym_tbl: &mut HashMap<String, i64>)
+             -> Result<ReturnValue, SyntaxError> {
         unimplemented!();
         // let operand = ast.get_node(self.operand).visit(ast)?;
 

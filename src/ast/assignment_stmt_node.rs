@@ -1,4 +1,5 @@
 use std::fmt;
+use std::collections::HashMap;
 
 use tokens::{Token, TokenValue};
 use errors::SyntaxError;
@@ -83,15 +84,14 @@ impl AstNode for AssignmentStmtNode {
 }
 
 impl NodeVisitor for AssignmentStmtNode {
-    fn visit(&self, ast: &Ast) -> Result<ReturnValue, SyntaxError> {
-        unimplemented!();
-        // let operand = ast.get_node(self.operand).visit(ast)?;
-
-        // match self.operator {
-        //     OperatorType::Plus => Ok(operand),
-        //     OperatorType::Minus => Ok(-operand),
-        //     _ => panic!("Internal error (Unsupported operator type for unary operator)"),
-        // }
+    fn visit(&self,
+             ast: &Ast,
+             sym_tbl: &mut HashMap<String, i64>)
+             -> Result<ReturnValue, SyntaxError> {
+        let name = ast.get_node(self.variable).get_value().unwrap().extract_identifier_value();
+        let expression = ast.get_node(self.expression).visit(ast, sym_tbl)?.extract_integer_value();
+        sym_tbl.insert(name, expression);
+        Ok(ReturnValue::Void)
     }
 }
 
@@ -110,9 +110,12 @@ impl AssignmentStmtNode {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
+
     use super::*;
-    use tokens::{Token, TokenType};
-    use ast::{AstNode, AstIndex};
+    use tokens::{Token, TokenType, TokenValue};
+    use ast::{Ast, AstNode, AstIndex, VariableNode, IntegerNode, CompoundStmtNode};
+    use interpreter::ReturnValue;
 
     #[test]
     fn assignment_statement_node_get_parent_returns_none_when_node_has_no_parent() {
@@ -166,5 +169,83 @@ mod tests {
                                                Token::new(TokenType::Assign, None, (0, 2)));
         node.set_position((4, 5));
         assert_eq!(node.get_position(), (4, 5));
+    }
+
+    #[test]
+    fn assignment_statement_node_visit_adds_entry_to_symbol_table() {
+        let mut ast = Ast::new();
+        let mut sym_tbl = HashMap::new();
+
+        let var_node = VariableNode::new("a".to_string(),
+                                         Token::new(TokenType::Identifier,
+                                                    Some(TokenValue::Identifier("a".to_string())),
+                                                    (0, 1)));
+        let int_node =
+            IntegerNode::new(42,
+                             Token::new(TokenType::Integer, Some(TokenValue::Integer(42)), (3, 5)));
+
+        let index_var = ast.add_node(var_node);
+        let index_int = ast.add_node(int_node);
+
+        let ass_node = AssignmentStmtNode::new(index_var,
+                                               index_int,
+                                               Token::new(TokenType::Assign, None, (1, 3)));
+        let index_ass = ast.add_node(ass_node);
+
+        assert_eq!(sym_tbl.get(&"a".to_string()), None);
+        assert_eq!(ast.get_node(index_ass).visit(&ast, &mut sym_tbl).unwrap(),
+                   ReturnValue::Void);
+        assert_eq!(sym_tbl.get(&"a".to_string()), Some(&42));
+    }
+
+    #[test]
+    fn assignment_statement_node_visit_updates_entry_in_symbol_table_if_exists() {
+        let mut ast = Ast::new();
+        let mut sym_tbl = HashMap::new();
+
+        let var_node_1 =
+            VariableNode::new("a".to_string(),
+                              Token::new(TokenType::Identifier,
+                                         Some(TokenValue::Identifier("a".to_string())),
+                                         (0, 1)));
+        let int_node_42 =
+            IntegerNode::new(42,
+                             Token::new(TokenType::Integer, Some(TokenValue::Integer(42)), (3, 5)));
+
+        let index_var_1 = ast.add_node(var_node_1);
+        let index_int_42 = ast.add_node(int_node_42);
+
+        let ass_node_1 = AssignmentStmtNode::new(index_var_1,
+                                                 index_int_42,
+                                                 Token::new(TokenType::Assign, None, (1, 3)));
+        let index_ass_1 = ast.add_node(ass_node_1);
+
+        let var_node_2 =
+            VariableNode::new("a".to_string(),
+                              Token::new(TokenType::Identifier,
+                                         Some(TokenValue::Identifier("a".to_string())),
+                                         (0, 1)));
+        let int_node_24 =
+            IntegerNode::new(24,
+                             Token::new(TokenType::Integer, Some(TokenValue::Integer(24)), (3, 5)));
+
+        let index_var_2 = ast.add_node(var_node_2);
+        let index_int_24 = ast.add_node(int_node_24);
+
+        let ass_node_2 = AssignmentStmtNode::new(index_var_2,
+                                                 index_int_24,
+                                                 Token::new(TokenType::Assign, None, (1, 3)));
+        let index_ass_2 = ast.add_node(ass_node_2);
+
+        let stmt_node = CompoundStmtNode::new(vec![index_ass_1, index_ass_2],
+                                              Token::new(TokenType::Begin, None, (0, 1)),
+                                              Token::new(TokenType::End, None, (3, 4)));
+        let index_stmt = ast.add_node(stmt_node);
+
+        assert_eq!(sym_tbl.get(&"a".to_string()), None);
+
+        assert!(ast.get_node(index_stmt).visit(&ast, &mut sym_tbl).is_ok());
+
+        assert_eq!(sym_tbl.get(&"a".to_string()), Some(&24));
     }
 }
