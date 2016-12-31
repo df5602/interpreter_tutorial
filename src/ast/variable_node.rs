@@ -63,17 +63,18 @@ impl AstNode for VariableNode {
 
 impl NodeVisitor for VariableNode {
     fn visit(&self,
-             ast: &Ast,
+             _ast: &Ast,
              sym_tbl: &mut HashMap<String, i64>)
              -> Result<ReturnValue, SyntaxError> {
-        unimplemented!();
-        // let operand = ast.get_node(self.operand).visit(ast)?;
-
-        // match self.operator {
-        //     OperatorType::Plus => Ok(operand),
-        //     OperatorType::Minus => Ok(-operand),
-        //     _ => panic!("Internal error (Unsupported operator type for unary operator)"),
-        // }
+        match sym_tbl.get(&self.name) {
+            Some(value) => Ok(ReturnValue::Integer(*value)),
+            None => {
+                Err(SyntaxError {
+                    msg: format!("No variable named `{}` in scope.", self.name),
+                    position: self.token.position,
+                })
+            }
+        }
     }
 }
 
@@ -91,10 +92,12 @@ impl VariableNode {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use std::collections::HashMap;
 
+    use super::*;
     use tokens::{Token, TokenType, TokenValue};
-    use ast::{AstNode, AstIndex};
+    use ast::{Ast, AstNode, AstIndex, IntegerNode, AssignmentStmtNode};
+    use interpreter::ReturnValue;
 
     #[test]
     fn variable_node_get_parent_returns_none_when_node_has_no_parent() {
@@ -159,5 +162,50 @@ mod tests {
                                                         (0, 4)));
         var_node.set_position((4, 5));
         assert_eq!(var_node.get_position(), (4, 5));
+    }
+
+    #[test]
+    fn variable_node_visit_returns_value_if_variable_exists() {
+        let mut ast = Ast::new();
+        let mut sym_tbl = HashMap::new();
+
+        let var_node_a =
+            VariableNode::new("a".to_string(),
+                              Token::new(TokenType::Identifier,
+                                         Some(TokenValue::Identifier("a".to_string())),
+                                         (0, 1)));
+        let int_node_42 =
+            IntegerNode::new(42,
+                             Token::new(TokenType::Integer, Some(TokenValue::Integer(42)), (3, 5)));
+
+        let index_var_a = ast.add_node(var_node_a);
+        let index_int_42 = ast.add_node(int_node_42);
+
+        let ass_node_1 = AssignmentStmtNode::new(index_var_a,
+                                                 index_int_42,
+                                                 Token::new(TokenType::Assign, None, (1, 3)));
+        let index_ass_1 = ast.add_node(ass_node_1);
+
+        assert!(ast.get_node(index_ass_1).visit(&ast, &mut sym_tbl).is_ok());
+        assert_eq!(sym_tbl.get(&"a".to_string()), Some(&42));
+        assert_eq!(ast.get_node(index_var_a).visit(&ast, &mut sym_tbl).unwrap(),
+                   ReturnValue::Integer(42));
+    }
+
+    #[test]
+    fn variable_node_visit_returns_error_if_variable_doesnt_exist() {
+        let mut ast = Ast::new();
+        let mut sym_tbl = HashMap::new();
+
+        let var_node_a =
+            VariableNode::new("a".to_string(),
+                              Token::new(TokenType::Identifier,
+                                         Some(TokenValue::Identifier("a".to_string())),
+                                         (0, 1)));
+
+        let index_var_a = ast.add_node(var_node_a);
+
+        assert_eq!(sym_tbl.get(&"a".to_string()), None);
+        assert!(ast.get_node(index_var_a).visit(&ast, &mut sym_tbl).is_err());
     }
 }
