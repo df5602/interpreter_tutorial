@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 use tokens::{Token, TokenType, OperatorType};
 use ast::{Ast, AstIndex, BinaryOperatorNode, UnaryOperatorNode, IntegerNode, VariableNode,
-          AssignmentStmtNode};
+          AssignmentStmtNode, CompoundStmtNode};
 use errors::SyntaxError;
 use lexer::Lexer;
 
@@ -71,7 +71,7 @@ impl<L: Lexer> Parser<L> {
     pub fn parse(&self, ast: &mut Ast) -> Result<(), SyntaxError> {
         self.load_first_token()?;
 
-        self.assignment_statement(ast)?;
+        self.compound_statement(ast)?;
 
         self.eat(TokenType::Eof)?;
 
@@ -82,6 +82,61 @@ impl<L: Lexer> Parser<L> {
                 msg: "Internal Error (AST is not contiguous)".to_string(),
                 position: (0, 0),
             })
+        }
+    }
+
+    /// Evaluates a compound statement:
+    /// compound_statement -> BEGIN statement_list END
+    fn compound_statement(&self, ast: &mut Ast) -> Result<AstIndex, SyntaxError> {
+        // Expect BEGIN keyword
+        let begin = self.get_current_token();
+        self.eat(TokenType::Begin)?;
+
+        // Expect list of statements
+        let statements = self.statement_list(ast)?;
+
+        // Expect END keyword
+        let end = self.get_current_token();
+        self.eat(TokenType::End)?;
+
+        // Construct AST node
+        let node = CompoundStmtNode::new(statements, begin, end);
+        Ok(ast.add_node(node))
+    }
+
+    /// Evaluates a statement list:
+    /// statement_list -> statement (SEMICOLON statement)*
+    fn statement_list(&self, ast: &mut Ast) -> Result<Vec<AstIndex>, SyntaxError> {
+        let mut statements = Vec::new();
+
+        // Parse first statement
+        if let Some(index) = self.statement(ast)? {
+            statements.push(index);
+        }
+
+        loop {
+            // Return if first statement is not followed by semicolon
+            if self.get_current_token().token_type != TokenType::Semicolon {
+                return Ok(statements);
+            }
+
+            // Otherwise, expect next token to be a semicolon
+            self.eat(TokenType::Semicolon)?;
+
+            // Parse next statement
+            if let Some(index) = self.statement(ast)? {
+                statements.push(index);
+            }
+        }
+    }
+
+    /// Evaluates a statement:
+    /// statement -> (compound_statement | assignment_statement)?
+    fn statement(&self, ast: &mut Ast) -> Result<Option<AstIndex>, SyntaxError> {
+        match self.get_current_token().token_type {
+            TokenType::Begin => Ok(Some(self.compound_statement(ast)?)),
+            TokenType::Identifier => Ok(Some(self.assignment_statement(ast)?)),
+            _ => Ok(None),
         }
     }
 
@@ -789,5 +844,304 @@ mod tests {
         assert!(parser.load_first_token().is_ok());
         let mut ast = Ast::new();
         assert!(parser.assignment_statement(&mut ast).is_err());
+    }
+
+    #[test]
+    fn parser_statement_returns_assignment_statement_if_statement_is_assignment_statement() {
+        // Input: a := 5
+        let tokens = vec![(TokenType::Identifier, TokenValue::Identifier("a".to_string())),
+                          (TokenType::Assign, TokenValue::Empty),
+                          (TokenType::Integer, TokenValue::Integer(5))];
+        let lexer = MockLexer::new(tokens);
+        let parser = Parser::new(lexer);
+        assert!(parser.load_first_token().is_ok());
+        let mut ast = Ast::new();
+        let stmt_index = parser.statement(&mut ast).unwrap().unwrap();
+        let stmt_node = ast.get_node(stmt_index);
+        assert_eq!(stmt_node.get_parent(), None);
+        let children = stmt_node.get_children();
+        let var_node = ast.get_node(children[0]);
+        assert_eq!(var_node.get_parent(), Some(stmt_index));
+        assert_eq!(var_node.get_value().unwrap(),
+                   TokenValue::Identifier("a".to_string()));
+        let expr_node = ast.get_node(children[1]);
+        assert_eq!(expr_node.get_parent(), Some(stmt_index));
+        assert_eq!(expr_node.get_value().unwrap(), TokenValue::Integer(5));
+    }
+
+    #[test]
+    fn parser_statement_returns_none_if_no_statement_is_present() {
+        // Input: END
+        let tokens = vec![(TokenType::End, TokenValue::Empty)];
+        let lexer = MockLexer::new(tokens);
+        let parser = Parser::new(lexer);
+        assert!(parser.load_first_token().is_ok());
+        let mut ast = Ast::new();
+        let result = parser.statement(&mut ast).unwrap();
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn parser_statement_list_returns_assignment_statement_if_statement_is_assignment() {
+        // Input: a := 5
+        let tokens = vec![(TokenType::Identifier, TokenValue::Identifier("a".to_string())),
+                          (TokenType::Assign, TokenValue::Empty),
+                          (TokenType::Integer, TokenValue::Integer(5))];
+        let lexer = MockLexer::new(tokens);
+        let parser = Parser::new(lexer);
+        assert!(parser.load_first_token().is_ok());
+        let mut ast = Ast::new();
+        let statement_list = parser.statement_list(&mut ast).unwrap();
+        assert_eq!(statement_list.len(), 1);
+
+        let stmt_index = statement_list[0];
+        let stmt_node = ast.get_node(stmt_index);
+        assert_eq!(stmt_node.get_parent(), None);
+        let children = stmt_node.get_children();
+        let var_node = ast.get_node(children[0]);
+        assert_eq!(var_node.get_parent(), Some(stmt_index));
+        assert_eq!(var_node.get_value().unwrap(),
+                   TokenValue::Identifier("a".to_string()));
+        let expr_node = ast.get_node(children[1]);
+        assert_eq!(expr_node.get_parent(), Some(stmt_index));
+        assert_eq!(expr_node.get_value().unwrap(), TokenValue::Integer(5));
+    }
+
+    #[test]
+    fn parser_statement_list_returns_two_statements_when_statements_are_separated_by_semicolon() {
+        // Input: a := 5; b := 6
+        let tokens = vec![(TokenType::Identifier, TokenValue::Identifier("a".to_string())),
+                          (TokenType::Assign, TokenValue::Empty),
+                          (TokenType::Integer, TokenValue::Integer(5)),
+                          (TokenType::Semicolon, TokenValue::Empty),
+                          (TokenType::Identifier, TokenValue::Identifier("b".to_string())),
+                          (TokenType::Assign, TokenValue::Empty),
+                          (TokenType::Integer, TokenValue::Integer(6))];
+        let lexer = MockLexer::new(tokens);
+        let parser = Parser::new(lexer);
+        assert!(parser.load_first_token().is_ok());
+        let mut ast = Ast::new();
+        let statement_list = parser.statement_list(&mut ast).unwrap();
+        assert_eq!(statement_list.len(), 2);
+
+        let mut stmt_index = statement_list[0];
+        let mut stmt_node = ast.get_node(stmt_index);
+        assert_eq!(stmt_node.get_parent(), None);
+        let mut children = stmt_node.get_children();
+        let mut var_node = ast.get_node(children[0]);
+        assert_eq!(var_node.get_parent(), Some(stmt_index));
+        assert_eq!(var_node.get_value().unwrap(),
+                   TokenValue::Identifier("a".to_string()));
+        let mut expr_node = ast.get_node(children[1]);
+        assert_eq!(expr_node.get_parent(), Some(stmt_index));
+        assert_eq!(expr_node.get_value().unwrap(), TokenValue::Integer(5));
+
+        stmt_index = statement_list[1];
+        stmt_node = ast.get_node(stmt_index);
+        assert_eq!(stmt_node.get_parent(), None);
+        children = stmt_node.get_children();
+        var_node = ast.get_node(children[0]);
+        assert_eq!(var_node.get_parent(), Some(stmt_index));
+        assert_eq!(var_node.get_value().unwrap(),
+                   TokenValue::Identifier("b".to_string()));
+        expr_node = ast.get_node(children[1]);
+        assert_eq!(expr_node.get_parent(), Some(stmt_index));
+        assert_eq!(expr_node.get_value().unwrap(), TokenValue::Integer(6));
+    }
+
+    #[test]
+    fn parser_statement_list_returns_only_first_stmt_when_stmts_are_not_separated_by_semicolon() {
+        // Input: a := 5 b := 6
+        let tokens = vec![(TokenType::Identifier, TokenValue::Identifier("a".to_string())),
+                          (TokenType::Assign, TokenValue::Empty),
+                          (TokenType::Integer, TokenValue::Integer(5)),
+                          (TokenType::Identifier, TokenValue::Identifier("b".to_string())),
+                          (TokenType::Assign, TokenValue::Empty),
+                          (TokenType::Integer, TokenValue::Integer(6))];
+        let lexer = MockLexer::new(tokens);
+        let parser = Parser::new(lexer);
+        assert!(parser.load_first_token().is_ok());
+        let mut ast = Ast::new();
+        let statement_list = parser.statement_list(&mut ast).unwrap();
+        assert_eq!(statement_list.len(), 1);
+
+        let stmt_index = statement_list[0];
+        let stmt_node = ast.get_node(stmt_index);
+        assert_eq!(stmt_node.get_parent(), None);
+        let children = stmt_node.get_children();
+        let var_node = ast.get_node(children[0]);
+        assert_eq!(var_node.get_parent(), Some(stmt_index));
+        assert_eq!(var_node.get_value().unwrap(),
+                   TokenValue::Identifier("a".to_string()));
+        let expr_node = ast.get_node(children[1]);
+        assert_eq!(expr_node.get_parent(), Some(stmt_index));
+        assert_eq!(expr_node.get_value().unwrap(), TokenValue::Integer(5));
+    }
+
+    #[test]
+    fn parser_statement_list_can_begin_with_semicolon() {
+        // Input: ;b := 6
+        let tokens = vec![(TokenType::Semicolon, TokenValue::Empty),
+                          (TokenType::Identifier, TokenValue::Identifier("b".to_string())),
+                          (TokenType::Assign, TokenValue::Empty),
+                          (TokenType::Integer, TokenValue::Integer(6))];
+        let lexer = MockLexer::new(tokens);
+        let parser = Parser::new(lexer);
+        assert!(parser.load_first_token().is_ok());
+        let mut ast = Ast::new();
+        let statement_list = parser.statement_list(&mut ast).unwrap();
+        assert_eq!(statement_list.len(), 1);
+
+        let stmt_index = statement_list[0];
+        let stmt_node = ast.get_node(stmt_index);
+        assert_eq!(stmt_node.get_parent(), None);
+        let children = stmt_node.get_children();
+        let var_node = ast.get_node(children[0]);
+        assert_eq!(var_node.get_parent(), Some(stmt_index));
+        assert_eq!(var_node.get_value().unwrap(),
+                   TokenValue::Identifier("b".to_string()));
+        let expr_node = ast.get_node(children[1]);
+        assert_eq!(expr_node.get_parent(), Some(stmt_index));
+        assert_eq!(expr_node.get_value().unwrap(), TokenValue::Integer(6));
+    }
+
+    #[test]
+    fn parser_statement_list_can_end_with_semicolon() {
+        // Input: b := 6;
+        let tokens = vec![(TokenType::Identifier, TokenValue::Identifier("b".to_string())),
+                          (TokenType::Assign, TokenValue::Empty),
+                          (TokenType::Integer, TokenValue::Integer(6)),
+                          (TokenType::Semicolon, TokenValue::Empty)];
+        let lexer = MockLexer::new(tokens);
+        let parser = Parser::new(lexer);
+        assert!(parser.load_first_token().is_ok());
+        let mut ast = Ast::new();
+        let statement_list = parser.statement_list(&mut ast).unwrap();
+        assert_eq!(statement_list.len(), 1);
+
+        let stmt_index = statement_list[0];
+        let stmt_node = ast.get_node(stmt_index);
+        assert_eq!(stmt_node.get_parent(), None);
+        let children = stmt_node.get_children();
+        let var_node = ast.get_node(children[0]);
+        assert_eq!(var_node.get_parent(), Some(stmt_index));
+        assert_eq!(var_node.get_value().unwrap(),
+                   TokenValue::Identifier("b".to_string()));
+        let expr_node = ast.get_node(children[1]);
+        assert_eq!(expr_node.get_parent(), Some(stmt_index));
+        assert_eq!(expr_node.get_value().unwrap(), TokenValue::Integer(6));
+    }
+
+    #[test]
+    fn parser_compound_statement_parses_compound_statement() {
+        // Input: BEGIN a := 5 END
+        let tokens = vec![(TokenType::Begin, TokenValue::Empty),
+                          (TokenType::Identifier, TokenValue::Identifier("a".to_string())),
+                          (TokenType::Assign, TokenValue::Empty),
+                          (TokenType::Integer, TokenValue::Integer(5)),
+                          (TokenType::End, TokenValue::Empty)];
+        let lexer = MockLexer::new(tokens);
+        let parser = Parser::new(lexer);
+        assert!(parser.load_first_token().is_ok());
+        let mut ast = Ast::new();
+
+        let cmpd_index = parser.compound_statement(&mut ast).unwrap();
+        let cmpd_node = ast.get_node(cmpd_index);
+        assert_eq!(cmpd_node.get_parent(), None);
+
+        let statements = cmpd_node.get_children();
+        assert_eq!(statements.len(), 1);
+
+        let stmt_node = ast.get_node(statements[0]);
+        assert_eq!(stmt_node.get_parent(), Some(cmpd_index));
+
+        let children = stmt_node.get_children();
+        let var_node = ast.get_node(children[0]);
+        assert_eq!(var_node.get_parent(), Some(statements[0]));
+        assert_eq!(var_node.get_value().unwrap(),
+                   TokenValue::Identifier("a".to_string()));
+    }
+
+    #[test]
+    fn parser_compound_statement_returns_error_when_begin_is_missing() {
+        // Input: a := 5 END
+        let tokens = vec![(TokenType::Identifier, TokenValue::Identifier("a".to_string())),
+                          (TokenType::Assign, TokenValue::Empty),
+                          (TokenType::Integer, TokenValue::Integer(5)),
+                          (TokenType::End, TokenValue::Empty)];
+        let lexer = MockLexer::new(tokens);
+        let parser = Parser::new(lexer);
+        assert!(parser.load_first_token().is_ok());
+        let mut ast = Ast::new();
+
+        assert!(parser.compound_statement(&mut ast).is_err());
+    }
+
+    #[test]
+    fn parser_compound_statement_returns_error_when_end_is_missing() {
+        // Input: BEGIN a := 5
+        let tokens = vec![(TokenType::Begin, TokenValue::Empty),
+                          (TokenType::Identifier, TokenValue::Identifier("a".to_string())),
+                          (TokenType::Assign, TokenValue::Empty),
+                          (TokenType::Integer, TokenValue::Integer(5))];
+        let lexer = MockLexer::new(tokens);
+        let parser = Parser::new(lexer);
+        assert!(parser.load_first_token().is_ok());
+        let mut ast = Ast::new();
+
+        assert!(parser.compound_statement(&mut ast).is_err());
+    }
+
+    #[test]
+    fn parser_compound_statement_returns_error_when_statements_arent_separated_with_semicolons() {
+        // Input: BEGIN a := 5 b := 6 END
+        let tokens = vec![(TokenType::Begin, TokenValue::Empty),
+                          (TokenType::Identifier, TokenValue::Identifier("a".to_string())),
+                          (TokenType::Assign, TokenValue::Empty),
+                          (TokenType::Integer, TokenValue::Integer(5)),
+                          (TokenType::Identifier, TokenValue::Identifier("b".to_string())),
+                          (TokenType::Assign, TokenValue::Empty),
+                          (TokenType::Integer, TokenValue::Integer(6)),
+                          (TokenType::End, TokenValue::Empty)];
+        let lexer = MockLexer::new(tokens);
+        let parser = Parser::new(lexer);
+        assert!(parser.load_first_token().is_ok());
+        let mut ast = Ast::new();
+
+        assert!(parser.compound_statement(&mut ast).is_err());
+    }
+
+    #[test]
+    fn parser_compound_statement_parses_nested_compound_statement() {
+        // Input: BEGIN BEGIN a := 5 END END
+        let tokens = vec![(TokenType::Begin, TokenValue::Empty),
+                          (TokenType::Begin, TokenValue::Empty),
+                          (TokenType::Identifier, TokenValue::Identifier("a".to_string())),
+                          (TokenType::Assign, TokenValue::Empty),
+                          (TokenType::Integer, TokenValue::Integer(5)),
+                          (TokenType::End, TokenValue::Empty),
+                          (TokenType::End, TokenValue::Empty)];
+        let lexer = MockLexer::new(tokens);
+        let parser = Parser::new(lexer);
+        assert!(parser.load_first_token().is_ok());
+        let mut ast = Ast::new();
+
+        let outer_index = parser.compound_statement(&mut ast).unwrap();
+        let outer_node = ast.get_node(outer_index);
+        assert_eq!(outer_node.get_parent(), None);
+
+        let inner_index = outer_node.get_children()[0];
+        let inner_node = ast.get_node(inner_index);
+        assert_eq!(inner_node.get_parent(), Some(outer_index));
+
+        let stmt_index = inner_node.get_children()[0];
+        let stmt_node = ast.get_node(stmt_index);
+        assert_eq!(stmt_node.get_parent(), Some(inner_index));
+
+        let var_index = stmt_node.get_children()[0];
+        let var_node = ast.get_node(var_index);
+        assert_eq!(var_node.get_parent(), Some(stmt_index));
+        assert_eq!(var_node.get_value().unwrap(),
+                   TokenValue::Identifier("a".to_string()));
     }
 }
