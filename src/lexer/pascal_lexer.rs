@@ -396,6 +396,51 @@ mod tests {
     }
 
     #[test]
+    fn lexer_should_recognize_expressions_that_contain_multi_digit_integer() {
+        let lexer = PascalLexer::new(&"44+3".to_string());
+        let mut next_token = lexer.get_next_token().unwrap();
+        assert_eq!(TokenType::Integer, next_token.token_type);
+        assert_eq!(44, next_token.value.unwrap().extract_integer_value());
+        next_token = lexer.get_next_token().unwrap();
+        assert_eq!(TokenType::Operator, next_token.token_type);
+        assert_eq!(OperatorType::Plus,
+                   next_token.value.unwrap().extract_operator_type());
+        next_token = lexer.get_next_token().unwrap();
+        assert_eq!(TokenType::Integer, next_token.token_type);
+        assert_eq!(3, next_token.value.unwrap().extract_integer_value());
+    }
+
+    #[test]
+    fn lexer_should_recognize_expressions_that_begin_with_whitespace_characters() {
+        let lexer = PascalLexer::new(&" 2 + 3".to_string());
+        let mut next_token = lexer.get_next_token().unwrap();
+        assert_eq!(TokenType::Integer, next_token.token_type);
+        assert_eq!(2, next_token.value.unwrap().extract_integer_value());
+        next_token = lexer.get_next_token().unwrap();
+        assert_eq!(TokenType::Operator, next_token.token_type);
+        assert_eq!(OperatorType::Plus,
+                   next_token.value.unwrap().extract_operator_type());
+        next_token = lexer.get_next_token().unwrap();
+        assert_eq!(TokenType::Integer, next_token.token_type);
+        assert_eq!(3, next_token.value.unwrap().extract_integer_value());
+    }
+
+    #[test]
+    fn lexer_should_recognize_expressions_that_contain_whitespace_characters() {
+        let lexer = PascalLexer::new(&"2 + 3".to_string());
+        let mut next_token = lexer.get_next_token().unwrap();
+        assert_eq!(TokenType::Integer, next_token.token_type);
+        assert_eq!(2, next_token.value.unwrap().extract_integer_value());
+        next_token = lexer.get_next_token().unwrap();
+        assert_eq!(TokenType::Operator, next_token.token_type);
+        assert_eq!(OperatorType::Plus,
+                   next_token.value.unwrap().extract_operator_type());
+        next_token = lexer.get_next_token().unwrap();
+        assert_eq!(TokenType::Integer, next_token.token_type);
+        assert_eq!(3, next_token.value.unwrap().extract_integer_value());
+    }
+
+    #[test]
     fn lexer_get_next_token_returns_left_parenthesis_when_input_is_left_parenthesis() {
         let lexer = PascalLexer::new(&"(".to_string());
         let next_token = lexer.get_next_token().unwrap();

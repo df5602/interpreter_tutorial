@@ -60,7 +60,7 @@ fn main() {
                 // Evaluate input
                 let interpreter = Interpreter::new(&ast);
                 match interpreter.interpret() {
-                    Ok(result) => println!("{}", result),
+                    Ok(_) => interpreter.print_symbols(),
                     Err(e) => print_error(&input, e),
                 }
             }
@@ -70,52 +70,5 @@ fn main() {
             }
         }
         print_preamble();
-    }
-}
-
-#[cfg(test)]
-mod integration_tests {
-    use ast::Ast;
-    use lexer::PascalLexer;
-    use parser::Parser;
-    use interpreter::Interpreter;
-
-    #[test]
-    fn parser_should_parse_expressions_that_contain_multi_digit_integer() {
-        let input = "44+3".to_string();
-        let lexer = PascalLexer::new(&input);
-        let parser = Parser::new(lexer);
-        let mut ast = Ast::new();
-        let result = parser.parse(&mut ast);
-        assert!(result.is_ok());
-        let interpreter = Interpreter::new(&ast);
-        let result_i = interpreter.interpret();
-        assert_eq!(47, result_i.unwrap());
-    }
-
-    #[test]
-    fn parser_should_parse_expressions_that_contain_whitespace_characters() {
-        let input = "2 + 3".to_string();
-        let lexer = PascalLexer::new(&input);
-        let parser = Parser::new(lexer);
-        let mut ast = Ast::new();
-        let result = parser.parse(&mut ast);
-        assert!(result.is_ok());
-        let interpreter = Interpreter::new(&ast);
-        let result_i = interpreter.interpret();
-        assert_eq!(5, result_i.unwrap());
-    }
-
-    #[test]
-    fn parser_should_parse_expressions_that_begin_with_whitespace_characters() {
-        let input = " 2 + 3".to_string();
-        let lexer = PascalLexer::new(&input);
-        let parser = Parser::new(lexer);
-        let mut ast = Ast::new();
-        let result = parser.parse(&mut ast);
-        assert!(result.is_ok());
-        let interpreter = Interpreter::new(&ast);
-        let result_i = interpreter.interpret();
-        assert_eq!(5, result_i.unwrap());
     }
 }

@@ -1,6 +1,7 @@
 use std::cell::RefCell;
 use tokens::{Token, TokenType, OperatorType};
-use ast::{Ast, AstIndex, BinaryOperatorNode, UnaryOperatorNode, IntegerNode};
+use ast::{Ast, AstIndex, BinaryOperatorNode, UnaryOperatorNode, IntegerNode, VariableNode,
+          AssignmentStmtNode};
 use errors::SyntaxError;
 use lexer::Lexer;
 
@@ -70,7 +71,7 @@ impl<L: Lexer> Parser<L> {
     pub fn parse(&self, ast: &mut Ast) -> Result<(), SyntaxError> {
         self.load_first_token()?;
 
-        self.expr(ast)?;
+        self.assignment_statement(ast)?;
 
         self.eat(TokenType::Eof)?;
 
@@ -82,6 +83,34 @@ impl<L: Lexer> Parser<L> {
                 position: (0, 0),
             })
         }
+    }
+
+    /// Evaluates an assignment statement:
+    /// assignment_statement -> variable ASSIGN expr
+    fn assignment_statement(&self, ast: &mut Ast) -> Result<AstIndex, SyntaxError> {
+        let variable = self.variable(ast)?;
+
+        let assign_token = self.get_current_token();
+        self.eat(TokenType::Assign)?;
+
+        let expression = self.expr(ast)?;
+
+        // Construct AST node
+        let node = AssignmentStmtNode::new(variable, expression, assign_token);
+        Ok(ast.add_node(node))
+    }
+
+    /// Creates a variable node
+    fn variable(&self, ast: &mut Ast) -> Result<AstIndex, SyntaxError> {
+        let variable = self.get_current_token();
+        self.eat(TokenType::Identifier)?;
+
+        // Extract name
+        let name = variable.value.as_ref().unwrap().extract_identifier_value();
+
+        // Construct AST node
+        let node = VariableNode::new(name, variable);
+        Ok(ast.add_node(node))
     }
 
     // Evaluates an expression:
@@ -645,5 +674,120 @@ mod tests {
         let mut ast = Ast::new();
         let result = parser.parse(&mut ast);
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn parser_variable_creates_variable_node_when_token_is_identifier() {
+        // Input: a
+        let tokens = vec![(TokenType::Identifier, TokenValue::Identifier("a".to_string()))];
+        let lexer = MockLexer::new(tokens);
+        let parser = Parser::new(lexer);
+        assert!(parser.load_first_token().is_ok());
+        let mut ast = Ast::new();
+        let var_index = parser.variable(&mut ast).unwrap();
+        let var_node = ast.get_node(var_index);
+        assert_eq!(var_node.get_parent(), None);
+        assert_eq!(var_node.get_value().unwrap(),
+                   TokenValue::Identifier("a".to_string()));
+    }
+
+    #[test]
+    fn parser_variable_returns_error_when_token_is_no_identifier() {
+        // Input: 5
+        let tokens = vec![(TokenType::Integer, TokenValue::Integer(5))];
+        let lexer = MockLexer::new(tokens);
+        let parser = Parser::new(lexer);
+        assert!(parser.load_first_token().is_ok());
+        let mut ast = Ast::new();
+        let result = parser.variable(&mut ast);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn parser_assignment_statement_parses_assignment_statement() {
+        // Input: a := 5
+        let tokens = vec![(TokenType::Identifier, TokenValue::Identifier("a".to_string())),
+                          (TokenType::Assign, TokenValue::Empty),
+                          (TokenType::Integer, TokenValue::Integer(5))];
+        let lexer = MockLexer::new(tokens);
+        let parser = Parser::new(lexer);
+        assert!(parser.load_first_token().is_ok());
+        let mut ast = Ast::new();
+        let assign_index = parser.assignment_statement(&mut ast).unwrap();
+        let assign_node = ast.get_node(assign_index);
+        assert_eq!(assign_node.get_parent(), None);
+        let children = assign_node.get_children();
+        let var_node = ast.get_node(children[0]);
+        assert_eq!(var_node.get_parent(), Some(assign_index));
+        assert_eq!(var_node.get_value().unwrap(),
+                   TokenValue::Identifier("a".to_string()));
+        let expr_node = ast.get_node(children[1]);
+        assert_eq!(expr_node.get_parent(), Some(assign_index));
+        assert_eq!(expr_node.get_value().unwrap(), TokenValue::Integer(5));
+    }
+
+    #[test]
+    fn parser_assignment_statement_parses_assignment_statement_with_expression() {
+        // Input: a := 5 + 7
+        let tokens = vec![(TokenType::Identifier, TokenValue::Identifier("a".to_string())),
+                          (TokenType::Assign, TokenValue::Empty),
+                          (TokenType::Integer, TokenValue::Integer(5)),
+                          (TokenType::Operator, TokenValue::Operator(OperatorType::Plus)),
+                          (TokenType::Integer, TokenValue::Integer(7))];
+        let lexer = MockLexer::new(tokens);
+        let parser = Parser::new(lexer);
+        assert!(parser.load_first_token().is_ok());
+        let mut ast = Ast::new();
+        let assign_index = parser.assignment_statement(&mut ast).unwrap();
+        let assign_node = ast.get_node(assign_index);
+        assert_eq!(assign_node.get_parent(), None);
+        let children = assign_node.get_children();
+        let var_node = ast.get_node(children[0]);
+        assert_eq!(var_node.get_parent(), Some(assign_index));
+        assert_eq!(var_node.get_value().unwrap(),
+                   TokenValue::Identifier("a".to_string()));
+        let expr_node = ast.get_node(children[1]);
+        assert_eq!(expr_node.get_parent(), Some(assign_index));
+        assert_eq!(expr_node.get_value().unwrap(),
+                   TokenValue::Operator(OperatorType::Plus));
+    }
+
+    #[test]
+    fn parser_assignment_statement_doesnt_parse_assignment_without_variable_on_the_left() {
+        // Input: 1 := 5
+        let tokens = vec![(TokenType::Integer, TokenValue::Integer(1)),
+                          (TokenType::Assign, TokenValue::Empty),
+                          (TokenType::Integer, TokenValue::Integer(5))];
+        let lexer = MockLexer::new(tokens);
+        let parser = Parser::new(lexer);
+        assert!(parser.load_first_token().is_ok());
+        let mut ast = Ast::new();
+        assert!(parser.assignment_statement(&mut ast).is_err());
+    }
+
+    #[test]
+    fn parser_assignment_statement_doesnt_parse_assignment_without_assign_token_in_the_middle() {
+        // Input: a + 5
+        let tokens = vec![(TokenType::Identifier, TokenValue::Identifier("a".to_string())),
+                          (TokenType::Operator, TokenValue::Operator(OperatorType::Plus)),
+                          (TokenType::Integer, TokenValue::Integer(5))];
+        let lexer = MockLexer::new(tokens);
+        let parser = Parser::new(lexer);
+        assert!(parser.load_first_token().is_ok());
+        let mut ast = Ast::new();
+        assert!(parser.assignment_statement(&mut ast).is_err());
+    }
+
+    #[test]
+    fn parser_assignment_statement_doesnt_parse_assignment_without_expression_on_the_right() {
+        // Input: a := BEGIN
+        let tokens = vec![(TokenType::Identifier, TokenValue::Identifier("a".to_string())),
+                          (TokenType::Assign, TokenValue::Empty),
+                          (TokenType::Begin, TokenValue::Empty)];
+        let lexer = MockLexer::new(tokens);
+        let parser = Parser::new(lexer);
+        assert!(parser.load_first_token().is_ok());
+        let mut ast = Ast::new();
+        assert!(parser.assignment_statement(&mut ast).is_err());
     }
 }
