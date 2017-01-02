@@ -96,7 +96,7 @@ mod tests {
 
     #[test]
     fn interpreter_can_evaluate_nested_expressions() {
-        // Input: BEGIN a := 7+3*(10/(12/(3+1)-1)) END.
+        // Input: BEGIN a := 7+3*(10 div (12 div (3+1)-1)) END.
         let tokens = vec![(TokenType::Begin, TokenValue::Empty),
                           (TokenType::Identifier, TokenValue::Identifier("a".to_string())),
                           (TokenType::Assign, TokenValue::Empty),
@@ -174,7 +174,7 @@ mod tests {
 
     #[test]
     fn interpreter_should_give_precedence_to_multiplication_and_division() {
-        // Input: BEGIN a := 14+2*3-6/2 END.
+        // Input: BEGIN a := 14+2*3-6 div 2 END.
         let tokens = vec![(TokenType::Begin, TokenValue::Empty),
                           (TokenType::Identifier, TokenValue::Identifier("a".to_string())),
                           (TokenType::Assign, TokenValue::Empty),
@@ -322,7 +322,7 @@ mod tests {
 
     #[test]
     fn interpreter_should_evaluate_chained_multiplications_and_divisions_from_left_to_right() {
-        // Input: BEGIN a := 6/2*3 END.
+        // Input: BEGIN a := 6 div 2*3 END.
         let tokens = vec![(TokenType::Begin, TokenValue::Empty),
                           (TokenType::Identifier, TokenValue::Identifier("a".to_string())),
                           (TokenType::Assign, TokenValue::Empty),
@@ -386,7 +386,7 @@ mod tests {
 
     #[test]
     fn interpreter_should_return_error_when_division_by_zero() {
-        // Input: BEGIN a := 1/0 END.
+        // Input: BEGIN a := 1 div 0 END.
         let tokens = vec![(TokenType::Begin, TokenValue::Empty),
                           (TokenType::Identifier, TokenValue::Identifier("a".to_string())),
                           (TokenType::Assign, TokenValue::Empty),
@@ -405,7 +405,7 @@ mod tests {
 
     #[test]
     fn interpreter_should_divide_values_when_expression_is_division() {
-        // Input: BEGIN a := 6/2 END.
+        // Input: BEGIN a := 6 div 2 END.
         let tokens = vec![(TokenType::Begin, TokenValue::Empty),
                           (TokenType::Identifier, TokenValue::Identifier("a".to_string())),
                           (TokenType::Assign, TokenValue::Empty),

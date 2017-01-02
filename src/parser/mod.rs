@@ -412,7 +412,7 @@ mod tests {
 
     #[test]
     fn parser_expr_should_not_parse_expressions_that_dont_terminate_with_eof() {
-        // Input: 1+3/
+        // Input: 1+3 div
         let tokens = vec![(TokenType::Integer, TokenValue::Integer(1)),
                           (TokenType::Operator, TokenValue::Operator(OperatorType::Plus)),
                           (TokenType::Integer, TokenValue::Integer(3)),
@@ -484,7 +484,7 @@ mod tests {
 
     #[test]
     fn parser_term_should_create_operator_node_when_expression_is_division() {
-        // Input: 4/2
+        // Input: 4 div 2
         let tokens = vec![(TokenType::Integer, TokenValue::Integer(4)),
                           (TokenType::Operator, TokenValue::Operator(OperatorType::Division)),
                           (TokenType::Integer, TokenValue::Integer(2))];
@@ -523,7 +523,7 @@ mod tests {
 
     #[test]
     fn parser_term_should_not_parse_expressions_that_dont_have_integer_after_operator() {
-        // Input: 4*/
+        // Input: 4*div
         let tokens = vec![(TokenType::Integer, TokenValue::Integer(4)),
                           (TokenType::Operator, TokenValue::Operator(OperatorType::Times)),
                           (TokenType::Operator, TokenValue::Operator(OperatorType::Division))];
@@ -549,7 +549,7 @@ mod tests {
 
     #[test]
     fn parser_term_should_not_parse_expressions_that_dont_terminate_with_eof() {
-        // Input: 1*3/
+        // Input: 1*3 div
         let tokens = vec![(TokenType::Integer, TokenValue::Integer(1)),
                           (TokenType::Operator, TokenValue::Operator(OperatorType::Times)),
                           (TokenType::Integer, TokenValue::Integer(3)),
@@ -676,7 +676,7 @@ mod tests {
 
     #[test]
     fn parser_factor_returns_error_if_input_consists_of_unary_division() {
-        // Input: /5
+        // Input: div 5
         let tokens = vec![(TokenType::Operator, TokenValue::Operator(OperatorType::Division)),
                           (TokenType::Integer, TokenValue::Integer(5))];
         let lexer = MockLexer::new(tokens);

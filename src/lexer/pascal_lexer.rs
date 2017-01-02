@@ -66,14 +66,6 @@ impl Lexer for PascalLexer {
                                  (pos, pos + 1)));
         }
 
-        // Return DIVISION when the next character is '/'
-        if current_char == '/' {
-            self.pos.set(pos + 1);
-            return Ok(Token::new(TokenType::Operator,
-                                 Some(TokenValue::Operator(OperatorType::Division)),
-                                 (pos, pos + 1)));
-        }
-
         // Return LPAREN when the next character is '('
         if current_char == '(' {
             self.pos.set(pos + 1);
@@ -188,6 +180,11 @@ impl PascalLexer {
         match result.as_ref() {
             "begin" => return Ok(Token::new(TokenType::Begin, None, (start_pos, pos))),
             "end" => return Ok(Token::new(TokenType::End, None, (start_pos, pos))),
+            "div" => {
+                return Ok(Token::new(TokenType::Operator,
+                                     Some(TokenValue::Operator(OperatorType::Division)),
+                                     (start_pos, pos)))
+            }
             _ => {}
         }
 
@@ -340,14 +337,14 @@ mod tests {
 
     #[test]
     fn lexer_get_next_token_returns_division_when_input_is_division() {
-        let lexer = PascalLexer::new(&"/".to_string());
+        let lexer = PascalLexer::new(&"div".to_string());
         let next_token = lexer.get_next_token().unwrap();
         assert_eq!(TokenType::Operator, next_token.token_type);
     }
 
     #[test]
     fn lexer_get_next_token_returns_operator_value_division_when_input_is_operator_division() {
-        let lexer = PascalLexer::new(&"/".to_string());
+        let lexer = PascalLexer::new(&"div".to_string());
         let next_token = lexer.get_next_token().unwrap();
         match next_token.value.unwrap() {
             TokenValue::Operator(value) => assert_eq!(OperatorType::Division, value),
