@@ -249,12 +249,15 @@ impl<L: Lexer> Parser<L> {
     }
 
     // Evaluates a factor:
-    // factor -> ( PLUS | MINUS) factor | INTEGER | LPAREN expr RPAREN
+    // factor -> ( PLUS | MINUS) factor
+    //           | INTEGER
+    //           | LPAREN expr RPAREN
+    //           | variable
     //
     // Precondition: First token has been loaded
     fn factor(&self, ast: &mut Ast) -> Result<AstIndex, SyntaxError> {
 
-        // First token should be an INTEGER, PLUS, MINUS or LPAREN
+        // First token should be an INTEGER, PLUS, MINUS, LPAREN or IDENTIFIER
         let current_token = self.get_current_token();
 
         if current_token.token_type == TokenType::Integer {
@@ -282,7 +285,7 @@ impl<L: Lexer> Parser<L> {
                     position: current_token.position,
                 })
             }
-        } else {
+        } else if current_token.token_type == TokenType::LParen {
             self.eat(TokenType::LParen)?;
 
             let result = self.expr(ast)?;
@@ -290,6 +293,8 @@ impl<L: Lexer> Parser<L> {
             self.eat(TokenType::RParen)?;
 
             Ok(result)
+        } else {
+            self.variable(ast)
         }
     }
 }
@@ -725,6 +730,22 @@ mod tests {
         let mut ast = Ast::new();
         let result = parser.factor(&mut ast);
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn parser_factor_creates_variable_node_when_it_encounters_identifier() {
+        // Input: a
+        let tokens = vec![(TokenType::Identifier, TokenValue::Identifier("a".to_string()))];
+        let lexer = MockLexer::new(tokens);
+        let parser = Parser::new(lexer);
+        assert!(parser.load_first_token().is_ok());
+        let mut ast = Ast::new();
+
+        let var_index = parser.factor(&mut ast).unwrap();
+        let var_node = ast.get_node(var_index);
+        assert_eq!(var_node.get_parent(), None);
+        assert_eq!(var_node.get_value().unwrap(),
+                   TokenValue::Identifier("a".to_string()));
     }
 
     #[test]

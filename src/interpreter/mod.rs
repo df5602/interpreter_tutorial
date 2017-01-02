@@ -555,4 +555,69 @@ mod tests {
         assert_eq!(2, interpreter.lookup(&"a".to_string()).unwrap());
         assert_eq!(5, interpreter.lookup(&"b".to_string()).unwrap());
     }
+
+    #[test]
+    fn interpreter_can_assign_value_of_variable_to_other_variable() {
+        // Input: BEGIN a := 2; b := a END.
+        let tokens = vec![(TokenType::Begin, TokenValue::Empty),
+                          (TokenType::Identifier, TokenValue::Identifier("a".to_string())),
+                          (TokenType::Assign, TokenValue::Empty),
+                          (TokenType::Integer, TokenValue::Integer(2)),
+                          (TokenType::Semicolon, TokenValue::Empty),
+                          (TokenType::Identifier, TokenValue::Identifier("b".to_string())),
+                          (TokenType::Assign, TokenValue::Empty),
+                          (TokenType::Identifier, TokenValue::Identifier("a".to_string())),
+                          (TokenType::End, TokenValue::Empty),
+                          (TokenType::Dot, TokenValue::Empty)];
+        let lexer = MockLexer::new(tokens);
+        let parser = Parser::new(lexer);
+        let mut ast = Ast::new();
+        assert!(parser.parse(&mut ast).is_ok());
+        let interpreter = Interpreter::new(&ast);
+        assert!(interpreter.interpret().is_ok());
+        assert_eq!(2, interpreter.lookup(&"a".to_string()).unwrap());
+        assert_eq!(2, interpreter.lookup(&"b".to_string()).unwrap());
+    }
+
+    #[test]
+    fn interpreter_can_assign_value_of_expression_with_variable_to_other_variable() {
+        // Input: BEGIN a := 2; b := 1 + a END.
+        let tokens = vec![(TokenType::Begin, TokenValue::Empty),
+                          (TokenType::Identifier, TokenValue::Identifier("a".to_string())),
+                          (TokenType::Assign, TokenValue::Empty),
+                          (TokenType::Integer, TokenValue::Integer(2)),
+                          (TokenType::Semicolon, TokenValue::Empty),
+                          (TokenType::Identifier, TokenValue::Identifier("b".to_string())),
+                          (TokenType::Assign, TokenValue::Empty),
+                          (TokenType::Integer, TokenValue::Integer(1)),
+                          (TokenType::Operator, TokenValue::Operator(OperatorType::Plus)),
+                          (TokenType::Identifier, TokenValue::Identifier("a".to_string())),
+                          (TokenType::End, TokenValue::Empty),
+                          (TokenType::Dot, TokenValue::Empty)];
+        let lexer = MockLexer::new(tokens);
+        let parser = Parser::new(lexer);
+        let mut ast = Ast::new();
+        assert!(parser.parse(&mut ast).is_ok());
+        let interpreter = Interpreter::new(&ast);
+        assert!(interpreter.interpret().is_ok());
+        assert_eq!(2, interpreter.lookup(&"a".to_string()).unwrap());
+        assert_eq!(3, interpreter.lookup(&"b".to_string()).unwrap());
+    }
+
+    #[test]
+    fn interpreter_returns_error_when_assigning_unknown_variable_to_other_variable() {
+        // Input: BEGIN a := b END.
+        let tokens = vec![(TokenType::Begin, TokenValue::Empty),
+                          (TokenType::Identifier, TokenValue::Identifier("a".to_string())),
+                          (TokenType::Assign, TokenValue::Empty),
+                          (TokenType::Identifier, TokenValue::Identifier("b".to_string())),
+                          (TokenType::End, TokenValue::Empty),
+                          (TokenType::Dot, TokenValue::Empty)];
+        let lexer = MockLexer::new(tokens);
+        let parser = Parser::new(lexer);
+        let mut ast = Ast::new();
+        assert!(parser.parse(&mut ast).is_ok());
+        let interpreter = Interpreter::new(&ast);
+        assert!(interpreter.interpret().is_err());
+    }
 }
