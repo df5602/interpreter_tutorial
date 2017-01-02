@@ -1,3 +1,5 @@
+//! This module contains the parser.
+
 use std::cell::RefCell;
 use tokens::{Token, TokenType, OperatorType};
 use ast::{Ast, AstIndex, BinaryOperatorNode, UnaryOperatorNode, IntegerNode, VariableNode,
@@ -5,12 +7,14 @@ use ast::{Ast, AstIndex, BinaryOperatorNode, UnaryOperatorNode, IntegerNode, Var
 use errors::SyntaxError;
 use lexer::Lexer;
 
+/// Parser type. It is generic over any Lexer implementing the `Lexer` trait.
 pub struct Parser<L> {
     current_token: RefCell<Option<Token>>,
     lexer: L,
 }
 
 impl<L: Lexer> Parser<L> {
+    /// Construct new `Parser`.
     pub fn new(lexer: L) -> Parser<L> {
         Parser {
             current_token: RefCell::new(None),
@@ -18,7 +22,7 @@ impl<L: Lexer> Parser<L> {
         }
     }
 
-    // Consumes current token if it is of the expected type
+    /// Consumes current token if it is of the expected type
     fn eat(&self, token_type: TokenType) -> Result<(), SyntaxError> {
         let mut current_token = self.current_token.borrow_mut();
 
@@ -48,7 +52,7 @@ impl<L: Lexer> Parser<L> {
         }
     }
 
-    // Loads first token
+    /// Loads first token
     fn load_first_token(&self) -> Result<(), SyntaxError> {
         let mut current_token = self.current_token.borrow_mut();
         let next_token = self.lexer.get_next_token();
@@ -60,14 +64,14 @@ impl<L: Lexer> Parser<L> {
         }
     }
 
-    // Gets a clone of the current token
-    // Precondition: First token has been loaded
+    /// Gets a clone of the current token
+    /// Precondition: First token has been loaded
     fn get_current_token(&self) -> Token {
         self.current_token.borrow().clone().unwrap()
     }
 
-    // Start parsing: load first token, call expr() and checks that last token is an EOF
-    // As a sanity check, the generated AST is checked for contiguity
+    /// Start parsing: load first token, parse input and checks that last token is an EOF
+    /// As a sanity check, the generated AST is checked for contiguity
     pub fn parse(&self, ast: &mut Ast) -> Result<(), SyntaxError> {
         self.load_first_token()?;
 
@@ -85,7 +89,7 @@ impl<L: Lexer> Parser<L> {
         }
     }
 
-    /// Evaluates a program:
+    /// Evaluate a program:
     /// program -> compound_statement DOT
     fn program(&self, ast: &mut Ast) -> Result<AstIndex, SyntaxError> {
         // Expect compound statement
@@ -97,7 +101,7 @@ impl<L: Lexer> Parser<L> {
         Ok(result)
     }
 
-    /// Evaluates a compound statement:
+    /// Evaluate a compound statement:
     /// compound_statement -> BEGIN statement_list END
     fn compound_statement(&self, ast: &mut Ast) -> Result<AstIndex, SyntaxError> {
         // Expect BEGIN keyword
@@ -116,7 +120,7 @@ impl<L: Lexer> Parser<L> {
         Ok(ast.add_node(node))
     }
 
-    /// Evaluates a statement list:
+    /// Evaluate a statement list:
     /// statement_list -> statement (SEMICOLON statement)*
     fn statement_list(&self, ast: &mut Ast) -> Result<Vec<AstIndex>, SyntaxError> {
         let mut statements = Vec::new();
@@ -142,7 +146,7 @@ impl<L: Lexer> Parser<L> {
         }
     }
 
-    /// Evaluates a statement:
+    /// Evaluate a statement:
     /// statement -> (compound_statement | assignment_statement)?
     fn statement(&self, ast: &mut Ast) -> Result<Option<AstIndex>, SyntaxError> {
         match self.get_current_token().token_type {
@@ -152,7 +156,7 @@ impl<L: Lexer> Parser<L> {
         }
     }
 
-    /// Evaluates an assignment statement:
+    /// Evaluate an assignment statement:
     /// assignment_statement -> variable ASSIGN expr
     fn assignment_statement(&self, ast: &mut Ast) -> Result<AstIndex, SyntaxError> {
         let variable = self.variable(ast)?;
@@ -167,7 +171,7 @@ impl<L: Lexer> Parser<L> {
         Ok(ast.add_node(node))
     }
 
-    /// Creates a variable node
+    /// Create a variable node
     fn variable(&self, ast: &mut Ast) -> Result<AstIndex, SyntaxError> {
         let variable = self.get_current_token();
         self.eat(TokenType::Identifier)?;
@@ -180,10 +184,8 @@ impl<L: Lexer> Parser<L> {
         Ok(ast.add_node(node))
     }
 
-    // Evaluates an expression:
-    // expr -> term ((PLUS | MINUS) term)*
-    //
-    // Precondition: First token has been loaded
+    /// Evaluate an expression:
+    /// expr -> term ((PLUS | MINUS) term)*
     fn expr(&self, ast: &mut Ast) -> Result<AstIndex, SyntaxError> {
 
         // Expect a term on the left hand side
@@ -212,10 +214,8 @@ impl<L: Lexer> Parser<L> {
         }
     }
 
-    // Evaluates a term:
-    // term -> factor ((TIMES | DIVISION) factor)*
-    //
-    // Precondition: First token has been loaded
+    /// Evaluate a term:
+    /// term -> factor ((TIMES | DIVISION) factor)*
     fn term(&self, ast: &mut Ast) -> Result<AstIndex, SyntaxError> {
 
         // Expect a factor on the left hand side
@@ -248,13 +248,11 @@ impl<L: Lexer> Parser<L> {
         }
     }
 
-    // Evaluates a factor:
-    // factor -> ( PLUS | MINUS) factor
-    //           | INTEGER
-    //           | LPAREN expr RPAREN
-    //           | variable
-    //
-    // Precondition: First token has been loaded
+    /// Evaluate a factor:
+    /// factor -> ( PLUS | MINUS) factor
+    ///           | INTEGER
+    ///           | LPAREN expr RPAREN
+    ///           | variable
     fn factor(&self, ast: &mut Ast) -> Result<AstIndex, SyntaxError> {
 
         // First token should be an INTEGER, PLUS, MINUS, LPAREN or IDENTIFIER

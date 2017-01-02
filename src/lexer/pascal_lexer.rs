@@ -182,9 +182,12 @@ impl PascalLexer {
 
         self.pos.set(pos);
 
+        // Convert to lower case, since identifiers and keywords are case-insensitive
+        result = result.to_lowercase();
+
         match result.as_ref() {
-            "BEGIN" => return Ok(Token::new(TokenType::Begin, None, (start_pos, pos))),
-            "END" => return Ok(Token::new(TokenType::End, None, (start_pos, pos))),
+            "begin" => return Ok(Token::new(TokenType::Begin, None, (start_pos, pos))),
+            "end" => return Ok(Token::new(TokenType::End, None, (start_pos, pos))),
             _ => {}
         }
 
@@ -496,15 +499,29 @@ mod tests {
     }
 
     #[test]
-    fn lexer_get_next_token_returns_begin_token_when_input_is_begin_keyword() {
+    fn lexer_get_next_token_returns_begin_token_when_input_is_begin_keyword_uppercase() {
         let lexer = PascalLexer::new(&"BEGIN".to_string());
         let next_token = lexer.get_next_token().unwrap();
         assert_eq!(TokenType::Begin, next_token.token_type);
     }
 
     #[test]
-    fn lexer_get_next_token_returns_end_token_when_input_is_end_keyword() {
+    fn lexer_get_next_token_returns_begin_token_when_input_is_begin_keyword_mixed_case() {
+        let lexer = PascalLexer::new(&"beGIN".to_string());
+        let next_token = lexer.get_next_token().unwrap();
+        assert_eq!(TokenType::Begin, next_token.token_type);
+    }
+
+    #[test]
+    fn lexer_get_next_token_returns_end_token_when_input_is_end_keyword_uppercase() {
         let lexer = PascalLexer::new(&"END".to_string());
+        let next_token = lexer.get_next_token().unwrap();
+        assert_eq!(TokenType::End, next_token.token_type);
+    }
+
+    #[test]
+    fn lexer_get_next_token_returns_end_token_when_input_is_end_keyword_lowercase() {
+        let lexer = PascalLexer::new(&"end".to_string());
         let next_token = lexer.get_next_token().unwrap();
         assert_eq!(TokenType::End, next_token.token_type);
     }
@@ -512,6 +529,17 @@ mod tests {
     #[test]
     fn lexer_get_next_token_returns_identifier_token_when_input_is_string() {
         let lexer = PascalLexer::new(&"number".to_string());
+        let next_token = lexer.get_next_token().unwrap();
+        assert_eq!(TokenType::Identifier, next_token.token_type);
+        match next_token.value.unwrap() {
+            TokenValue::Identifier(id) => assert_eq!("number", id),
+            _ => assert!(false),
+        }
+    }
+
+    #[test]
+    fn lexer_identifiers_are_case_insensitive() {
+        let lexer = PascalLexer::new(&"nUmBeR".to_string());
         let next_token = lexer.get_next_token().unwrap();
         assert_eq!(TokenType::Identifier, next_token.token_type);
         match next_token.value.unwrap() {

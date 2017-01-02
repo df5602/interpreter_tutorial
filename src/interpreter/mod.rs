@@ -73,6 +73,7 @@ impl<'a> Interpreter<'a> {
     }
 
     /// Lookup symbol in symbol table
+    #[cfg(test)]
     fn lookup(&self, name: &String) -> Option<i64> {
         self.symbol_table.borrow().get(name).map(|val| *val)
     }
