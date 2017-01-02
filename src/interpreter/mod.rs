@@ -95,7 +95,7 @@ mod tests {
 
     #[test]
     fn interpreter_can_evaluate_nested_expressions() {
-        // Input: BEGIN a := 7+3*(10/(12/(3+1)-1)) END
+        // Input: BEGIN a := 7+3*(10/(12/(3+1)-1)) END.
         let tokens = vec![(TokenType::Begin, TokenValue::Empty),
                           (TokenType::Identifier, TokenValue::Identifier("a".to_string())),
                           (TokenType::Assign, TokenValue::Empty),
@@ -118,7 +118,8 @@ mod tests {
                           (TokenType::Integer, TokenValue::Integer(1)),
                           (TokenType::RParen, TokenValue::Empty),
                           (TokenType::RParen, TokenValue::Empty),
-                          (TokenType::End, TokenValue::Empty)];
+                          (TokenType::End, TokenValue::Empty),
+                          (TokenType::Dot, TokenValue::Empty)];
         let lexer = MockLexer::new(tokens);
         let parser = Parser::new(lexer);
         let mut ast = Ast::new();
@@ -130,14 +131,15 @@ mod tests {
 
     #[test]
     fn interpreter_should_add_values_when_expression_is_addition() {
-        // Input: BEGIN a := 3+4 END
+        // Input: BEGIN a := 3+4 END.
         let tokens = vec![(TokenType::Begin, TokenValue::Empty),
                           (TokenType::Identifier, TokenValue::Identifier("a".to_string())),
                           (TokenType::Assign, TokenValue::Empty),
                           (TokenType::Integer, TokenValue::Integer(3)),
                           (TokenType::Operator, TokenValue::Operator(OperatorType::Plus)),
                           (TokenType::Integer, TokenValue::Integer(4)),
-                          (TokenType::End, TokenValue::Empty)];
+                          (TokenType::End, TokenValue::Empty),
+                          (TokenType::Dot, TokenValue::Empty)];
         let lexer = MockLexer::new(tokens);
         let parser = Parser::new(lexer);
         let mut ast = Ast::new();
@@ -149,7 +151,7 @@ mod tests {
 
     #[test]
     fn interpreter_should_evaluate_chained_additions_and_subtractions_from_left_to_right() {
-        // Input: BEGIN a := 1-2+3 END
+        // Input: BEGIN a := 1-2+3 END.
         let tokens = vec![(TokenType::Begin, TokenValue::Empty),
                           (TokenType::Identifier, TokenValue::Identifier("a".to_string())),
                           (TokenType::Assign, TokenValue::Empty),
@@ -158,7 +160,8 @@ mod tests {
                           (TokenType::Integer, TokenValue::Integer(2)),
                           (TokenType::Operator, TokenValue::Operator(OperatorType::Plus)),
                           (TokenType::Integer, TokenValue::Integer(3)),
-                          (TokenType::End, TokenValue::Empty)];
+                          (TokenType::End, TokenValue::Empty),
+                          (TokenType::Dot, TokenValue::Empty)];
         let lexer = MockLexer::new(tokens);
         let parser = Parser::new(lexer);
         let mut ast = Ast::new();
@@ -170,7 +173,7 @@ mod tests {
 
     #[test]
     fn interpreter_should_give_precedence_to_multiplication_and_division() {
-        // Input: BEGIN a := 14+2*3-6/2 END
+        // Input: BEGIN a := 14+2*3-6/2 END.
         let tokens = vec![(TokenType::Begin, TokenValue::Empty),
                           (TokenType::Identifier, TokenValue::Identifier("a".to_string())),
                           (TokenType::Assign, TokenValue::Empty),
@@ -183,7 +186,8 @@ mod tests {
                           (TokenType::Integer, TokenValue::Integer(6)),
                           (TokenType::Operator, TokenValue::Operator(OperatorType::Division)),
                           (TokenType::Integer, TokenValue::Integer(2)),
-                          (TokenType::End, TokenValue::Empty)];
+                          (TokenType::End, TokenValue::Empty),
+                          (TokenType::Dot, TokenValue::Empty)];
         let lexer = MockLexer::new(tokens);
         let parser = Parser::new(lexer);
         let mut ast = Ast::new();
@@ -195,7 +199,7 @@ mod tests {
 
     #[test]
     fn interpreter_should_interpret_chained_additions() {
-        // Input: BEGIN a := 1+3+5 END
+        // Input: BEGIN a := 1+3+5 END.
         let tokens = vec![(TokenType::Begin, TokenValue::Empty),
                           (TokenType::Identifier, TokenValue::Identifier("a".to_string())),
                           (TokenType::Assign, TokenValue::Empty),
@@ -204,7 +208,8 @@ mod tests {
                           (TokenType::Integer, TokenValue::Integer(3)),
                           (TokenType::Operator, TokenValue::Operator(OperatorType::Plus)),
                           (TokenType::Integer, TokenValue::Integer(5)),
-                          (TokenType::End, TokenValue::Empty)];
+                          (TokenType::End, TokenValue::Empty),
+                          (TokenType::Dot, TokenValue::Empty)];
         let lexer = MockLexer::new(tokens);
         let parser = Parser::new(lexer);
         let mut ast = Ast::new();
@@ -216,12 +221,13 @@ mod tests {
 
     #[test]
     fn interpreter_should_return_integer_value_if_input_consists_of_only_integer() {
-        // Input: BEGIN a := 42 END
+        // Input: BEGIN a := 42 END.
         let tokens = vec![(TokenType::Begin, TokenValue::Empty),
                           (TokenType::Identifier, TokenValue::Identifier("a".to_string())),
                           (TokenType::Assign, TokenValue::Empty),
                           (TokenType::Integer, TokenValue::Integer(42)),
-                          (TokenType::End, TokenValue::Empty)];
+                          (TokenType::End, TokenValue::Empty),
+                          (TokenType::Dot, TokenValue::Empty)];
         let lexer = MockLexer::new(tokens);
         let parser = Parser::new(lexer);
         let mut ast = Ast::new();
@@ -233,14 +239,15 @@ mod tests {
 
     #[test]
     fn interpreter_should_return_negative_number_when_result_of_subtraction_is_negative() {
-        // Input: BEGIN a := 3-4 END
+        // Input: BEGIN a := 3-4 END.
         let tokens = vec![(TokenType::Begin, TokenValue::Empty),
                           (TokenType::Identifier, TokenValue::Identifier("a".to_string())),
                           (TokenType::Assign, TokenValue::Empty),
                           (TokenType::Integer, TokenValue::Integer(3)),
                           (TokenType::Operator, TokenValue::Operator(OperatorType::Minus)),
                           (TokenType::Integer, TokenValue::Integer(4)),
-                          (TokenType::End, TokenValue::Empty)];
+                          (TokenType::End, TokenValue::Empty),
+                          (TokenType::Dot, TokenValue::Empty)];
         let lexer = MockLexer::new(tokens);
         let parser = Parser::new(lexer);
         let mut ast = Ast::new();
@@ -252,14 +259,15 @@ mod tests {
 
     #[test]
     fn interpreter_should_subtract_values_when_expression_is_subtraction() {
-        // Input: BEGIN a := 4-3 END
+        // Input: BEGIN a := 4-3 END.
         let tokens = vec![(TokenType::Begin, TokenValue::Empty),
                           (TokenType::Identifier, TokenValue::Identifier("a".to_string())),
                           (TokenType::Assign, TokenValue::Empty),
                           (TokenType::Integer, TokenValue::Integer(4)),
                           (TokenType::Operator, TokenValue::Operator(OperatorType::Minus)),
                           (TokenType::Integer, TokenValue::Integer(3)),
-                          (TokenType::End, TokenValue::Empty)];
+                          (TokenType::End, TokenValue::Empty),
+                          (TokenType::Dot, TokenValue::Empty)];
         let lexer = MockLexer::new(tokens);
         let parser = Parser::new(lexer);
         let mut ast = Ast::new();
@@ -271,14 +279,15 @@ mod tests {
 
     #[test]
     fn interpreter_returns_integer_if_input_consists_of_integer_in_parentheses() {
-        // Input: BEGIN a := (6) END
+        // Input: BEGIN a := (6) END.
         let tokens = vec![(TokenType::Begin, TokenValue::Empty),
                           (TokenType::Identifier, TokenValue::Identifier("a".to_string())),
                           (TokenType::Assign, TokenValue::Empty),
                           (TokenType::LParen, TokenValue::Empty),
                           (TokenType::Integer, TokenValue::Integer(6)),
                           (TokenType::RParen, TokenValue::Empty),
-                          (TokenType::End, TokenValue::Empty)];
+                          (TokenType::End, TokenValue::Empty),
+                          (TokenType::Dot, TokenValue::Empty)];
         let lexer = MockLexer::new(tokens);
         let parser = Parser::new(lexer);
         let mut ast = Ast::new();
@@ -290,7 +299,7 @@ mod tests {
 
     #[test]
     fn interpreter_returns_result_of_expr_if_input_consists_of_expr_in_parentheses() {
-        // Input: BEGIN a := (6+3) END
+        // Input: BEGIN a := (6+3) END.
         let tokens = vec![(TokenType::Begin, TokenValue::Empty),
                           (TokenType::Identifier, TokenValue::Identifier("a".to_string())),
                           (TokenType::Assign, TokenValue::Empty),
@@ -299,7 +308,8 @@ mod tests {
                           (TokenType::Operator, TokenValue::Operator(OperatorType::Plus)),
                           (TokenType::Integer, TokenValue::Integer(3)),
                           (TokenType::RParen, TokenValue::Empty),
-                          (TokenType::End, TokenValue::Empty)];
+                          (TokenType::End, TokenValue::Empty),
+                          (TokenType::Dot, TokenValue::Empty)];
         let lexer = MockLexer::new(tokens);
         let parser = Parser::new(lexer);
         let mut ast = Ast::new();
@@ -311,7 +321,7 @@ mod tests {
 
     #[test]
     fn interpreter_should_evaluate_chained_multiplications_and_divisions_from_left_to_right() {
-        // Input: BEGIN a := 6/2*3 END
+        // Input: BEGIN a := 6/2*3 END.
         let tokens = vec![(TokenType::Begin, TokenValue::Empty),
                           (TokenType::Identifier, TokenValue::Identifier("a".to_string())),
                           (TokenType::Assign, TokenValue::Empty),
@@ -320,7 +330,8 @@ mod tests {
                           (TokenType::Integer, TokenValue::Integer(2)),
                           (TokenType::Operator, TokenValue::Operator(OperatorType::Times)),
                           (TokenType::Integer, TokenValue::Integer(3)),
-                          (TokenType::End, TokenValue::Empty)];
+                          (TokenType::End, TokenValue::Empty),
+                          (TokenType::Dot, TokenValue::Empty)];
         let lexer = MockLexer::new(tokens);
         let parser = Parser::new(lexer);
         let mut ast = Ast::new();
@@ -332,7 +343,7 @@ mod tests {
 
     #[test]
     fn interpreter_should_interpret_chained_multiplications() {
-        // Input: BEGIN a := 1*3*5 END
+        // Input: BEGIN a := 1*3*5 END.
         let tokens = vec![(TokenType::Begin, TokenValue::Empty),
                           (TokenType::Identifier, TokenValue::Identifier("a".to_string())),
                           (TokenType::Assign, TokenValue::Empty),
@@ -341,7 +352,8 @@ mod tests {
                           (TokenType::Integer, TokenValue::Integer(3)),
                           (TokenType::Operator, TokenValue::Operator(OperatorType::Times)),
                           (TokenType::Integer, TokenValue::Integer(5)),
-                          (TokenType::End, TokenValue::Empty)];
+                          (TokenType::End, TokenValue::Empty),
+                          (TokenType::Dot, TokenValue::Empty)];
         let lexer = MockLexer::new(tokens);
         let parser = Parser::new(lexer);
         let mut ast = Ast::new();
@@ -353,14 +365,15 @@ mod tests {
 
     #[test]
     fn interpreter_should_multiply_values_when_expression_is_multiplication() {
-        // Input: BEGIN a := 3*4 END
+        // Input: BEGIN a := 3*4 END.
         let tokens = vec![(TokenType::Begin, TokenValue::Empty),
                           (TokenType::Identifier, TokenValue::Identifier("a".to_string())),
                           (TokenType::Assign, TokenValue::Empty),
                           (TokenType::Integer, TokenValue::Integer(3)),
                           (TokenType::Operator, TokenValue::Operator(OperatorType::Times)),
                           (TokenType::Integer, TokenValue::Integer(4)),
-                          (TokenType::End, TokenValue::Empty)];
+                          (TokenType::End, TokenValue::Empty),
+                          (TokenType::Dot, TokenValue::Empty)];
         let lexer = MockLexer::new(tokens);
         let parser = Parser::new(lexer);
         let mut ast = Ast::new();
@@ -372,14 +385,15 @@ mod tests {
 
     #[test]
     fn interpreter_should_return_error_when_division_by_zero() {
-        // Input: BEGIN a := 1/0 END
+        // Input: BEGIN a := 1/0 END.
         let tokens = vec![(TokenType::Begin, TokenValue::Empty),
                           (TokenType::Identifier, TokenValue::Identifier("a".to_string())),
                           (TokenType::Assign, TokenValue::Empty),
                           (TokenType::Integer, TokenValue::Integer(1)),
                           (TokenType::Operator, TokenValue::Operator(OperatorType::Division)),
                           (TokenType::Integer, TokenValue::Integer(0)),
-                          (TokenType::End, TokenValue::Empty)];
+                          (TokenType::End, TokenValue::Empty),
+                          (TokenType::Dot, TokenValue::Empty)];
         let lexer = MockLexer::new(tokens);
         let parser = Parser::new(lexer);
         let mut ast = Ast::new();
@@ -390,14 +404,15 @@ mod tests {
 
     #[test]
     fn interpreter_should_divide_values_when_expression_is_division() {
-        // Input: BEGIN a := 6/2 END
+        // Input: BEGIN a := 6/2 END.
         let tokens = vec![(TokenType::Begin, TokenValue::Empty),
                           (TokenType::Identifier, TokenValue::Identifier("a".to_string())),
                           (TokenType::Assign, TokenValue::Empty),
                           (TokenType::Integer, TokenValue::Integer(6)),
                           (TokenType::Operator, TokenValue::Operator(OperatorType::Division)),
                           (TokenType::Integer, TokenValue::Integer(2)),
-                          (TokenType::End, TokenValue::Empty)];
+                          (TokenType::End, TokenValue::Empty),
+                          (TokenType::Dot, TokenValue::Empty)];
         let lexer = MockLexer::new(tokens);
         let parser = Parser::new(lexer);
         let mut ast = Ast::new();
@@ -409,13 +424,14 @@ mod tests {
 
     #[test]
     fn interpreter_should_negate_integer_when_expression_is_unary_minus() {
-        // Input: BEGIN a := -2 END
+        // Input: BEGIN a := -2 END.
         let tokens = vec![(TokenType::Begin, TokenValue::Empty),
                           (TokenType::Identifier, TokenValue::Identifier("a".to_string())),
                           (TokenType::Assign, TokenValue::Empty),
                           (TokenType::Operator, TokenValue::Operator(OperatorType::Minus)),
                           (TokenType::Integer, TokenValue::Integer(2)),
-                          (TokenType::End, TokenValue::Empty)];
+                          (TokenType::End, TokenValue::Empty),
+                          (TokenType::Dot, TokenValue::Empty)];
         let lexer = MockLexer::new(tokens);
         let parser = Parser::new(lexer);
         let mut ast = Ast::new();
@@ -427,7 +443,7 @@ mod tests {
 
     #[test]
     fn interpreter_should_negate_expression_when_expression_is_prefixed_with_unary_minus() {
-        // Input: BEGIN a := -(2+3) END
+        // Input: BEGIN a := -(2+3) END.
         let tokens = vec![(TokenType::Begin, TokenValue::Empty),
                           (TokenType::Identifier, TokenValue::Identifier("a".to_string())),
                           (TokenType::Assign, TokenValue::Empty),
@@ -437,7 +453,8 @@ mod tests {
                           (TokenType::Operator, TokenValue::Operator(OperatorType::Plus)),
                           (TokenType::Integer, TokenValue::Integer(3)),
                           (TokenType::RParen, TokenValue::Empty),
-                          (TokenType::End, TokenValue::Empty)];
+                          (TokenType::End, TokenValue::Empty),
+                          (TokenType::Dot, TokenValue::Empty)];
         let lexer = MockLexer::new(tokens);
         let parser = Parser::new(lexer);
         let mut ast = Ast::new();
@@ -449,13 +466,14 @@ mod tests {
 
     #[test]
     fn interpreter_should_return_integer_when_expression_is_unary_plus() {
-        // Input: BEGIN a := +2 END
+        // Input: BEGIN a := +2 END.
         let tokens = vec![(TokenType::Begin, TokenValue::Empty),
                           (TokenType::Identifier, TokenValue::Identifier("a".to_string())),
                           (TokenType::Assign, TokenValue::Empty),
                           (TokenType::Operator, TokenValue::Operator(OperatorType::Plus)),
                           (TokenType::Integer, TokenValue::Integer(2)),
-                          (TokenType::End, TokenValue::Empty)];
+                          (TokenType::End, TokenValue::Empty),
+                          (TokenType::Dot, TokenValue::Empty)];
         let lexer = MockLexer::new(tokens);
         let parser = Parser::new(lexer);
         let mut ast = Ast::new();
@@ -467,7 +485,7 @@ mod tests {
 
     #[test]
     fn interpreter_should_evaluate_chained_unary_operators() {
-        // Input: BEGIN a := 5 - - - + - 3 END
+        // Input: BEGIN a := 5 - - - + - 3 END.
         let tokens = vec![(TokenType::Begin, TokenValue::Empty),
                           (TokenType::Identifier, TokenValue::Identifier("a".to_string())),
                           (TokenType::Assign, TokenValue::Empty),
@@ -478,7 +496,8 @@ mod tests {
                           (TokenType::Operator, TokenValue::Operator(OperatorType::Plus)),
                           (TokenType::Operator, TokenValue::Operator(OperatorType::Minus)),
                           (TokenType::Integer, TokenValue::Integer(3)),
-                          (TokenType::End, TokenValue::Empty)];
+                          (TokenType::End, TokenValue::Empty),
+                          (TokenType::Dot, TokenValue::Empty)];
         let lexer = MockLexer::new(tokens);
         let parser = Parser::new(lexer);
         let mut ast = Ast::new();
@@ -490,7 +509,7 @@ mod tests {
 
     #[test]
     fn interpreter_assigns_multiple_variables() {
-        // Input: BEGIN a := 2; b := 5 END
+        // Input: BEGIN a := 2; b := 5 END.
         let tokens = vec![(TokenType::Begin, TokenValue::Empty),
                           (TokenType::Identifier, TokenValue::Identifier("a".to_string())),
                           (TokenType::Assign, TokenValue::Empty),
@@ -499,7 +518,8 @@ mod tests {
                           (TokenType::Identifier, TokenValue::Identifier("b".to_string())),
                           (TokenType::Assign, TokenValue::Empty),
                           (TokenType::Integer, TokenValue::Integer(5)),
-                          (TokenType::End, TokenValue::Empty)];
+                          (TokenType::End, TokenValue::Empty),
+                          (TokenType::Dot, TokenValue::Empty)];
         let lexer = MockLexer::new(tokens);
         let parser = Parser::new(lexer);
         let mut ast = Ast::new();
@@ -512,7 +532,7 @@ mod tests {
 
     #[test]
     fn interpreter_handles_nested_compound_statements() {
-        // Input: BEGIN a := 2; BEGIN b := 5 END; END
+        // Input: BEGIN a := 2; BEGIN b := 5 END; END.
         let tokens = vec![(TokenType::Begin, TokenValue::Empty),
                           (TokenType::Identifier, TokenValue::Identifier("a".to_string())),
                           (TokenType::Assign, TokenValue::Empty),
@@ -524,7 +544,8 @@ mod tests {
                           (TokenType::Integer, TokenValue::Integer(5)),
                           (TokenType::End, TokenValue::Empty),
                           (TokenType::Semicolon, TokenValue::Empty),
-                          (TokenType::End, TokenValue::Empty)];
+                          (TokenType::End, TokenValue::Empty),
+                          (TokenType::Dot, TokenValue::Empty)];
         let lexer = MockLexer::new(tokens);
         let parser = Parser::new(lexer);
         let mut ast = Ast::new();
