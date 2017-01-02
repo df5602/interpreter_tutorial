@@ -38,7 +38,8 @@ impl Lexer for PascalLexer {
         }
 
         // Return IDENTIFIER or keyword when the next character is alphabetic
-        if current_char.is_alphabetic() {
+        // or an underscore.
+        if current_char.is_alphabetic() || current_char == '_' {
             return self.recognize_identifier_of_keyword();
         }
 
@@ -154,7 +155,7 @@ impl PascalLexer {
         let start_pos = self.pos.get();
         let mut pos = start_pos;
         let mut current_char = self.chars[pos];
-        assert!(current_char.is_alphabetic());
+        assert!(current_char.is_alphabetic() || current_char == '_');
         let mut result = current_char.to_string();
 
         loop {
@@ -574,6 +575,28 @@ mod tests {
         match next_token.token_type {
             TokenType::Identifier => assert!(false),
             _ => assert!(true),
+        }
+    }
+
+    #[test]
+    fn lexer_get_next_token_identifiers_can_start_with_underscore() {
+        let lexer = PascalLexer::new(&"_number".to_string());
+        let next_token = lexer.get_next_token().unwrap();
+        assert_eq!(TokenType::Identifier, next_token.token_type);
+        match next_token.value.unwrap() {
+            TokenValue::Identifier(id) => assert_eq!("_number", id),
+            _ => assert!(false),
+        }
+    }
+
+    #[test]
+    fn lexer_get_next_token_identifiers_dont_end_with_underscore() {
+        let lexer = PascalLexer::new(&"num_".to_string());
+        let next_token = lexer.get_next_token().unwrap();
+        assert_eq!(TokenType::Identifier, next_token.token_type);
+        match next_token.value.unwrap() {
+            TokenValue::Identifier(id) => assert_eq!("num", id),
+            _ => assert!(false),
         }
     }
 }
