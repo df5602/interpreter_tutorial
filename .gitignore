@@ -1,6 +1,7 @@
 target
 doc
 main
+*.pas
 .DS_Store
 .gitignore.swp
 .gitignore~
