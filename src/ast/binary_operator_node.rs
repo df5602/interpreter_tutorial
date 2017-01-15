@@ -68,24 +68,6 @@ impl AstNode for BinaryOperatorNode {
     fn set_position(&mut self, position: (usize, usize)) {
         self.position = position;
     }
-
-    fn print(&self) -> String {
-        match self.parent {
-            Some(ref i) => {
-                format!("BinaryOperator(left: {}, right: {}, parent: {}, op: {})",
-                        self.left,
-                        self.right,
-                        i,
-                        self.operator)
-            }
-            None => {
-                format!("BinaryOperator(left: {}, right: {}, parent: None, op: {})",
-                        self.left,
-                        self.right,
-                        self.operator)
-            }
-        }
-    }
 }
 
 impl NodeVisitor for BinaryOperatorNode {

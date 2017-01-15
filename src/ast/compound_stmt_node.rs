@@ -64,20 +64,6 @@ impl AstNode for CompoundStmtNode {
     fn set_position(&mut self, position: (usize, usize)) {
         self.position = position;
     }
-
-    fn print(&self) -> String {
-        match self.parent {
-            Some(ref i) => {
-                format!("CompoundStatement(statements: {:?}, parent: {})",
-                        self.statement_list,
-                        i)
-            }
-            None => {
-                format!("CompoundStatement(statements: {:?}, parent: None)",
-                        self.statement_list)
-            }
-        }
-    }
 }
 
 impl NodeVisitor for CompoundStmtNode {

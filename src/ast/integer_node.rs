@@ -52,13 +52,6 @@ impl AstNode for IntegerNode {
     fn set_position(&mut self, position: (usize, usize)) {
         self.position = position;
     }
-
-    fn print(&self) -> String {
-        match self.parent {
-            Some(ref i) => format!("Integer(parent: {}, value: {})", i, self.value),
-            None => format!("Integer(parent: None, value: {})", self.value),
-        }
-    }
 }
 
 impl NodeVisitor for IntegerNode {

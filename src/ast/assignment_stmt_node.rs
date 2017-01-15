@@ -65,22 +65,6 @@ impl AstNode for AssignmentStmtNode {
     fn set_position(&mut self, position: (usize, usize)) {
         self.position = position;
     }
-
-    fn print(&self) -> String {
-        match self.parent {
-            Some(ref i) => {
-                format!("AssignmentStatement(variable: {}, expression: {}, parent: {})",
-                        self.variable,
-                        self.expression,
-                        i)
-            }
-            None => {
-                format!("AssignmentStatement(variable: {}, expression: {}, parent: None)",
-                        self.variable,
-                        self.expression)
-            }
-        }
-    }
 }
 
 impl NodeVisitor for AssignmentStmtNode {

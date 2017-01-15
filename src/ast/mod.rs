@@ -9,7 +9,7 @@ use interpreter::NodeVisitor;
 
 /// The `AstNode` trait. Nodes implementing the `AstNode` trait must
 /// also implement the `NodeVisitor` trait.
-pub trait AstNode: NodeVisitor {
+pub trait AstNode: NodeVisitor + fmt::Display {
     /// Returns the index of the parent node of `self`, if present, or `None`
     fn get_parent(&self) -> Option<AstIndex>;
     /// Sets `parent` as parent node of `self`.
@@ -24,8 +24,6 @@ pub trait AstNode: NodeVisitor {
     fn get_position(&self) -> (usize, usize);
     /// Sets the position in the input stream which corresponds to `self`.
     fn set_position(&mut self, position: (usize, usize));
-    /// Returns a `String` representing `self`.
-    fn print(&self) -> String;
 }
 
 /// Index into the AST.
@@ -73,7 +71,7 @@ impl<'a> fmt::Display for Ast<'a> {
                                   self.root,
                                   self.non_connected_nodes.len());
         for (i, node) in self.nodes.iter().enumerate() {
-            result = writeln!(f, "{}: {}", i, (*node).print());
+            result = writeln!(f, "{}: {}", i, node);
         }
         result
     }

@@ -65,22 +65,6 @@ impl AstNode for UnaryOperatorNode {
     fn set_position(&mut self, position: (usize, usize)) {
         self.position = position;
     }
-
-    fn print(&self) -> String {
-        match self.parent {
-            Some(ref i) => {
-                format!("UnaryOperator(operand: {}, parent: {}, op: {})",
-                        self.operand,
-                        i,
-                        self.operator)
-            }
-            None => {
-                format!("UnaryOperator(operand: {}, parent: None, op: {})",
-                        self.operand,
-                        self.operator)
-            }
-        }
-    }
 }
 
 impl NodeVisitor for UnaryOperatorNode {

@@ -52,13 +52,6 @@ impl AstNode for VariableNode {
     fn set_position(&mut self, position: (usize, usize)) {
         self.position = position;
     }
-
-    fn print(&self) -> String {
-        match self.parent {
-            Some(ref i) => format!("Variable(name: {}, parent: {})", self.name, i),
-            None => format!("Variable(name: {}, parent: None)", self.name),
-        }
-    }
 }
 
 impl NodeVisitor for VariableNode {
