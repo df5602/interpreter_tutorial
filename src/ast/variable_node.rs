@@ -77,7 +77,7 @@ impl VariableNode {
         VariableNode {
             name: name,
             parent: None,
-            position: (0, 0),
+            position: token.position,
             token: token,
         }
     }
