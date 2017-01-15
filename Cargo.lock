@@ -1,4 +1,14 @@
 [root]
 name = "interpreter_tutorial"
 version = "0.1.0"
+dependencies = [
+ "leftpad 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
 
+[[package]]
+name = "leftpad"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[metadata]
+"checksum leftpad 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "88f9cfcc08016e95dabba636661a4702c8407e1243e402f9e27b3d61029660f9"
