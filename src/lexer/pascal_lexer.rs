@@ -1,5 +1,6 @@
 //! This module contains a lexer that recognizes `Token`s in a Pascal program.
 use std::cell::Cell;
+use std::u64;
 use tokens::*;
 use errors::SyntaxError;
 use lexer::Lexer;
@@ -31,7 +32,7 @@ impl Lexer for PascalLexer {
 
         // Return INTEGER when the next character is a digit
         if current_char.is_digit(10) {
-            let value = self.get_integer();
+            let value = self.get_integer()?;
             return Ok(Token::new(TokenType::Integer,
                                  Some(TokenValue::Integer(value)),
                                  (pos, self.pos.get())));
@@ -123,8 +124,9 @@ impl PascalLexer {
 
     /// Returns a multi-digit (unsigned, base 10) integer
     /// Precondition: First character is digit
-    fn get_integer(&self) -> u64 {
+    fn get_integer(&self) -> Result<u64, SyntaxError> {
         let mut pos = self.pos.get();
+        let start_pos = pos;
         let mut current_char = self.chars[pos];
         assert!(current_char.is_digit(10));
         let mut result = current_char.to_digit(10).unwrap() as u64;
@@ -138,14 +140,21 @@ impl PascalLexer {
 
             current_char = self.chars[pos];
             if current_char.is_digit(10) {
-                result = result * 10 + (current_char.to_digit(10).unwrap() as u64);
+                let current_digit = current_char.to_digit(10).unwrap() as u64;
+                if result > (u64::MAX - current_digit) / 10 {
+                    return Err(SyntaxError {
+                        msg: "Integer is too large to be stored in 64 bits".to_string(),
+                        position: (start_pos, pos),
+                    });
+                }
+                result = result * 10 + current_digit;
             } else {
                 break;
             }
         }
 
         self.pos.set(pos);
-        result
+        Ok(result)
     }
 
     /// Recognizes an identifier or a keyword
@@ -356,23 +365,37 @@ mod tests {
     #[test]
     fn lexer_get_integer_returns_multi_digit_integer() {
         let lexer = PascalLexer::new(&"123".to_string());
-        let result = lexer.get_integer();
+        let result = lexer.get_integer().unwrap();
         assert_eq!(123, result);
     }
 
     #[test]
     fn lexer_get_integer_should_advance_position_correctly() {
         let lexer = PascalLexer::new(&"123".to_string());
-        let _result = lexer.get_integer();
+        let _result = lexer.get_integer().unwrap();
         assert_eq!(3, lexer.pos.get());
     }
 
     #[test]
     fn lexer_get_integer_should_only_advance_as_long_as_there_are_more_digits() {
         let lexer = PascalLexer::new(&"12a".to_string());
-        let result = lexer.get_integer();
+        let result = lexer.get_integer().unwrap();
         assert_eq!(12, result);
         assert_eq!(2, lexer.pos.get());
+    }
+
+    #[test]
+    fn lexer_get_integer_should_return_error_when_input_is_larger_than_fit_in_u64() {
+        let lexer = PascalLexer::new(&"18446744073709551616".to_string());
+        let result = lexer.get_integer();
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn lexer_get_integer_should_return_number_when_input_fits_in_u64() {
+        let lexer = PascalLexer::new(&"18446744073709551615".to_string());
+        let result = lexer.get_integer().unwrap();
+        assert_eq!(18446744073709551615, result);
     }
 
     #[test]
