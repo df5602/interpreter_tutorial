@@ -63,12 +63,7 @@ impl<'a> Interpreter<'a> {
 
         match self.ast.get_root() {
             Some(node) => node.visit(self.ast, &mut symbol_table).map(|_| ()),
-            None => {
-                Err(SyntaxError {
-                    msg: "Internal Error (AST has no root)".to_string(),
-                    position: (0, 0),
-                })
-            }
+            None => panic!("Internal Error (AST has no root)"),
         }
     }
 

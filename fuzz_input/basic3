@@ -1,0 +1,6 @@
+BEGIN
+    BEGIN
+	 d := 1
+	      div 3; e := 1
+    END;
+END.

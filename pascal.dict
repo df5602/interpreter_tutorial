@@ -1,0 +1,16 @@
+# AFL dictionary for Pascal
+
+begin_upper="BEGIN"
+begin_lower="begin"
+end_upper="END"
+end_lower="end"
+plus="+"
+minus="-"
+times="*"
+division_upper="DIV"
+division_lower="div"
+lparen="("
+rparen=")"
+dot="."
+semicolon=";"
+assign=":="

@@ -82,10 +82,7 @@ impl<L: Lexer> Parser<L> {
         if ast.is_contiguous() {
             Ok(())
         } else {
-            Err(SyntaxError {
-                msg: "Internal Error (AST is not contiguous)".to_string(),
-                position: (0, 0),
-            })
+            panic!("Internal Error (AST is not contiguous)")
         }
     }
 

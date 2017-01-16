@@ -1,3 +1,7 @@
+#![cfg_attr(feature = "fuzzing", feature(question_mark))]
+#![cfg_attr(feature = "fuzzing", feature(plugin))]
+#![cfg_attr(feature = "fuzzing", plugin(afl_plugin))]
+
 use std::io;
 use std::io::{Read, BufRead, Write};
 use std::error::Error;
@@ -7,6 +11,9 @@ use std::env;
 
 extern crate leftpad;
 use leftpad::left_pad;
+
+#[cfg(feature = "fuzzing")]
+extern crate afl;
 
 mod tokens;
 mod ast;
@@ -210,6 +217,7 @@ fn run_file(path: &str) {
     evaluate(&input);
 }
 
+#[cfg(not(feature = "fuzzing"))]
 fn main() {
     let args: Vec<String> = env::args().collect();
 
@@ -221,4 +229,11 @@ fn main() {
                      To evaluate input from a file, pass the path of the file as argument")
         }
     }
+}
+
+#[cfg(feature = "fuzzing")]
+fn main() {
+    afl::handle_string(|s| {
+        evaluate(&s);
+    })
 }

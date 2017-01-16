@@ -5,3 +5,9 @@ authors = ["Dominik Fankhauser <dominik@fankhausers.ch>"]
 
 [dependencies]
 leftpad = "0.2.0"
+afl = { version = "0.1", optional = true }
+afl-plugin = { version = "0.1", optional = true }
+
+[features]
+default = []
+fuzzing = ["afl-plugin", "afl"]

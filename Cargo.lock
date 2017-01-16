@@ -2,13 +2,66 @@
 name = "interpreter_tutorial"
 version = "0.1.0"
 dependencies = [
+ "afl 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "afl-plugin 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "leftpad 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
+
+[[package]]
+name = "afl"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "afl-sys 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "gcc 0.3.41 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "afl-plugin"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "gcc 0.3.41 (registry+https://github.com/rust-lang/crates.io-index)",
+ "quale 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "afl-sys"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "gcc 0.3.41 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libc 0.2.19 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "gcc"
+version = "0.3.41"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "leftpad"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
+[[package]]
+name = "libc"
+version = "0.2.19"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "quale"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "libc 0.2.19 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
 [metadata]
+"checksum afl 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)" = "3f1c61ca800a28582b60f6a46499bf9f3074600079dd0237193e7b7b09dd6f0c"
+"checksum afl-plugin 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)" = "4bcdabd34757f7050dcd8b27a6a9445be0c68bf2da3a5cf7e105091ff2506b80"
+"checksum afl-sys 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)" = "2d5ece60f54176799171a28d406f5512582541652cefbc16d8d45dbfa074374e"
+"checksum gcc 0.3.41 (registry+https://github.com/rust-lang/crates.io-index)" = "3689e1982a563af74960ae3a4758aa632bb8fd984cfc3cc3b60ee6109477ab6e"
 "checksum leftpad 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "88f9cfcc08016e95dabba636661a4702c8407e1243e402f9e27b3d61029660f9"
+"checksum libc 0.2.19 (registry+https://github.com/rust-lang/crates.io-index)" = "9e030dc72013ed68994d1b2cbf36a94dd0e58418ba949c4b0db7eeb70a7a6352"
+"checksum quale 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "c46811c513cc64cceb23adc27892b3b3470c1790de117610221b97071de8bc8c"
