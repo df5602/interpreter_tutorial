@@ -42,17 +42,17 @@ fn print_preamble() {
 // 1| a := 1 div 0
 //  |      ^^^^^^^
 fn print_error(input: &str, e: SyntaxError) {
-    let mut last_newline_byte = 0;  // Byte offset of character after most recent newline found in input stream
-    let mut last_newline_n = 0;     // Character offset of character after most recent newline found in input stream
-    let mut newline_found = false;  // Gets set, when newline character(s) has been found.
-                                    // Gets reset at the next (non-newline) character.
-    let mut line = 1;               // Current line number in input stream
-    let mut start_byte = 0;         // Byte offset of start of the first line that has to be printed
-    let mut start_n = 0;            // Character offset of start of the first line that has to be printed
-    let mut start_line = 0;         // Line number of first line that has to be printed
-    let mut end_byte = 0;           // Byte offset of first newline character after part that has to be printed
-    let mut end_reached = false;    // End of part that has to be printed has been reached
-    let mut last_non_nl_byte = 0;   // Byte offset of most recent non-newline character found in input stream
+    let mut last_newline_byte = 0; // Byte offset of character after most recent newline found in input stream
+    let mut last_newline_n = 0; // Character offset of character after most recent newline found in input stream
+    let mut newline_found = false; /* Gets set, when newline character(s) has been found.
+                                      Gets reset at the next (non-newline) character. */
+    let mut line = 1; // Current line number in input stream
+    let mut start_byte = 0; // Byte offset of start of the first line that has to be printed
+    let mut start_n = 0; // Character offset of start of the first line that has to be printed
+    let mut start_line = 0; // Line number of first line that has to be printed
+    let mut end_byte = 0; // Byte offset of first newline character after part that has to be printed
+    let mut end_reached = false; // End of part that has to be printed has been reached
+    let mut last_non_nl_byte = 0; // Byte offset of most recent non-newline character found in input stream
 
     // Iterate over input stream and calculate start and end positions of part that has to be printed
     for (i, ch) in input.char_indices().enumerate() {
@@ -143,7 +143,7 @@ fn print_error(input: &str, e: SyntaxError) {
             print!("{}| ", left_pad(&line.to_string(), line_no_length));
         }
     }
-    if idx < e.position.1 - start_n {
+    if idx < e.position.1 - 1 - start_n {
         marker.push('^');
     }
     println!("\n{}| {}", left_pad("", line_no_length), marker);
@@ -233,7 +233,5 @@ fn main() {
 
 #[cfg(feature = "fuzzing")]
 fn main() {
-    afl::handle_string(|s| {
-        evaluate(&s);
-    })
+    afl::handle_string(|s| { evaluate(&s); })
 }

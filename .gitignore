@@ -1,6 +1,7 @@
 target
 doc
 out
+tmp
 main
 *.pas
 .DS_Store
