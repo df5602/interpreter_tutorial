@@ -54,8 +54,27 @@ fn print_error(input: &str, e: SyntaxError) {
     let mut end_reached = false; // End of part that has to be printed has been reached
     let mut last_non_nl_byte = 0; // Byte offset of most recent non-newline character found in input stream
 
+    // Check whether last character is a newline character, if that is the case, truncate
+    let mut last_char = input.len() - 1;
+    let mut last_bad = last_char + 1;
+    loop {
+        while !input.is_char_boundary(last_char) {
+            last_char -= 1;
+        }
+        if &input[last_char..last_bad] != "\n" && &input[last_char..last_bad] != "\r" {
+            break;
+        } else {
+            if last_char == 0 {
+                last_newline_byte = last_bad; // Hack ^ 2 :-/
+                break;
+            }
+            last_bad = last_char;
+            last_char -= 1;
+        }
+    }
+
     // Iterate over input stream and calculate start and end positions of part that has to be printed
-    for (i, ch) in input.char_indices().enumerate() {
+    for (i, ch) in input[0..last_bad].char_indices().enumerate() {
         // If current character is a newline character, update position of most recent line break,
         // and update current line number. Abort early, when end of the part that has to be printed
         // has been reached.
