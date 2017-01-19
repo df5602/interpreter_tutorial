@@ -185,8 +185,55 @@ fn read_from_file(path: &str) -> Result<String, String> {
     }
 }
 
-fn evaluate(input: &str) {
-    let lexer = PascalLexer::new(input);
+fn sanitize_input(input: String) -> Result<String, (String, SyntaxError)> {
+    let mut sanitized = String::with_capacity(input.len());
+
+    let mut first_index = None;
+    let mut char_len = 0;
+
+    for ch in input.char_indices() {
+        if ch.1.is_control() && ch.1 != '\n' && ch.1 != '\r' && ch.1 != '\t' {
+            let mut len = 0;
+            for esc in ch.1.escape_default() {
+                sanitized.push(esc);
+                len += 1;
+            }
+            match first_index {
+                Some(_) => {}
+                None => {
+                    first_index = Some(ch.0);
+                    char_len = len;
+                }
+            }
+        } else {
+            sanitized.push(ch.1);
+        }
+    }
+
+    match first_index {
+        Some(i) => {
+            Err((sanitized,
+                 SyntaxError {
+                     msg: "Input cannot contain control characters (except LF, CR and TAB)"
+                         .to_string(),
+                     position: (i, i + char_len),
+                 }))
+        }
+        None => Ok(sanitized),
+    }
+}
+
+fn evaluate(input: String) {
+    let sanitized: String;
+    match sanitize_input(input) {
+        Ok(s) => sanitized = s,
+        Err((s, e)) => {
+            print_error(&s, e);
+            return;
+        }
+    }
+
+    let lexer = PascalLexer::new(&sanitized);
     let parser = Parser::new(lexer);
     let mut ast = Ast::new();
 
@@ -194,7 +241,7 @@ fn evaluate(input: &str) {
     match parser.parse(&mut ast) {
         Ok(_) => {}
         Err(e) => {
-            print_error(input, e);
+            print_error(&sanitized, e);
             return;
         }
     }
@@ -203,7 +250,7 @@ fn evaluate(input: &str) {
     let interpreter = Interpreter::new(&ast);
     match interpreter.interpret() {
         Ok(_) => interpreter.print_symbols(),
-        Err(e) => print_error(input, e),
+        Err(e) => print_error(&sanitized, e),
     }
 }
 
@@ -213,7 +260,7 @@ fn run_repl() {
     print_preamble();
     for line in stdin.lock().lines() {
         match line {
-            Ok(line) => evaluate(&line),
+            Ok(line) => evaluate(line),
             Err(error) => {
                 println!("error: {}", error);
                 panic!();
@@ -233,7 +280,7 @@ fn run_file(path: &str) {
         }
     };
 
-    evaluate(&input);
+    evaluate(input);
 }
 
 #[cfg(not(feature = "fuzzing"))]
