@@ -5,6 +5,7 @@ dependencies = [
  "afl 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "afl-plugin 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "leftpad 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "unicode-width 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -57,6 +58,11 @@ dependencies = [
  "libc 0.2.19 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
+[[package]]
+name = "unicode-width"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
 [metadata]
 "checksum afl 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)" = "3f1c61ca800a28582b60f6a46499bf9f3074600079dd0237193e7b7b09dd6f0c"
 "checksum afl-plugin 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)" = "4bcdabd34757f7050dcd8b27a6a9445be0c68bf2da3a5cf7e105091ff2506b80"
@@ -65,3 +71,4 @@ dependencies = [
 "checksum leftpad 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "88f9cfcc08016e95dabba636661a4702c8407e1243e402f9e27b3d61029660f9"
 "checksum libc 0.2.19 (registry+https://github.com/rust-lang/crates.io-index)" = "9e030dc72013ed68994d1b2cbf36a94dd0e58418ba949c4b0db7eeb70a7a6352"
 "checksum quale 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "c46811c513cc64cceb23adc27892b3b3470c1790de117610221b97071de8bc8c"
+"checksum unicode-width 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)" = "bf3a113775714a22dcb774d8ea3655c53a32debae63a063acc00a91cc586245f"

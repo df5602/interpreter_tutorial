@@ -12,6 +12,9 @@ use std::env;
 extern crate leftpad;
 use leftpad::left_pad;
 
+extern crate unicode_width;
+use unicode_width::UnicodeWidthChar;
+
 #[cfg(feature = "fuzzing")]
 extern crate afl;
 
@@ -148,10 +151,18 @@ fn print_error(input: &str, e: SyntaxError) {
             if ch.is_whitespace() && preline {
                 marker.push(ch);
             } else {
+                let width = match UnicodeWidthChar::width(ch) {
+                    Some(width) => width,
+                    None => 0,
+                };
+                let glyph;
                 if i >= e.position.0 - start_n && i < e.position.1 - start_n {
-                    marker.push('^');
+                    glyph = '^';
                 } else {
-                    marker.push(' ');
+                    glyph = ' ';
+                }
+                for _ in 0..width {
+                    marker.push(glyph);
                 }
                 preline = false;
             }
@@ -191,6 +202,7 @@ fn sanitize_input(input: String) -> Result<String, (String, SyntaxError)> {
 
     let mut first_index = None;
     let mut char_len = 0;
+    let mut added_chars = 0;
 
     for (i, ch) in input.chars().enumerate() {
         if ch.is_control() && ch != '\n' && ch != '\r' && ch != '\t' {
@@ -202,10 +214,14 @@ fn sanitize_input(input: String) -> Result<String, (String, SyntaxError)> {
             match first_index {
                 Some(_) => {}
                 None => {
-                    first_index = Some(i);
+                    first_index = Some(i + added_chars);
                     char_len = len;
                 }
             }
+        } else if ch == '\t' {
+            sanitized.push_str("    ");
+            // one \t is replaced by space, the other 3 spaces are extra:
+            added_chars += 3;
         } else {
             sanitized.push(ch);
         }
