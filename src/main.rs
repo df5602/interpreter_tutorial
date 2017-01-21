@@ -57,6 +57,14 @@ fn print_error(input: &str, e: SyntaxError) {
     let mut end_reached = false; // End of part that has to be printed has been reached
     let mut last_non_nl_byte = 0; // Byte offset of most recent non-newline character found in input stream
 
+    // Empty strings are annoying, replace with something with less edge cases..
+    let tmp: String;
+    let mut input = input; // Shadow input
+    if input.len() == 0 {
+        tmp = " ".to_string();
+        input = &tmp;
+    }
+
     // Check whether last character is a newline character, if that is the case, truncate
     let mut last_char = input.len() - 1;
     let mut last_bad = last_char + 1;
@@ -148,7 +156,7 @@ fn print_error(input: &str, e: SyntaxError) {
         idx = i;
         if ch != '\n' && ch != '\r' {
             print!("{}", ch);
-            if ch.is_whitespace() && preline {
+            if ch.is_whitespace() && preline && i < e.position.0 {
                 marker.push(ch);
             } else {
                 let width = match UnicodeWidthChar::width(ch) {
