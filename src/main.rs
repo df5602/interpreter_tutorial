@@ -99,7 +99,8 @@ fn print_error(input: &str, e: SyntaxError) {
             start_byte = last_newline_byte;
             start_n = last_newline_n;
             start_line = line;
-        } else if i == e.position.1 - 1 {
+        }
+        if i == e.position.1 - 1 {
             end_reached = true;
         }
     }
