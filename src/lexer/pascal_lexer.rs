@@ -1,6 +1,6 @@
 //! This module contains a lexer that recognizes `Token`s in a Pascal program.
 use std::cell::Cell;
-use std::u64;
+use std::i64;
 use tokens::*;
 use errors::SyntaxError;
 use lexer::Lexer;
@@ -124,12 +124,12 @@ impl PascalLexer {
 
     /// Returns a multi-digit (unsigned, base 10) integer
     /// Precondition: First character is digit
-    fn get_integer(&self) -> Result<u64, SyntaxError> {
+    fn get_integer(&self) -> Result<i64, SyntaxError> {
         let mut pos = self.pos.get();
         let start_pos = pos;
         let mut current_char = self.chars[pos];
         assert!(current_char.is_digit(10));
-        let mut result = current_char.to_digit(10).unwrap() as u64;
+        let mut result = current_char.to_digit(10).unwrap() as i64;
 
         loop {
             pos += 1;
@@ -140,10 +140,11 @@ impl PascalLexer {
 
             current_char = self.chars[pos];
             if current_char.is_digit(10) {
-                let current_digit = current_char.to_digit(10).unwrap() as u64;
-                if result > (u64::MAX - current_digit) / 10 {
+                let current_digit = current_char.to_digit(10).unwrap() as i64;
+                if result > (i64::MAX - current_digit) / 10 {
                     return Err(SyntaxError {
-                        msg: "Integer is too large to be stored in 64 bits".to_string(),
+                        msg: "Integer overflow (exceeds storage capacity of signed 64-bit integer)"
+                            .to_string(),
                         position: (start_pos, pos),
                     });
                 }
@@ -385,17 +386,17 @@ mod tests {
     }
 
     #[test]
-    fn lexer_get_integer_should_return_error_when_input_is_larger_than_fit_in_u64() {
-        let lexer = PascalLexer::new(&"18446744073709551616".to_string());
+    fn lexer_get_integer_should_return_error_when_input_is_larger_than_fit_in_i64() {
+        let lexer = PascalLexer::new(&"9223372036854775808".to_string());
         let result = lexer.get_integer();
         assert!(result.is_err());
     }
 
     #[test]
-    fn lexer_get_integer_should_return_number_when_input_fits_in_u64() {
-        let lexer = PascalLexer::new(&"18446744073709551615".to_string());
+    fn lexer_get_integer_should_return_number_when_input_fits_in_i64() {
+        let lexer = PascalLexer::new(&"9223372036854775807".to_string());
         let result = lexer.get_integer().unwrap();
-        assert_eq!(18446744073709551615, result);
+        assert_eq!(9223372036854775807, result);
     }
 
     #[test]

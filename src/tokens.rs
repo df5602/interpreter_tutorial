@@ -74,8 +74,8 @@ impl fmt::Display for OperatorType {
 /// Defines the value of the token (optional).
 #[derive(Clone, Debug, PartialEq)]
 pub enum TokenValue {
-    /// Unsigned integer as u64
-    Integer(u64),
+    /// Signed integer as i64
+    Integer(i64),
     /// An operator
     Operator(OperatorType),
     /// An identifier name
@@ -91,7 +91,7 @@ impl TokenValue {
     /// # Panics
     ///
     /// This function will panic if `self` is not of variant `TokenValue::Integer`.
-    pub fn extract_integer_value(&self) -> u64 {
+    pub fn extract_integer_value(&self) -> i64 {
         match *self {
             TokenValue::Integer(value) => value,
             _ => panic!("Internal Error (Integer value has wrong type)"),

@@ -78,19 +78,29 @@ impl NodeVisitor for BinaryOperatorNode {
         let lhs = ast.get_node(self.left).visit(ast, sym_tbl)?.extract_integer_value();
         let rhs = ast.get_node(self.right).visit(ast, sym_tbl)?.extract_integer_value();
 
-        match self.operator {
-            OperatorType::Plus => Ok(ReturnValue::Integer(lhs + rhs)),
-            OperatorType::Minus => Ok(ReturnValue::Integer(lhs - rhs)),
-            OperatorType::Times => Ok(ReturnValue::Integer(lhs * rhs)),
+        let result = match self.operator {
+            OperatorType::Plus => lhs.checked_add(rhs),
+            OperatorType::Minus => lhs.checked_sub(rhs),
+            OperatorType::Times => lhs.checked_mul(rhs),
             OperatorType::Division => {
                 if rhs == 0 {
-                    Err(SyntaxError {
+                    return Err(SyntaxError {
                         msg: "Division by zero".to_string(),
                         position: self.position,
-                    })
+                    });
                 } else {
-                    Ok(ReturnValue::Integer(lhs / rhs))
+                    lhs.checked_div(rhs)
                 }
+            }
+        };
+
+        match result {
+            Some(value) => Ok(ReturnValue::Integer(value)),
+            None => {
+                Err(SyntaxError {
+                    msg: "Integer overflow".to_string(),
+                    position: self.position,
+                })
             }
         }
     }
@@ -113,6 +123,7 @@ impl BinaryOperatorNode {
 #[cfg(test)]
 mod tests {
     use std::collections::HashMap;
+    use std::i64;
 
     use super::*;
     use ast::{Ast, AstNode, AstIndex, IntegerNode};
@@ -226,6 +237,33 @@ mod tests {
     }
 
     #[test]
+    fn binary_operator_node_visit_returns_error_when_addition_overflows() {
+        let int_node_left = IntegerNode::new(i64::MAX,
+                                             Token::new(TokenType::Integer,
+                                                        Some(TokenValue::Integer(i64::MAX)),
+                                                        (0, 0)));
+        let int_node_right =
+            IntegerNode::new(1,
+                             Token::new(TokenType::Integer, Some(TokenValue::Integer(1)), (0, 0)));
+        let mut ast = Ast::new();
+        let index_left = ast.add_node(int_node_left);
+        let index_right = ast.add_node(int_node_right);
+
+        let op_node =
+            BinaryOperatorNode::new(index_left,
+                                    index_right,
+                                    OperatorType::Plus,
+                                    Token::new(TokenType::Operator,
+                                               Some(TokenValue::Operator(OperatorType::Plus)),
+                                               (0, 0)));
+        let index_op = ast.add_node(op_node);
+        let mut sym_tbl = HashMap::new();
+        assert!(ast.get_node(index_op)
+            .visit(&ast, &mut sym_tbl)
+            .is_err());
+    }
+
+    #[test]
     fn binary_operator_node_visit_returns_difference_of_integer_nodes_when_op_is_subtraction() {
         let int_node_left =
             IntegerNode::new(4,
@@ -251,6 +289,33 @@ mod tests {
                        .unwrap()
                        .extract_integer_value(),
                    2);
+    }
+
+    #[test]
+    fn binary_operator_node_visit_returns_error_when_subtraction_overflows() {
+        let int_node_left =
+            IntegerNode::new(-2,
+                             Token::new(TokenType::Integer, Some(TokenValue::Integer(-2)), (0, 0)));
+        let int_node_right = IntegerNode::new(i64::MAX,
+                                              Token::new(TokenType::Integer,
+                                                         Some(TokenValue::Integer(i64::MAX)),
+                                                         (0, 0)));
+        let mut ast = Ast::new();
+        let index_left = ast.add_node(int_node_left);
+        let index_right = ast.add_node(int_node_right);
+
+        let op_node =
+            BinaryOperatorNode::new(index_left,
+                                    index_right,
+                                    OperatorType::Minus,
+                                    Token::new(TokenType::Operator,
+                                               Some(TokenValue::Operator(OperatorType::Minus)),
+                                               (0, 0)));
+        let index_op = ast.add_node(op_node);
+        let mut sym_tbl = HashMap::new();
+        assert!(ast.get_node(index_op)
+            .visit(&ast, &mut sym_tbl)
+            .is_err());
     }
 
     #[test]
@@ -282,6 +347,33 @@ mod tests {
     }
 
     #[test]
+    fn binary_operator_node_visit_returns_error_when_multiplication_overflows() {
+        let int_node_left =
+            IntegerNode::new(2,
+                             Token::new(TokenType::Integer, Some(TokenValue::Integer(2)), (0, 0)));
+        let int_node_right = IntegerNode::new(i64::MAX,
+                                              Token::new(TokenType::Integer,
+                                                         Some(TokenValue::Integer(i64::MAX)),
+                                                         (0, 0)));
+        let mut ast = Ast::new();
+        let index_left = ast.add_node(int_node_left);
+        let index_right = ast.add_node(int_node_right);
+
+        let op_node =
+            BinaryOperatorNode::new(index_left,
+                                    index_right,
+                                    OperatorType::Times,
+                                    Token::new(TokenType::Operator,
+                                               Some(TokenValue::Operator(OperatorType::Times)),
+                                               (0, 0)));
+        let index_op = ast.add_node(op_node);
+        let mut sym_tbl = HashMap::new();
+        assert!(ast.get_node(index_op)
+            .visit(&ast, &mut sym_tbl)
+            .is_err());
+    }
+
+    #[test]
     fn binary_operator_node_visit_returns_quotient_of_integer_nodes_when_op_is_division() {
         let int_node_left =
             IntegerNode::new(4,
@@ -307,6 +399,33 @@ mod tests {
                        .unwrap()
                        .extract_integer_value(),
                    2);
+    }
+
+    #[test]
+    fn binary_operator_node_visit_returns_error_when_division_overflows() {
+        let int_node_left = IntegerNode::new(i64::MIN,
+                                             Token::new(TokenType::Integer,
+                                                        Some(TokenValue::Integer(i64::MIN)),
+                                                        (0, 0)));
+        let int_node_right =
+            IntegerNode::new(-1,
+                             Token::new(TokenType::Integer, Some(TokenValue::Integer(-1)), (0, 0)));
+        let mut ast = Ast::new();
+        let index_left = ast.add_node(int_node_left);
+        let index_right = ast.add_node(int_node_right);
+
+        let op_node =
+            BinaryOperatorNode::new(index_left,
+                                    index_right,
+                                    OperatorType::Division,
+                                    Token::new(TokenType::Operator,
+                                               Some(TokenValue::Operator(OperatorType::Division)),
+                                               (0, 0)));
+        let index_op = ast.add_node(op_node);
+        let mut sym_tbl = HashMap::new();
+        assert!(ast.get_node(index_op)
+            .visit(&ast, &mut sym_tbl)
+            .is_err());
     }
 
     #[test]

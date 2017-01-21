@@ -9,7 +9,7 @@ use interpreter::{NodeVisitor, ReturnValue};
 /// Represents an integer literal.
 #[derive(Debug)]
 pub struct IntegerNode {
-    value: u64,
+    value: i64,
     parent: Option<AstIndex>,
     position: (usize, usize),
     token: Token,
@@ -65,7 +65,7 @@ impl NodeVisitor for IntegerNode {
 
 impl IntegerNode {
     /// Constructs a new integer node.
-    pub fn new(value: u64, token: Token) -> Self {
+    pub fn new(value: i64, token: Token) -> Self {
         IntegerNode {
             value: value,
             parent: None,

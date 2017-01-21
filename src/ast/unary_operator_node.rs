@@ -76,7 +76,17 @@ impl NodeVisitor for UnaryOperatorNode {
 
         match self.operator {
             OperatorType::Plus => Ok(ReturnValue::Integer(operand)),
-            OperatorType::Minus => Ok(ReturnValue::Integer(-operand)),
+            OperatorType::Minus => {
+                match operand.checked_neg() {
+                    Some(value) => Ok(ReturnValue::Integer(value)),
+                    None => {
+                        Err(SyntaxError {
+                            msg: "Integer overflow".to_string(),
+                            position: self.position,
+                        })
+                    }
+                }
+            }
             _ => panic!("Internal error (Unsupported operator type for unary operator)"),
         }
     }
@@ -98,6 +108,7 @@ impl UnaryOperatorNode {
 #[cfg(test)]
 mod tests {
     use std::collections::HashMap;
+    use std::i64;
 
     use super::*;
     use tokens::{Token, TokenType, OperatorType, TokenValue};
@@ -221,5 +232,28 @@ mod tests {
                        .unwrap()
                        .extract_integer_value(),
                    -4);
+    }
+
+    #[test]
+    fn unary_operator_node_visit_returns_error_when_subtraction_overflows() {
+        let operand = IntegerNode::new(i64::MIN,
+                                       Token::new(TokenType::Integer,
+                                                  Some(TokenValue::Integer(i64::MIN)),
+                                                  (0, 0)));
+
+        let mut ast = Ast::new();
+        let index_operand = ast.add_node(operand);
+
+        let op_node =
+            UnaryOperatorNode::new(index_operand,
+                                   OperatorType::Minus,
+                                   Token::new(TokenType::Operator,
+                                              Some(TokenValue::Operator(OperatorType::Minus)),
+                                              (0, 0)));
+        let index_op = ast.add_node(op_node);
+        let mut sym_tbl = HashMap::new();
+        assert!(ast.get_node(index_op)
+            .visit(&ast, &mut sym_tbl)
+            .is_err());
     }
 }
