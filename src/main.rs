@@ -60,7 +60,7 @@ fn print_error(input: &str, e: SyntaxError) {
     // Empty strings are annoying, replace with something with less edge cases..
     let tmp: String;
     let mut input = input; // Shadow input
-    if input.len() == 0 {
+    if input.is_empty() {
         tmp = " ".to_string();
         input = &tmp;
     }
@@ -163,12 +163,11 @@ fn print_error(input: &str, e: SyntaxError) {
                     Some(width) => width,
                     None => 0,
                 };
-                let glyph;
-                if i >= e.position.0 - start_n && i < e.position.1 - start_n {
-                    glyph = '^';
+                let glyph = if i >= e.position.0 - start_n && i < e.position.1 - start_n {
+                    '^'
                 } else {
-                    glyph = ' ';
-                }
+                    ' '
+                };
                 for _ in 0..width {
                     marker.push(glyph);
                 }
