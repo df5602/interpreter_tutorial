@@ -66,7 +66,7 @@ impl fmt::Display for OperatorType {
             OperatorType::Plus => write!(f, "'+'"),
             OperatorType::Minus => write!(f, "'-'"),
             OperatorType::Times => write!(f, "'*'"),
-            OperatorType::Division => write!(f, "'/'"),
+            OperatorType::Division => write!(f, "'div'"),
         }
     }
 }

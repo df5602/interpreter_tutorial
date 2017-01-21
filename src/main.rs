@@ -192,22 +192,22 @@ fn sanitize_input(input: String) -> Result<String, (String, SyntaxError)> {
     let mut first_index = None;
     let mut char_len = 0;
 
-    for ch in input.char_indices() {
-        if ch.1.is_control() && ch.1 != '\n' && ch.1 != '\r' && ch.1 != '\t' {
+    for (i, ch) in input.chars().enumerate() {
+        if ch.is_control() && ch != '\n' && ch != '\r' && ch != '\t' {
             let mut len = 0;
-            for esc in ch.1.escape_default() {
+            for esc in ch.escape_default() {
                 sanitized.push(esc);
                 len += 1;
             }
             match first_index {
                 Some(_) => {}
                 None => {
-                    first_index = Some(ch.0);
+                    first_index = Some(i);
                     char_len = len;
                 }
             }
         } else {
-            sanitized.push(ch.1);
+            sanitized.push(ch);
         }
     }
 
