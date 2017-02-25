@@ -128,6 +128,7 @@ impl PascalLexer {
         let mut pos = self.pos.get();
         let start_pos = pos;
         let mut current_char = self.chars[pos];
+        let mut overflow = false;
         assert!(current_char.is_digit(10));
         let mut result = current_char.to_digit(10).unwrap() as i64;
 
@@ -141,21 +142,27 @@ impl PascalLexer {
             current_char = self.chars[pos];
             if current_char.is_digit(10) {
                 let current_digit = current_char.to_digit(10).unwrap() as i64;
-                if result > (i64::MAX - current_digit) / 10 {
-                    return Err(SyntaxError {
-                        msg: "Integer overflow (exceeds storage capacity of signed 64-bit integer)"
-                            .to_string(),
-                        position: (start_pos, pos),
-                    });
+                if overflow || (result > (i64::MAX - current_digit) / 10) {
+                    overflow = true;
+                } else {
+                    result = result * 10 + current_digit;
                 }
-                result = result * 10 + current_digit;
             } else {
                 break;
             }
         }
 
         self.pos.set(pos);
-        Ok(result)
+
+        if overflow {
+            Err(SyntaxError {
+                msg: "Integer overflow (exceeds storage capacity of signed 64-bit integer)"
+                    .to_string(),
+                position: (start_pos, pos),
+            })
+        } else {
+            Ok(result)
+        }
     }
 
     /// Recognizes an identifier or a keyword
