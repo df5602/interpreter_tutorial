@@ -166,7 +166,9 @@ fn print_error(input: &str, e: SyntaxError) {
                     if preline {
                         print!(" "); // Avoid "swallowing" of the padding space by combining character
                     }
-                    marker.pop();
+                    if i < e.position.1 - start_n {
+                        marker.pop();
+                    }
                     width = 1;
                 }
                 let glyph = if i >= e.position.0 - start_n && i < e.position.1 - start_n {
