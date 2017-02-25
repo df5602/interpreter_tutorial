@@ -46,7 +46,6 @@ impl MockLexer {
 mod tests {
     use super::*;
     use lexer::Lexer;
-    use tokens::*;
 
     #[test]
     fn mocklexer_returns_first_token_when_calling_get_next_token_for_the_first_time() {

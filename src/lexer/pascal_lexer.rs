@@ -41,7 +41,7 @@ impl Lexer for PascalLexer {
         // Return IDENTIFIER or keyword when the next character is alphabetic
         // or an underscore.
         if current_char.is_alphabetic() || current_char == '_' {
-            return self.recognize_identifier_of_keyword();
+            return self.recognize_identifier_or_keyword();
         }
 
         // Return PLUS when the next character is '+'
@@ -161,7 +161,7 @@ impl PascalLexer {
     /// Recognizes an identifier or a keyword
     /// * Returns a keyword `Token` if the input matches a keyword
     /// * Returns an IDENTIFIER `Token` otherwise
-    fn recognize_identifier_of_keyword(&self) -> Result<Token, SyntaxError> {
+    fn recognize_identifier_or_keyword(&self) -> Result<Token, SyntaxError> {
         let start_pos = self.pos.get();
         let mut pos = start_pos;
         let mut current_char = self.chars[pos];
@@ -249,7 +249,6 @@ impl PascalLexer {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tokens::*;
     use lexer::Lexer;
 
     #[test]

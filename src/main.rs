@@ -155,14 +155,20 @@ fn print_error(input: &str, e: SyntaxError) {
     for (i, ch) in input[start_byte..end_byte].chars().enumerate() {
         idx = i;
         if ch != '\n' && ch != '\r' {
-            print!("{}", ch);
             if ch.is_whitespace() && preline && i < e.position.0 {
                 marker.push(ch);
             } else {
-                let width = match UnicodeWidthChar::width(ch) {
+                let mut width = match UnicodeWidthChar::width(ch) {
                     Some(width) => width,
                     None => 0,
                 };
+                if width == 0 {
+                    if preline {
+                        print!(" "); // Avoid "swallowing" of the padding space by combining character
+                    }
+                    marker.pop();
+                    width = 1;
+                }
                 let glyph = if i >= e.position.0 - start_n && i < e.position.1 - start_n {
                     '^'
                 } else {
@@ -173,6 +179,7 @@ fn print_error(input: &str, e: SyntaxError) {
                 }
                 preline = false;
             }
+            print!("{}", ch);
         } else {
             println!("\n{}| {}", left_pad("", line_no_length), marker);
             marker.clear();
@@ -323,5 +330,5 @@ fn main() {
 
 #[cfg(feature = "fuzzing")]
 fn main() {
-    afl::handle_string(|s| { evaluate(&s); })
+    afl::handle_string(|s| { evaluate(s); })
 }
