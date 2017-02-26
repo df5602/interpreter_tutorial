@@ -223,8 +223,11 @@ fn sanitize_input(input: String) -> Result<String, (String, SyntaxError)> {
     let mut first_index = None;
     let mut char_len = 0;
     let mut added_chars = 0;
+    let mut last_char = '\0';
 
-    for (i, ch) in input.chars().enumerate() {
+    let mut iter = input.chars().enumerate().peekable();
+
+    while let Some((i, ch)) = iter.next() {
         if ch.is_control() && ch != '\n' && ch != '\r' && ch != '\t' {
             let mut len = 0;
             for esc in ch.escape_default() {
@@ -242,9 +245,16 @@ fn sanitize_input(input: String) -> Result<String, (String, SyntaxError)> {
             sanitized.push_str("    ");
             // one \t is replaced by space, the other 3 spaces are extra:
             added_chars += 3;
+        } else if ch == '\r' {
+            if last_char != '\n' && iter.peek().unwrap_or(&(0usize, '\0')).1 != '\n' {
+                sanitized.push('\n');
+                println!("Replaced solitary CR character with LF character at position {}",
+                         i);
+            }
         } else {
             sanitized.push(ch);
         }
+        last_char = ch;
     }
 
     match first_index {
