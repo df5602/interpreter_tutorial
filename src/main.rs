@@ -122,7 +122,7 @@ fn print_error(input: &str, e: SyntaxError) {
     }
 
     // Handle case where start position is at the end of the input stream
-    if e.position.0 + 1 > input.len() {
+    if e.position.0 + 1 > input.chars().count() {
         start_byte = last_newline_byte;
         start_n = last_newline_n;
         start_line = line;
