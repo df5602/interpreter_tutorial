@@ -94,6 +94,9 @@ fn print_error(input: &str, e: SyntaxError) {
         // has been reached.
         if ch.1 == '\n' || ch.1 == '\r' {
             newline_found = true;
+            if ch.1 == '\n' {
+                line += 1;
+            }
             if end_reached {
                 end_byte = last_non_nl_byte;
                 break;
@@ -102,7 +105,6 @@ fn print_error(input: &str, e: SyntaxError) {
             last_newline_byte = ch.0;
             last_non_nl_byte = ch.0;
             last_newline_n = i;
-            line += 1;
             newline_found = false;
         } else {
             last_non_nl_byte = ch.0;
