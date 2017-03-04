@@ -97,8 +97,28 @@ impl NodeVisitor for BinaryOperatorNode {
         match result {
             Some(value) => Ok(ReturnValue::Integer(value)),
             None => {
+                let left = match ast.get_node(self.left).get_value() {
+                    Some(value) => {
+                        match value {
+                            TokenValue::Identifier(name) => format!("`{}`", name),
+                            _ => "left".to_string(),
+                        }
+                    }
+                    None => "left".to_string(),
+                };
+
+                let right = match ast.get_node(self.right).get_value() {
+                    Some(value) => {
+                        match value {
+                            TokenValue::Identifier(name) => format!("`{}`", name),
+                            _ => "right".to_string(),
+                        }
+                    }
+                    None => "right".to_string(),
+                };
+
                 Err(SyntaxError {
-                    msg: "Integer overflow".to_string(),
+                    msg: format!("Integer overflow [{}: {}; {}: {}]", left, lhs, right, rhs),
                     position: self.position,
                 })
             }
