@@ -99,7 +99,7 @@ impl UnaryOperatorNode {
             operand: operand,
             operator: operator,
             parent: None,
-            position: (0, 0),
+            position: token.position,
             token: token,
         }
     }

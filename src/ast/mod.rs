@@ -138,8 +138,14 @@ impl<'a> Ast<'a> {
             return;
         }
 
-        let mut pos_min = usize::MAX;
-        let mut pos_max = usize::MIN;
+        let position = (*self.nodes[index.0]).get_position();
+
+        // Take position of node into account, not just its children
+        let (mut pos_min, mut pos_max) = if position.0 == 0 && position.1 == 0 {
+            (usize::MAX, usize::MIN)
+        } else {
+            (position.0, position.1)
+        };
 
         for child in children {
             // Update parent links of child
