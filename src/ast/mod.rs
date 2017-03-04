@@ -97,6 +97,16 @@ impl<'a> Ast<'a> {
         &*self.nodes[index.0]
     }
 
+    /// Returns a mutable reference to the node stored at `index`.
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if `index` is no valid index of
+    /// the AST.
+    pub fn get_node_mut(&mut self, index: AstIndex) -> &mut AstNode {
+        &mut *self.nodes[index.0]
+    }
+
     /// Returns a reference to the root node of the AST if available, `None` otherwise.
     pub fn get_root(&self) -> Option<&AstNode> {
         self.root.as_ref().map(|index| &*self.nodes[index.0])
