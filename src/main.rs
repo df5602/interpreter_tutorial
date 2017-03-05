@@ -53,6 +53,8 @@ fn read_from_file(path: &str) -> Result<String, String> {
     }
 }
 
+#[allow(unknown_lints)]
+#[allow(needless_pass_by_value)]
 fn sanitize_input(input: String) -> Result<String, (String, SyntaxError)> {
     let mut sanitized = String::with_capacity(input.len());
 
