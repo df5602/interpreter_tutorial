@@ -85,6 +85,17 @@ impl Lexer for PascalLexer {
                                  }));
         }
 
+        // Return FloatDivision when the next character is '/'
+        if current_char == '/' {
+            self.pos.set(pos + 1);
+            return Ok(Token::new(TokenType::Operator,
+                                 Some(TokenValue::Operator(OperatorType::FloatDivision)),
+                                 Span {
+                                     start: pos,
+                                     end: pos + 1,
+                                 }));
+        }
+
         // Return LPAREN when the next character is '('
         if current_char == '(' {
             self.pos.set(pos + 1);
@@ -118,6 +129,17 @@ impl Lexer for PascalLexer {
                                  }));
         }
 
+        // Return COMMA when the next character is ','
+        if current_char == ',' {
+            self.pos.set(pos + 1);
+            return Ok(Token::new(TokenType::Comma,
+                                 None,
+                                 Span {
+                                     start: pos,
+                                     end: pos + 1,
+                                 }));
+        }
+
         // Return SEMICOLON when the next character is ';'
         if current_char == ';' {
             self.pos.set(pos + 1);
@@ -129,7 +151,8 @@ impl Lexer for PascalLexer {
                                  }));
         }
 
-        // Return ASSIGN when the next two characters are ':='
+        // Return ASSIGN when the next two characters are ':=',
+        // else return COLON when the next character is ':'
         if current_char == ':' {
             if let Some('=') = self.peek(1) {
                 self.pos.set(pos + 2);
@@ -138,6 +161,14 @@ impl Lexer for PascalLexer {
                                      Span {
                                          start: pos,
                                          end: pos + 2,
+                                     }));
+            } else {
+                self.pos.set(pos + 1);
+                return Ok(Token::new(TokenType::Colon,
+                                     None,
+                                     Span {
+                                         start: pos,
+                                         end: pos + 1,
                                      }));
             }
         }
@@ -294,7 +325,7 @@ impl PascalLexer {
             }
             "div" => {
                 return Ok(Token::new(TokenType::Operator,
-                                     Some(TokenValue::Operator(OperatorType::Division)),
+                                     Some(TokenValue::Operator(OperatorType::IntegerDivision)),
                                      Span {
                                          start: start_pos,
                                          end: pos,
@@ -453,18 +484,35 @@ mod tests {
     }
 
     #[test]
-    fn lexer_get_next_token_returns_division_when_input_is_division() {
+    fn lexer_get_next_token_returns_integer_division_when_input_is_integer_division() {
         let lexer = PascalLexer::new(&"div".to_string());
         let next_token = lexer.get_next_token().unwrap();
         assert_eq!(TokenType::Operator, next_token.token_type);
     }
 
     #[test]
-    fn lexer_get_next_token_returns_operator_value_division_when_input_is_operator_division() {
+    fn lexer_get_next_token_returns_op_value_integer_division_when_input_is_integer_division() {
         let lexer = PascalLexer::new(&"div".to_string());
         let next_token = lexer.get_next_token().unwrap();
         match next_token.value.unwrap() {
-            TokenValue::Operator(value) => assert_eq!(OperatorType::Division, value),
+            TokenValue::Operator(value) => assert_eq!(OperatorType::IntegerDivision, value),
+            _ => assert!(false),
+        }
+    }
+
+    #[test]
+    fn lexer_get_next_token_returns_float_division_when_input_is_float_division() {
+        let lexer = PascalLexer::new(&"/".to_string());
+        let next_token = lexer.get_next_token().unwrap();
+        assert_eq!(TokenType::Operator, next_token.token_type);
+    }
+
+    #[test]
+    fn lexer_get_next_token_returns_op_value_float_division_when_input_is_float_division() {
+        let lexer = PascalLexer::new(&"/".to_string());
+        let next_token = lexer.get_next_token().unwrap();
+        match next_token.value.unwrap() {
+            TokenValue::Operator(value) => assert_eq!(OperatorType::FloatDivision, value),
             _ => assert!(false),
         }
     }
@@ -600,6 +648,20 @@ mod tests {
     }
 
     #[test]
+    fn lexer_get_next_token_returns_colon_token_when_input_is_colon() {
+        let lexer = PascalLexer::new(&":".to_string());
+        let next_token = lexer.get_next_token().unwrap();
+        assert_eq!(TokenType::Colon, next_token.token_type);
+    }
+
+    #[test]
+    fn lexer_get_next_token_doesnt_return_colon_token_when_input_is_colon_followed_by_eq() {
+        let lexer = PascalLexer::new(&":=".to_string());
+        let next_token = lexer.get_next_token().unwrap();
+        assert!(next_token.token_type != TokenType::Colon);
+    }
+
+    #[test]
     fn lexer_get_next_token_returns_assign_token_when_input_is_assignment_operator() {
         let lexer = PascalLexer::new(&":=".to_string());
         let next_token = lexer.get_next_token().unwrap();
@@ -609,21 +671,22 @@ mod tests {
     #[test]
     fn lexer_get_next_token_doesnt_return_assign_token_when_input_is_only_colon() {
         let lexer = PascalLexer::new(&":".to_string());
-        let next_token = lexer.get_next_token();
-        match next_token {
-            Err(_) => assert!(true),
-            _ => assert!(false),
-        }
+        let next_token = lexer.get_next_token().unwrap();
+        assert!(next_token.token_type != TokenType::Assign);
     }
 
     #[test]
     fn lexer_get_next_token_doesnt_ret_assign_tok_when_input_is_colon_not_followed_by_eq_sign() {
         let lexer = PascalLexer::new(&":?".to_string());
-        let next_token = lexer.get_next_token();
-        match next_token {
-            Err(_) => assert!(true),
-            _ => assert!(false),
-        }
+        let next_token = lexer.get_next_token().unwrap();
+        assert!(next_token.token_type != TokenType::Assign);
+    }
+
+    #[test]
+    fn lexer_get_next_token_returns_comma_token_when_input_is_comma() {
+        let lexer = PascalLexer::new(&",".to_string());
+        let next_token = lexer.get_next_token().unwrap();
+        assert_eq!(TokenType::Comma, next_token.token_type);
     }
 
     #[test]

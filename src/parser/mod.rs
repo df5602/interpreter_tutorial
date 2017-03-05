@@ -229,7 +229,7 @@ impl<L: Lexer> Parser<L> {
             if op.token_type == TokenType::Operator {
                 // Extract value
                 let op_type = op.value.as_ref().unwrap().extract_operator_type();
-                if op_type != OperatorType::Times && op_type != OperatorType::Division {
+                if op_type != OperatorType::Times && op_type != OperatorType::IntegerDivision {
                     return Ok(result);
                 }
             }
@@ -415,7 +415,8 @@ mod tests {
         let tokens = vec![(TokenType::IntegerLiteral, TokenValue::Integer(1)),
                           (TokenType::Operator, TokenValue::Operator(OperatorType::Plus)),
                           (TokenType::IntegerLiteral, TokenValue::Integer(3)),
-                          (TokenType::Operator, TokenValue::Operator(OperatorType::Division))];
+                          (TokenType::Operator,
+                           TokenValue::Operator(OperatorType::IntegerDivision))];
         let lexer = MockLexer::new(tokens);
         let parser = Parser::new(lexer);
         assert!(parser.load_first_token().is_ok());
@@ -485,7 +486,8 @@ mod tests {
     fn parser_term_should_create_operator_node_when_expression_is_division() {
         // Input: 4 div 2
         let tokens = vec![(TokenType::IntegerLiteral, TokenValue::Integer(4)),
-                          (TokenType::Operator, TokenValue::Operator(OperatorType::Division)),
+                          (TokenType::Operator,
+                           TokenValue::Operator(OperatorType::IntegerDivision)),
                           (TokenType::IntegerLiteral, TokenValue::Integer(2))];
         let lexer = MockLexer::new(tokens);
         let parser = Parser::new(lexer);
@@ -496,7 +498,7 @@ mod tests {
         let node = ast.get_node(op_index);
         assert_eq!(node.get_parent(), None);
         assert_eq!(node.get_value().unwrap(),
-                   TokenValue::Operator(OperatorType::Division));
+                   TokenValue::Operator(OperatorType::IntegerDivision));
         let operands = node.get_children();
         let lhs = ast.get_node(operands[0]);
         assert_eq!(lhs.get_parent(), Some(op_index));
@@ -525,7 +527,8 @@ mod tests {
         // Input: 4*div
         let tokens = vec![(TokenType::IntegerLiteral, TokenValue::Integer(4)),
                           (TokenType::Operator, TokenValue::Operator(OperatorType::Times)),
-                          (TokenType::Operator, TokenValue::Operator(OperatorType::Division))];
+                          (TokenType::Operator,
+                           TokenValue::Operator(OperatorType::IntegerDivision))];
         let lexer = MockLexer::new(tokens);
         let parser = Parser::new(lexer);
         assert!(parser.load_first_token().is_ok());
@@ -552,7 +555,8 @@ mod tests {
         let tokens = vec![(TokenType::IntegerLiteral, TokenValue::Integer(1)),
                           (TokenType::Operator, TokenValue::Operator(OperatorType::Times)),
                           (TokenType::IntegerLiteral, TokenValue::Integer(3)),
-                          (TokenType::Operator, TokenValue::Operator(OperatorType::Division))];
+                          (TokenType::Operator,
+                           TokenValue::Operator(OperatorType::IntegerDivision))];
         let lexer = MockLexer::new(tokens);
         let parser = Parser::new(lexer);
         assert!(parser.load_first_token().is_ok());
@@ -676,7 +680,8 @@ mod tests {
     #[test]
     fn parser_factor_returns_error_if_input_consists_of_unary_division() {
         // Input: div 5
-        let tokens = vec![(TokenType::Operator, TokenValue::Operator(OperatorType::Division)),
+        let tokens = vec![(TokenType::Operator,
+                           TokenValue::Operator(OperatorType::IntegerDivision)),
                           (TokenType::IntegerLiteral, TokenValue::Integer(5))];
         let lexer = MockLexer::new(tokens);
         let parser = Parser::new(lexer);

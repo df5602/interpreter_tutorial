@@ -82,7 +82,7 @@ impl NodeVisitor for BinaryOperatorNode {
             OperatorType::Plus => lhs.checked_add(rhs),
             OperatorType::Minus => lhs.checked_sub(rhs),
             OperatorType::Times => lhs.checked_mul(rhs),
-            OperatorType::Division => {
+            OperatorType::IntegerDivision => {
                 if rhs == 0 {
                     return Err(SyntaxError {
                         msg: "Division by zero".to_string(),
@@ -95,6 +95,7 @@ impl NodeVisitor for BinaryOperatorNode {
                     lhs.checked_div(rhs)
                 }
             }
+            OperatorType::FloatDivision => unimplemented!(),
         };
 
         match result {
@@ -425,9 +426,9 @@ mod tests {
         let op_node =
             BinaryOperatorNode::new(index_left,
                                     index_right,
-                                    OperatorType::Division,
+                                    OperatorType::IntegerDivision,
                                     Token::new(TokenType::Operator,
-                                               Some(TokenValue::Operator(OperatorType::Division)),
+                                               Some(TokenValue::Operator(OperatorType::IntegerDivision)),
                                                Span::default()));
         let index_op = ast.add_node(op_node);
         let mut sym_tbl = HashMap::new();
@@ -455,9 +456,9 @@ mod tests {
         let op_node =
             BinaryOperatorNode::new(index_left,
                                     index_right,
-                                    OperatorType::Division,
+                                    OperatorType::IntegerDivision,
                                     Token::new(TokenType::Operator,
-                                               Some(TokenValue::Operator(OperatorType::Division)),
+                                               Some(TokenValue::Operator(OperatorType::IntegerDivision)),
                                                Span::default()));
         let index_op = ast.add_node(op_node);
         let mut sym_tbl = HashMap::new();
@@ -483,9 +484,9 @@ mod tests {
         let op_node =
             BinaryOperatorNode::new(index_left,
                                     index_right,
-                                    OperatorType::Division,
+                                    OperatorType::IntegerDivision,
                                     Token::new(TokenType::Operator,
-                                               Some(TokenValue::Operator(OperatorType::Division)),
+                                               Some(TokenValue::Operator(OperatorType::IntegerDivision)),
                                                Span::default()));
         let index_op = ast.add_node(op_node);
         let mut sym_tbl = HashMap::new();

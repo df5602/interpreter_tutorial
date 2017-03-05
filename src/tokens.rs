@@ -6,7 +6,7 @@ use std::fmt;
 pub enum TokenType {
     /// A (multi-digit, base 10) unsigned integer
     IntegerLiteral,
-    /// One of the following operators: '+', '-', '*', '/'
+    /// One of the following operators: '+', '-', '*', 'div' (integer division), '/' (float division)
     Operator,
     /// Variable name (must start with an alphabetic character,
     /// followed by any number of alphanumerical characters)
@@ -21,6 +21,10 @@ pub enum TokenType {
     Dot,
     /// Semicolon: ';'
     Semicolon,
+    /// Colon: ':'
+    Colon,
+    /// Comma: ','
+    Comma,
     /// Assignment operator: ':='
     Assign,
     /// 'BEGIN' (to mark the beginning of a compound statement)
@@ -46,6 +50,8 @@ impl fmt::Display for TokenType {
             TokenType::RParen => write!(f, "RPAREN"),
             TokenType::Dot => write!(f, "DOT"),
             TokenType::Semicolon => write!(f, "SEMICOLON"),
+            TokenType::Colon => write!(f, "COLON"),
+            TokenType::Comma => write!(f, "COMMA"),
             TokenType::Assign => write!(f, "ASSIGN"),
             TokenType::Begin => write!(f, "BEGIN"),
             TokenType::End => write!(f, "END"),
@@ -65,8 +71,10 @@ pub enum OperatorType {
     Minus,
     /// '*' (Multiplication)
     Times,
-    /// '/' (Division)
-    Division,
+    /// 'div' (Integer Division)
+    IntegerDivision,
+    /// '/' (Float Division)
+    FloatDivision,
 }
 
 impl fmt::Display for OperatorType {
@@ -75,7 +83,8 @@ impl fmt::Display for OperatorType {
             OperatorType::Plus => write!(f, "'+'"),
             OperatorType::Minus => write!(f, "'-'"),
             OperatorType::Times => write!(f, "'*'"),
-            OperatorType::Division => write!(f, "'div'"),
+            OperatorType::IntegerDivision => write!(f, "'div'"),
+            OperatorType::FloatDivision => write!(f, "'/'"),
         }
     }
 }
