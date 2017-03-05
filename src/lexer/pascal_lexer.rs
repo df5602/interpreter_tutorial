@@ -25,7 +25,12 @@ impl Lexer for PascalLexer {
         // Return EOF when we have reached the end of the input
         if pos + 1 > self.chars.len() {
             self.pos.set(pos + 1);
-            return Ok(Token::new(TokenType::Eof, None, (pos, pos + 1)));
+            return Ok(Token::new(TokenType::Eof,
+                                 None,
+                                 Span {
+                                     start: pos,
+                                     end: pos + 1,
+                                 }));
         }
 
         let current_char = self.chars[pos];
@@ -35,7 +40,10 @@ impl Lexer for PascalLexer {
             let value = self.get_integer()?;
             return Ok(Token::new(TokenType::Integer,
                                  Some(TokenValue::Integer(value)),
-                                 (pos, self.pos.get())));
+                                 Span {
+                                     start: pos,
+                                     end: self.pos.get(),
+                                 }));
         }
 
         // Return IDENTIFIER or keyword when the next character is alphabetic
@@ -49,7 +57,10 @@ impl Lexer for PascalLexer {
             self.pos.set(pos + 1);
             return Ok(Token::new(TokenType::Operator,
                                  Some(TokenValue::Operator(OperatorType::Plus)),
-                                 (pos, pos + 1)));
+                                 Span {
+                                     start: pos,
+                                     end: pos + 1,
+                                 }));
         }
 
         // Return MINUS when the next character is '-'
@@ -57,7 +68,10 @@ impl Lexer for PascalLexer {
             self.pos.set(pos + 1);
             return Ok(Token::new(TokenType::Operator,
                                  Some(TokenValue::Operator(OperatorType::Minus)),
-                                 (pos, pos + 1)));
+                                 Span {
+                                     start: pos,
+                                     end: pos + 1,
+                                 }));
         }
 
         // Return TIMES when the next character is '*'
@@ -65,45 +79,76 @@ impl Lexer for PascalLexer {
             self.pos.set(pos + 1);
             return Ok(Token::new(TokenType::Operator,
                                  Some(TokenValue::Operator(OperatorType::Times)),
-                                 (pos, pos + 1)));
+                                 Span {
+                                     start: pos,
+                                     end: pos + 1,
+                                 }));
         }
 
         // Return LPAREN when the next character is '('
         if current_char == '(' {
             self.pos.set(pos + 1);
-            return Ok(Token::new(TokenType::LParen, None, (pos, pos + 1)));
+            return Ok(Token::new(TokenType::LParen,
+                                 None,
+                                 Span {
+                                     start: pos,
+                                     end: pos + 1,
+                                 }));
         }
 
         // Return RPAREN when the next character is ')'
         if current_char == ')' {
             self.pos.set(pos + 1);
-            return Ok(Token::new(TokenType::RParen, None, (pos, pos + 1)));
+            return Ok(Token::new(TokenType::RParen,
+                                 None,
+                                 Span {
+                                     start: pos,
+                                     end: pos + 1,
+                                 }));
         }
 
         // Return DOT when the next character is '.'
         if current_char == '.' {
             self.pos.set(pos + 1);
-            return Ok(Token::new(TokenType::Dot, None, (pos, pos + 1)));
+            return Ok(Token::new(TokenType::Dot,
+                                 None,
+                                 Span {
+                                     start: pos,
+                                     end: pos + 1,
+                                 }));
         }
 
         // Return SEMICOLON when the next character is ';'
         if current_char == ';' {
             self.pos.set(pos + 1);
-            return Ok(Token::new(TokenType::Semicolon, None, (pos, pos + 1)));
+            return Ok(Token::new(TokenType::Semicolon,
+                                 None,
+                                 Span {
+                                     start: pos,
+                                     end: pos + 1,
+                                 }));
         }
 
         // Return ASSIGN when the next two characters are ':='
         if current_char == ':' {
             if let Some('=') = self.peek(1) {
                 self.pos.set(pos + 2);
-                return Ok(Token::new(TokenType::Assign, None, (pos, pos + 2)));
+                return Ok(Token::new(TokenType::Assign,
+                                     None,
+                                     Span {
+                                         start: pos,
+                                         end: pos + 2,
+                                     }));
             }
         }
 
         // Current character didn't match any known token, return error
         Err(SyntaxError {
             msg: "Invalid token".to_string(),
-            position: (pos, pos + 1),
+            span: Span {
+                start: pos,
+                end: pos + 1,
+            },
         })
     }
 
@@ -158,7 +203,10 @@ impl PascalLexer {
             Err(SyntaxError {
                 msg: "Integer overflow (exceeds storage capacity of signed 64-bit integer)"
                     .to_string(),
-                position: (start_pos, pos),
+                span: Span {
+                    start: start_pos,
+                    end: pos,
+                },
             })
         } else {
             Ok(result)
@@ -196,12 +244,29 @@ impl PascalLexer {
         result = result.to_lowercase();
 
         match result.as_ref() {
-            "begin" => return Ok(Token::new(TokenType::Begin, None, (start_pos, pos))),
-            "end" => return Ok(Token::new(TokenType::End, None, (start_pos, pos))),
+            "begin" => {
+                return Ok(Token::new(TokenType::Begin,
+                                     None,
+                                     Span {
+                                         start: start_pos,
+                                         end: pos,
+                                     }))
+            }
+            "end" => {
+                return Ok(Token::new(TokenType::End,
+                                     None,
+                                     Span {
+                                         start: start_pos,
+                                         end: pos,
+                                     }))
+            }
             "div" => {
                 return Ok(Token::new(TokenType::Operator,
                                      Some(TokenValue::Operator(OperatorType::Division)),
-                                     (start_pos, pos)))
+                                     Span {
+                                         start: start_pos,
+                                         end: pos,
+                                     }))
             }
             _ => {}
         }
@@ -210,7 +275,10 @@ impl PascalLexer {
         // Moving the following into the match statement leads to problems with the borrow checker.
         Ok(Token::new(TokenType::Identifier,
                       Some(TokenValue::Identifier(result)),
-                      (start_pos, pos)))
+                      Span {
+                          start: start_pos,
+                          end: pos,
+                      }))
     }
 
     /// Advances the position to the next non-whitespace character

@@ -210,9 +210,10 @@ mod tests {
     #[test]
     fn ast_add_node_returns_zero_after_first_element_is_added() {
         let mut ast = Ast::new();
-        let int_node =
-            IntegerNode::new(42,
-                             Token::new(TokenType::Integer, Some(TokenValue::Integer(42)), (0, 0)));
+        let int_node = IntegerNode::new(42,
+                                        Token::new(TokenType::Integer,
+                                                   Some(TokenValue::Integer(42)),
+                                                   Span::default()));
         let index = ast.add_node(int_node);
         assert_eq!(index, AstIndex(0));
     }
@@ -220,13 +221,15 @@ mod tests {
     #[test]
     fn ast_add_node_returns_one_after_second_element_is_added() {
         let mut ast = Ast::new();
-        let int_node_1 =
-            IntegerNode::new(42,
-                             Token::new(TokenType::Integer, Some(TokenValue::Integer(42)), (0, 0)));
+        let int_node_1 = IntegerNode::new(42,
+                                          Token::new(TokenType::Integer,
+                                                     Some(TokenValue::Integer(42)),
+                                                     Span::default()));
         let _i = ast.add_node(int_node_1);
-        let int_node_2 =
-            IntegerNode::new(24,
-                             Token::new(TokenType::Integer, Some(TokenValue::Integer(24)), (0, 0)));
+        let int_node_2 = IntegerNode::new(24,
+                                          Token::new(TokenType::Integer,
+                                                     Some(TokenValue::Integer(24)),
+                                                     Span::default()));
         let index_2 = ast.add_node(int_node_2);
         assert_eq!(index_2, AstIndex(1));
     }
@@ -234,9 +237,10 @@ mod tests {
     #[test]
     fn ast_add_node_sets_root_to_inserted_node_when_first_node_is_added() {
         let mut ast = Ast::new();
-        let int_node =
-            IntegerNode::new(42,
-                             Token::new(TokenType::Integer, Some(TokenValue::Integer(42)), (0, 0)));
+        let int_node = IntegerNode::new(42,
+                                        Token::new(TokenType::Integer,
+                                                   Some(TokenValue::Integer(42)),
+                                                   Span::default()));
         let index = ast.add_node(int_node);
         assert_eq!(ast.root.unwrap(), index);
     }
@@ -244,9 +248,10 @@ mod tests {
     #[test]
     fn ast_add_node_creates_contiguous_graph_when_first_node_is_added() {
         let mut ast = Ast::new();
-        let int_node =
-            IntegerNode::new(42,
-                             Token::new(TokenType::Integer, Some(TokenValue::Integer(42)), (0, 0)));
+        let int_node = IntegerNode::new(42,
+                                        Token::new(TokenType::Integer,
+                                                   Some(TokenValue::Integer(42)),
+                                                   Span::default()));
         let _index = ast.add_node(int_node);
         assert!(ast.is_contiguous());
     }
@@ -254,13 +259,15 @@ mod tests {
     #[test]
     fn ast_add_node_root_points_to_first_added_element_when_two_unrelated_nodes_are_added() {
         let mut ast = Ast::new();
-        let int_node1 =
-            IntegerNode::new(42,
-                             Token::new(TokenType::Integer, Some(TokenValue::Integer(42)), (0, 0)));
+        let int_node1 = IntegerNode::new(42,
+                                         Token::new(TokenType::Integer,
+                                                    Some(TokenValue::Integer(42)),
+                                                    Span::default()));
         let index1 = ast.add_node(int_node1);
-        let int_node2 =
-            IntegerNode::new(24,
-                             Token::new(TokenType::Integer, Some(TokenValue::Integer(24)), (0, 0)));
+        let int_node2 = IntegerNode::new(24,
+                                         Token::new(TokenType::Integer,
+                                                    Some(TokenValue::Integer(24)),
+                                                    Span::default()));
         let _index2 = ast.add_node(int_node2);
         assert_eq!(ast.root.unwrap(), index1);
     }
@@ -268,13 +275,15 @@ mod tests {
     #[test]
     fn ast_add_node_creates_non_contiguous_graph_when_two_unrelated_nodes_are_added() {
         let mut ast = Ast::new();
-        let int_node1 =
-            IntegerNode::new(42,
-                             Token::new(TokenType::Integer, Some(TokenValue::Integer(42)), (0, 0)));
+        let int_node1 = IntegerNode::new(42,
+                                         Token::new(TokenType::Integer,
+                                                    Some(TokenValue::Integer(42)),
+                                                    Span::default()));
         let _index1 = ast.add_node(int_node1);
-        let int_node2 =
-            IntegerNode::new(24,
-                             Token::new(TokenType::Integer, Some(TokenValue::Integer(24)), (0, 0)));
+        let int_node2 = IntegerNode::new(24,
+                                         Token::new(TokenType::Integer,
+                                                    Some(TokenValue::Integer(24)),
+                                                    Span::default()));
         let _index2 = ast.add_node(int_node2);
         assert!(!ast.is_contiguous());
     }
@@ -282,13 +291,15 @@ mod tests {
     #[test]
     fn ast_add_node_parent_links_are_updated_when_node_with_child_links_is_added() {
         let mut ast = Ast::new();
-        let int_node1 =
-            IntegerNode::new(2,
-                             Token::new(TokenType::Integer, Some(TokenValue::Integer(2)), (0, 0)));
+        let int_node1 = IntegerNode::new(2,
+                                         Token::new(TokenType::Integer,
+                                                    Some(TokenValue::Integer(2)),
+                                                    Span::default()));
         let index1 = ast.add_node(int_node1);
-        let int_node2 =
-            IntegerNode::new(7,
-                             Token::new(TokenType::Integer, Some(TokenValue::Integer(7)), (0, 0)));
+        let int_node2 = IntegerNode::new(7,
+                                         Token::new(TokenType::Integer,
+                                                    Some(TokenValue::Integer(7)),
+                                                    Span::default()));
         let index2 = ast.add_node(int_node2);
         let op_node =
             BinaryOperatorNode::new(index1,
@@ -296,7 +307,7 @@ mod tests {
                                     OperatorType::Times,
                                     Token::new(TokenType::Operator,
                                                Some(TokenValue::Operator(OperatorType::Times)),
-                                               (0, 0)));
+                                               Span::default()));
         let index_op = ast.add_node(op_node);
 
         assert_eq!((*ast.nodes[index1.0]).get_parent().unwrap(), index_op);
@@ -306,13 +317,15 @@ mod tests {
     #[test]
     fn ast_add_node_sets_root_to_parent_node_when_parent_of_root_is_set() {
         let mut ast = Ast::new();
-        let int_node1 =
-            IntegerNode::new(2,
-                             Token::new(TokenType::Integer, Some(TokenValue::Integer(2)), (0, 0)));
+        let int_node1 = IntegerNode::new(2,
+                                         Token::new(TokenType::Integer,
+                                                    Some(TokenValue::Integer(2)),
+                                                    Span::default()));
         let index1 = ast.add_node(int_node1);
-        let int_node2 =
-            IntegerNode::new(7,
-                             Token::new(TokenType::Integer, Some(TokenValue::Integer(7)), (0, 0)));
+        let int_node2 = IntegerNode::new(7,
+                                         Token::new(TokenType::Integer,
+                                                    Some(TokenValue::Integer(7)),
+                                                    Span::default()));
         let index2 = ast.add_node(int_node2);
         let op_node =
             BinaryOperatorNode::new(index1,
@@ -320,7 +333,7 @@ mod tests {
                                     OperatorType::Times,
                                     Token::new(TokenType::Operator,
                                                Some(TokenValue::Operator(OperatorType::Times)),
-                                               (0, 0)));
+                                               Span::default()));
         let index_op = ast.add_node(op_node);
 
         assert_eq!(ast.root.unwrap(), index_op);
@@ -330,13 +343,15 @@ mod tests {
     fn ast_add_node_creates_contiguous_graph_when_non_connected_node_is_child_of_connected_node
         () {
         let mut ast = Ast::new();
-        let int_node1 =
-            IntegerNode::new(2,
-                             Token::new(TokenType::Integer, Some(TokenValue::Integer(2)), (0, 0)));
+        let int_node1 = IntegerNode::new(2,
+                                         Token::new(TokenType::Integer,
+                                                    Some(TokenValue::Integer(2)),
+                                                    Span::default()));
         let index1 = ast.add_node(int_node1);
-        let int_node2 =
-            IntegerNode::new(7,
-                             Token::new(TokenType::Integer, Some(TokenValue::Integer(7)), (0, 0)));
+        let int_node2 = IntegerNode::new(7,
+                                         Token::new(TokenType::Integer,
+                                                    Some(TokenValue::Integer(7)),
+                                                    Span::default()));
         let index2 = ast.add_node(int_node2);
         let op_node =
             BinaryOperatorNode::new(index1,
@@ -344,7 +359,7 @@ mod tests {
                                     OperatorType::Times,
                                     Token::new(TokenType::Operator,
                                                Some(TokenValue::Operator(OperatorType::Times)),
-                                               (0, 0)));
+                                               Span::default()));
         let _index_op = ast.add_node(op_node);
 
         assert!(ast.is_contiguous());
@@ -353,13 +368,15 @@ mod tests {
     #[test]
     fn ast_graph_with_two_disconnected_graphs_is_not_contiguous() {
         let mut ast = Ast::new();
-        let int_node1 =
-            IntegerNode::new(2,
-                             Token::new(TokenType::Integer, Some(TokenValue::Integer(2)), (0, 0)));
+        let int_node1 = IntegerNode::new(2,
+                                         Token::new(TokenType::Integer,
+                                                    Some(TokenValue::Integer(2)),
+                                                    Span::default()));
         let index1 = ast.add_node(int_node1);
-        let int_node2 =
-            IntegerNode::new(7,
-                             Token::new(TokenType::Integer, Some(TokenValue::Integer(7)), (0, 0)));
+        let int_node2 = IntegerNode::new(7,
+                                         Token::new(TokenType::Integer,
+                                                    Some(TokenValue::Integer(7)),
+                                                    Span::default()));
         let index2 = ast.add_node(int_node2);
         let op_node1 =
             BinaryOperatorNode::new(index1,
@@ -367,15 +384,17 @@ mod tests {
                                     OperatorType::Times,
                                     Token::new(TokenType::Operator,
                                                Some(TokenValue::Operator(OperatorType::Times)),
-                                               (0, 0)));
+                                               Span::default()));
         let _index_op1 = ast.add_node(op_node1);
-        let int_node3 =
-            IntegerNode::new(2,
-                             Token::new(TokenType::Integer, Some(TokenValue::Integer(2)), (0, 0)));
+        let int_node3 = IntegerNode::new(2,
+                                         Token::new(TokenType::Integer,
+                                                    Some(TokenValue::Integer(2)),
+                                                    Span::default()));
         let index3 = ast.add_node(int_node3);
-        let int_node4 =
-            IntegerNode::new(7,
-                             Token::new(TokenType::Integer, Some(TokenValue::Integer(7)), (0, 0)));
+        let int_node4 = IntegerNode::new(7,
+                                         Token::new(TokenType::Integer,
+                                                    Some(TokenValue::Integer(7)),
+                                                    Span::default()));
         let index4 = ast.add_node(int_node4);
         let op_node2 =
             BinaryOperatorNode::new(index3,
@@ -383,7 +402,7 @@ mod tests {
                                     OperatorType::Times,
                                     Token::new(TokenType::Operator,
                                                Some(TokenValue::Operator(OperatorType::Times)),
-                                               (0, 0)));
+                                               Span::default()));
         let _index_op2 = ast.add_node(op_node2);
 
         assert!(!ast.is_contiguous());
@@ -393,13 +412,15 @@ mod tests {
     #[should_panic]
     fn ast_add_node_cannot_set_parent_of_node_which_already_has_a_parent() {
         let mut ast = Ast::new();
-        let int_node1 =
-            IntegerNode::new(2,
-                             Token::new(TokenType::Integer, Some(TokenValue::Integer(2)), (0, 0)));
+        let int_node1 = IntegerNode::new(2,
+                                         Token::new(TokenType::Integer,
+                                                    Some(TokenValue::Integer(2)),
+                                                    Span::default()));
         let index1 = ast.add_node(int_node1);
-        let int_node2 =
-            IntegerNode::new(7,
-                             Token::new(TokenType::Integer, Some(TokenValue::Integer(7)), (0, 0)));
+        let int_node2 = IntegerNode::new(7,
+                                         Token::new(TokenType::Integer,
+                                                    Some(TokenValue::Integer(7)),
+                                                    Span::default()));
         let index2 = ast.add_node(int_node2);
         let op_node1 =
             BinaryOperatorNode::new(index1,
@@ -407,11 +428,12 @@ mod tests {
                                     OperatorType::Times,
                                     Token::new(TokenType::Operator,
                                                Some(TokenValue::Operator(OperatorType::Times)),
-                                               (0, 0)));
+                                               Span::default()));
         let _index_op1 = ast.add_node(op_node1);
-        let int_node3 =
-            IntegerNode::new(3,
-                             Token::new(TokenType::Integer, Some(TokenValue::Integer(3)), (0, 0)));
+        let int_node3 = IntegerNode::new(3,
+                                         Token::new(TokenType::Integer,
+                                                    Some(TokenValue::Integer(3)),
+                                                    Span::default()));
         let index3 = ast.add_node(int_node3);
         let op_node2 =
             BinaryOperatorNode::new(index2,
@@ -419,7 +441,7 @@ mod tests {
                                     OperatorType::Plus,
                                     Token::new(TokenType::Operator,
                                                Some(TokenValue::Operator(OperatorType::Plus)),
-                                               (0, 0)));
+                                               Span::default()));
         let _index_op2 = ast.add_node(op_node2);
     }
 }

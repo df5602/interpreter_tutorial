@@ -2,7 +2,7 @@ use std::fmt;
 use std::collections::HashMap;
 
 use ast::{Ast, AstNode, AstIndex};
-use tokens::{Token, TokenValue, OperatorType};
+use tokens::{Token, TokenValue, OperatorType, Span};
 use errors::SyntaxError;
 use interpreter::{NodeVisitor, ReturnValue};
 
@@ -86,7 +86,10 @@ impl NodeVisitor for BinaryOperatorNode {
                 if rhs == 0 {
                     return Err(SyntaxError {
                         msg: "Division by zero".to_string(),
-                        position: self.position,
+                        span: Span {
+                            start: self.position.0,
+                            end: self.position.1,
+                        },
                     });
                 } else {
                     lhs.checked_div(rhs)
@@ -119,7 +122,10 @@ impl NodeVisitor for BinaryOperatorNode {
 
                 Err(SyntaxError {
                     msg: format!("Integer overflow [{}: {}; {}: {}]", left, lhs, right, rhs),
-                    position: self.position,
+                    span: Span {
+                        start: self.position.0,
+                        end: self.position.1,
+                    },
                 })
             }
         }
@@ -147,7 +153,7 @@ mod tests {
 
     use super::*;
     use ast::{Ast, AstNode, AstIndex, IntegerNode};
-    use tokens::{Token, TokenType, TokenValue, OperatorType};
+    use tokens::{Token, TokenType, TokenValue, OperatorType, Span};
 
     #[test]
     fn binary_operator_node_get_parent_returns_none_when_node_has_no_parent() {
@@ -157,7 +163,7 @@ mod tests {
                                     OperatorType::Plus,
                                     Token::new(TokenType::Operator,
                                                Some(TokenValue::Operator(OperatorType::Plus)),
-                                               (0, 0)));
+                                               Span::default()));
         assert_eq!(op_node.get_parent(), None);
     }
 
@@ -169,7 +175,7 @@ mod tests {
                                     OperatorType::Plus,
                                     Token::new(TokenType::Operator,
                                                Some(TokenValue::Operator(OperatorType::Plus)),
-                                               (0, 0)));
+                                               Span::default()));
         assert!(op_node.set_parent(AstIndex(3)));
         assert_eq!(op_node.get_parent(), Some(AstIndex(3)));
     }
@@ -182,7 +188,7 @@ mod tests {
                                     OperatorType::Plus,
                                     Token::new(TokenType::Operator,
                                                Some(TokenValue::Operator(OperatorType::Plus)),
-                                               (0, 0)));
+                                               Span::default()));
         assert!(op_node.set_parent(AstIndex(3)));
         assert!(!op_node.set_parent(AstIndex(4)));
     }
@@ -195,7 +201,7 @@ mod tests {
                                     OperatorType::Plus,
                                     Token::new(TokenType::Operator,
                                                Some(TokenValue::Operator(OperatorType::Plus)),
-                                               (0, 0)));
+                                               Span::default()));
         let children = op_node.get_children();
         assert_eq!(children[0], AstIndex(0));
         assert_eq!(children[1], AstIndex(1));
@@ -210,7 +216,7 @@ mod tests {
                                     OperatorType::Plus,
                                     Token::new(TokenType::Operator,
                                                Some(TokenValue::Operator(OperatorType::Plus)),
-                                               (0, 0)));
+                                               Span::default()));
         assert_eq!(op_node.get_value().unwrap(),
                    TokenValue::Operator(OperatorType::Plus));
     }
@@ -223,19 +229,21 @@ mod tests {
                                     OperatorType::Plus,
                                     Token::new(TokenType::Operator,
                                                Some(TokenValue::Operator(OperatorType::Plus)),
-                                               (3, 5)));
+                                               Span { start: 3, end: 5 }));
         op_node.set_position((4, 5));
         assert_eq!(op_node.get_position(), (4, 5));
     }
 
     #[test]
     fn binary_operator_node_visit_returns_sum_of_integer_nodes_when_op_is_addition() {
-        let int_node_left =
-            IntegerNode::new(2,
-                             Token::new(TokenType::Integer, Some(TokenValue::Integer(2)), (0, 0)));
-        let int_node_right =
-            IntegerNode::new(4,
-                             Token::new(TokenType::Integer, Some(TokenValue::Integer(4)), (0, 0)));
+        let int_node_left = IntegerNode::new(2,
+                                             Token::new(TokenType::Integer,
+                                                        Some(TokenValue::Integer(2)),
+                                                        Span::default()));
+        let int_node_right = IntegerNode::new(4,
+                                              Token::new(TokenType::Integer,
+                                                         Some(TokenValue::Integer(4)),
+                                                         Span::default()));
         let mut ast = Ast::new();
         let index_left = ast.add_node(int_node_left);
         let index_right = ast.add_node(int_node_right);
@@ -246,7 +254,7 @@ mod tests {
                                     OperatorType::Plus,
                                     Token::new(TokenType::Operator,
                                                Some(TokenValue::Operator(OperatorType::Plus)),
-                                               (0, 0)));
+                                               Span::default()));
         let index_op = ast.add_node(op_node);
         let mut sym_tbl = HashMap::new();
         assert_eq!(ast.get_node(index_op)
@@ -261,10 +269,11 @@ mod tests {
         let int_node_left = IntegerNode::new(i64::MAX,
                                              Token::new(TokenType::Integer,
                                                         Some(TokenValue::Integer(i64::MAX)),
-                                                        (0, 0)));
-        let int_node_right =
-            IntegerNode::new(1,
-                             Token::new(TokenType::Integer, Some(TokenValue::Integer(1)), (0, 0)));
+                                                        Span::default()));
+        let int_node_right = IntegerNode::new(1,
+                                              Token::new(TokenType::Integer,
+                                                         Some(TokenValue::Integer(1)),
+                                                         Span::default()));
         let mut ast = Ast::new();
         let index_left = ast.add_node(int_node_left);
         let index_right = ast.add_node(int_node_right);
@@ -275,7 +284,7 @@ mod tests {
                                     OperatorType::Plus,
                                     Token::new(TokenType::Operator,
                                                Some(TokenValue::Operator(OperatorType::Plus)),
-                                               (0, 0)));
+                                               Span::default()));
         let index_op = ast.add_node(op_node);
         let mut sym_tbl = HashMap::new();
         assert!(ast.get_node(index_op)
@@ -285,12 +294,14 @@ mod tests {
 
     #[test]
     fn binary_operator_node_visit_returns_difference_of_integer_nodes_when_op_is_subtraction() {
-        let int_node_left =
-            IntegerNode::new(4,
-                             Token::new(TokenType::Integer, Some(TokenValue::Integer(4)), (0, 0)));
-        let int_node_right =
-            IntegerNode::new(2,
-                             Token::new(TokenType::Integer, Some(TokenValue::Integer(2)), (0, 0)));
+        let int_node_left = IntegerNode::new(4,
+                                             Token::new(TokenType::Integer,
+                                                        Some(TokenValue::Integer(4)),
+                                                        Span::default()));
+        let int_node_right = IntegerNode::new(2,
+                                              Token::new(TokenType::Integer,
+                                                         Some(TokenValue::Integer(2)),
+                                                         Span::default()));
         let mut ast = Ast::new();
         let index_left = ast.add_node(int_node_left);
         let index_right = ast.add_node(int_node_right);
@@ -301,7 +312,7 @@ mod tests {
                                     OperatorType::Minus,
                                     Token::new(TokenType::Operator,
                                                Some(TokenValue::Operator(OperatorType::Minus)),
-                                               (0, 0)));
+                                               Span::default()));
         let index_op = ast.add_node(op_node);
         let mut sym_tbl = HashMap::new();
         assert_eq!(ast.get_node(index_op)
@@ -313,13 +324,14 @@ mod tests {
 
     #[test]
     fn binary_operator_node_visit_returns_error_when_subtraction_overflows() {
-        let int_node_left =
-            IntegerNode::new(-2,
-                             Token::new(TokenType::Integer, Some(TokenValue::Integer(-2)), (0, 0)));
+        let int_node_left = IntegerNode::new(-2,
+                                             Token::new(TokenType::Integer,
+                                                        Some(TokenValue::Integer(-2)),
+                                                        Span::default()));
         let int_node_right = IntegerNode::new(i64::MAX,
                                               Token::new(TokenType::Integer,
                                                          Some(TokenValue::Integer(i64::MAX)),
-                                                         (0, 0)));
+                                                         Span::default()));
         let mut ast = Ast::new();
         let index_left = ast.add_node(int_node_left);
         let index_right = ast.add_node(int_node_right);
@@ -330,7 +342,7 @@ mod tests {
                                     OperatorType::Minus,
                                     Token::new(TokenType::Operator,
                                                Some(TokenValue::Operator(OperatorType::Minus)),
-                                               (0, 0)));
+                                               Span::default()));
         let index_op = ast.add_node(op_node);
         let mut sym_tbl = HashMap::new();
         assert!(ast.get_node(index_op)
@@ -340,12 +352,14 @@ mod tests {
 
     #[test]
     fn binary_operator_node_visit_returns_product_of_integer_nodes_when_op_is_multiplication() {
-        let int_node_left =
-            IntegerNode::new(4,
-                             Token::new(TokenType::Integer, Some(TokenValue::Integer(4)), (0, 0)));
-        let int_node_right =
-            IntegerNode::new(2,
-                             Token::new(TokenType::Integer, Some(TokenValue::Integer(2)), (0, 0)));
+        let int_node_left = IntegerNode::new(4,
+                                             Token::new(TokenType::Integer,
+                                                        Some(TokenValue::Integer(4)),
+                                                        Span::default()));
+        let int_node_right = IntegerNode::new(2,
+                                              Token::new(TokenType::Integer,
+                                                         Some(TokenValue::Integer(2)),
+                                                         Span::default()));
         let mut ast = Ast::new();
         let index_left = ast.add_node(int_node_left);
         let index_right = ast.add_node(int_node_right);
@@ -356,7 +370,7 @@ mod tests {
                                     OperatorType::Times,
                                     Token::new(TokenType::Operator,
                                                Some(TokenValue::Operator(OperatorType::Times)),
-                                               (0, 0)));
+                                               Span::default()));
         let index_op = ast.add_node(op_node);
         let mut sym_tbl = HashMap::new();
         assert_eq!(ast.get_node(index_op)
@@ -368,13 +382,14 @@ mod tests {
 
     #[test]
     fn binary_operator_node_visit_returns_error_when_multiplication_overflows() {
-        let int_node_left =
-            IntegerNode::new(2,
-                             Token::new(TokenType::Integer, Some(TokenValue::Integer(2)), (0, 0)));
+        let int_node_left = IntegerNode::new(2,
+                                             Token::new(TokenType::Integer,
+                                                        Some(TokenValue::Integer(2)),
+                                                        Span::default()));
         let int_node_right = IntegerNode::new(i64::MAX,
                                               Token::new(TokenType::Integer,
                                                          Some(TokenValue::Integer(i64::MAX)),
-                                                         (0, 0)));
+                                                         Span::default()));
         let mut ast = Ast::new();
         let index_left = ast.add_node(int_node_left);
         let index_right = ast.add_node(int_node_right);
@@ -385,7 +400,7 @@ mod tests {
                                     OperatorType::Times,
                                     Token::new(TokenType::Operator,
                                                Some(TokenValue::Operator(OperatorType::Times)),
-                                               (0, 0)));
+                                               Span::default()));
         let index_op = ast.add_node(op_node);
         let mut sym_tbl = HashMap::new();
         assert!(ast.get_node(index_op)
@@ -395,12 +410,14 @@ mod tests {
 
     #[test]
     fn binary_operator_node_visit_returns_quotient_of_integer_nodes_when_op_is_division() {
-        let int_node_left =
-            IntegerNode::new(4,
-                             Token::new(TokenType::Integer, Some(TokenValue::Integer(4)), (0, 0)));
-        let int_node_right =
-            IntegerNode::new(2,
-                             Token::new(TokenType::Integer, Some(TokenValue::Integer(2)), (0, 0)));
+        let int_node_left = IntegerNode::new(4,
+                                             Token::new(TokenType::Integer,
+                                                        Some(TokenValue::Integer(4)),
+                                                        Span::default()));
+        let int_node_right = IntegerNode::new(2,
+                                              Token::new(TokenType::Integer,
+                                                         Some(TokenValue::Integer(2)),
+                                                         Span::default()));
         let mut ast = Ast::new();
         let index_left = ast.add_node(int_node_left);
         let index_right = ast.add_node(int_node_right);
@@ -411,7 +428,7 @@ mod tests {
                                     OperatorType::Division,
                                     Token::new(TokenType::Operator,
                                                Some(TokenValue::Operator(OperatorType::Division)),
-                                               (0, 0)));
+                                               Span::default()));
         let index_op = ast.add_node(op_node);
         let mut sym_tbl = HashMap::new();
         assert_eq!(ast.get_node(index_op)
@@ -426,10 +443,11 @@ mod tests {
         let int_node_left = IntegerNode::new(i64::MIN,
                                              Token::new(TokenType::Integer,
                                                         Some(TokenValue::Integer(i64::MIN)),
-                                                        (0, 0)));
-        let int_node_right =
-            IntegerNode::new(-1,
-                             Token::new(TokenType::Integer, Some(TokenValue::Integer(-1)), (0, 0)));
+                                                        Span::default()));
+        let int_node_right = IntegerNode::new(-1,
+                                              Token::new(TokenType::Integer,
+                                                         Some(TokenValue::Integer(-1)),
+                                                         Span::default()));
         let mut ast = Ast::new();
         let index_left = ast.add_node(int_node_left);
         let index_right = ast.add_node(int_node_right);
@@ -440,7 +458,7 @@ mod tests {
                                     OperatorType::Division,
                                     Token::new(TokenType::Operator,
                                                Some(TokenValue::Operator(OperatorType::Division)),
-                                               (0, 0)));
+                                               Span::default()));
         let index_op = ast.add_node(op_node);
         let mut sym_tbl = HashMap::new();
         assert!(ast.get_node(index_op)
@@ -450,12 +468,14 @@ mod tests {
 
     #[test]
     fn binary_operator_node_visit_returns_error_when_op_is_division_and_rhs_is_zero() {
-        let int_node_left =
-            IntegerNode::new(4,
-                             Token::new(TokenType::Integer, Some(TokenValue::Integer(4)), (0, 0)));
-        let int_node_right =
-            IntegerNode::new(0,
-                             Token::new(TokenType::Integer, Some(TokenValue::Integer(0)), (0, 0)));
+        let int_node_left = IntegerNode::new(4,
+                                             Token::new(TokenType::Integer,
+                                                        Some(TokenValue::Integer(4)),
+                                                        Span::default()));
+        let int_node_right = IntegerNode::new(0,
+                                              Token::new(TokenType::Integer,
+                                                         Some(TokenValue::Integer(0)),
+                                                         Span::default()));
         let mut ast = Ast::new();
         let index_left = ast.add_node(int_node_left);
         let index_right = ast.add_node(int_node_right);
@@ -466,7 +486,7 @@ mod tests {
                                     OperatorType::Division,
                                     Token::new(TokenType::Operator,
                                                Some(TokenValue::Operator(OperatorType::Division)),
-                                               (0, 0)));
+                                               Span::default()));
         let index_op = ast.add_node(op_node);
         let mut sym_tbl = HashMap::new();
         assert!(ast.get_node(index_op).visit(&ast, &mut sym_tbl).is_err());

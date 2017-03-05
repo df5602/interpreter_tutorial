@@ -25,7 +25,7 @@ impl<L: Lexer> Parser<L> {
     /// Consumes current token if it is of the expected type
     fn eat(&self, token_type: TokenType) -> Result<(usize, usize), SyntaxError> {
         let mut current_token = self.current_token.borrow_mut();
-        let position = current_token.as_ref().unwrap().position;
+        let span = current_token.as_ref().unwrap().span.clone();
 
         // If token has expected type...
         if current_token.as_ref().unwrap().token_type == token_type {
@@ -35,19 +35,19 @@ impl<L: Lexer> Parser<L> {
                 match next_token {
                     Ok(token) => {
                         *current_token = Some(token);
-                        Ok(position)
+                        Ok((span.start, span.end))
                     }
                     Err(e) => Err(e),
                 }
             } else {
-                Ok(position)
+                Ok((span.start, span.end))
             }
         } else {
             Err(SyntaxError {
                 msg: format!("Expected {}, got {}",
                              token_type,
                              current_token.as_ref().unwrap().token_type),
-                position: position,
+                span: span,
             })
         }
     }
@@ -277,7 +277,7 @@ impl<L: Lexer> Parser<L> {
             } else {
                 Err(SyntaxError {
                     msg: format!("Expected '+' or '-', got {}", op_type),
-                    position: current_token.position,
+                    span: current_token.span,
                 })
             }
         } else if current_token.token_type == TokenType::LParen {

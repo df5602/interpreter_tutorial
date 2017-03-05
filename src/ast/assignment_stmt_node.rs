@@ -97,41 +97,45 @@ mod tests {
     use std::collections::HashMap;
 
     use super::*;
-    use tokens::{Token, TokenType, TokenValue};
+    use tokens::{Token, TokenType, TokenValue, Span};
     use ast::{Ast, AstNode, AstIndex, VariableNode, IntegerNode, CompoundStmtNode};
     use interpreter::ReturnValue;
 
     #[test]
     fn assignment_statement_node_get_parent_returns_none_when_node_has_no_parent() {
-        let node = AssignmentStmtNode::new(AstIndex(0),
-                                           AstIndex(1),
-                                           Token::new(TokenType::Assign, None, (0, 2)));
+        let node =
+            AssignmentStmtNode::new(AstIndex(0),
+                                    AstIndex(1),
+                                    Token::new(TokenType::Assign, None, Span { start: 0, end: 2 }));
         assert_eq!(node.get_parent(), None);
     }
 
     #[test]
     fn assignment_statement_node_set_parent_sets_parent_node() {
-        let mut node = AssignmentStmtNode::new(AstIndex(0),
-                                               AstIndex(1),
-                                               Token::new(TokenType::Assign, None, (0, 2)));
+        let mut node =
+            AssignmentStmtNode::new(AstIndex(0),
+                                    AstIndex(1),
+                                    Token::new(TokenType::Assign, None, Span { start: 0, end: 2 }));
         assert!(node.set_parent(AstIndex(2)));
         assert_eq!(node.get_parent(), Some(AstIndex(2)));
     }
 
     #[test]
     fn assignment_statement_node_set_parent_fails_when_node_already_has_parent() {
-        let mut node = AssignmentStmtNode::new(AstIndex(0),
-                                               AstIndex(1),
-                                               Token::new(TokenType::Assign, None, (0, 2)));
+        let mut node =
+            AssignmentStmtNode::new(AstIndex(0),
+                                    AstIndex(1),
+                                    Token::new(TokenType::Assign, None, Span { start: 0, end: 2 }));
         assert!(node.set_parent(AstIndex(2)));
         assert!(!node.set_parent(AstIndex(3)));
     }
 
     #[test]
     fn assignment_statement_node_get_children_returns_operand() {
-        let node = AssignmentStmtNode::new(AstIndex(0),
-                                           AstIndex(1),
-                                           Token::new(TokenType::Assign, None, (0, 2)));
+        let node =
+            AssignmentStmtNode::new(AstIndex(0),
+                                    AstIndex(1),
+                                    Token::new(TokenType::Assign, None, Span { start: 0, end: 2 }));
         let children = node.get_children();
         assert_eq!(children[0], AstIndex(0));
         assert_eq!(children[1], AstIndex(1));
@@ -140,17 +144,19 @@ mod tests {
 
     #[test]
     fn assignment_statement_node_get_value_returns_none() {
-        let node = AssignmentStmtNode::new(AstIndex(0),
-                                           AstIndex(1),
-                                           Token::new(TokenType::Assign, None, (0, 2)));
+        let node =
+            AssignmentStmtNode::new(AstIndex(0),
+                                    AstIndex(1),
+                                    Token::new(TokenType::Assign, None, Span { start: 0, end: 2 }));
         assert_eq!(node.get_value(), None);
     }
 
     #[test]
     fn assignment_statement_node_get_position_returns_position() {
-        let mut node = AssignmentStmtNode::new(AstIndex(0),
-                                               AstIndex(1),
-                                               Token::new(TokenType::Assign, None, (0, 2)));
+        let mut node =
+            AssignmentStmtNode::new(AstIndex(0),
+                                    AstIndex(1),
+                                    Token::new(TokenType::Assign, None, Span { start: 0, end: 2 }));
         node.set_position((4, 5));
         assert_eq!(node.get_position(), (4, 5));
     }
@@ -163,17 +169,19 @@ mod tests {
         let var_node = VariableNode::new("a".to_string(),
                                          Token::new(TokenType::Identifier,
                                                     Some(TokenValue::Identifier("a".to_string())),
-                                                    (0, 1)));
-        let int_node =
-            IntegerNode::new(42,
-                             Token::new(TokenType::Integer, Some(TokenValue::Integer(42)), (3, 5)));
+                                                    Span { start: 0, end: 1 }));
+        let int_node = IntegerNode::new(42,
+                                        Token::new(TokenType::Integer,
+                                                   Some(TokenValue::Integer(42)),
+                                                   Span { start: 3, end: 5 }));
 
         let index_var = ast.add_node(var_node);
         let index_int = ast.add_node(int_node);
 
-        let ass_node = AssignmentStmtNode::new(index_var,
-                                               index_int,
-                                               Token::new(TokenType::Assign, None, (1, 3)));
+        let ass_node =
+            AssignmentStmtNode::new(index_var,
+                                    index_int,
+                                    Token::new(TokenType::Assign, None, Span { start: 1, end: 3 }));
         let index_ass = ast.add_node(ass_node);
 
         assert_eq!(sym_tbl.get(&"a".to_string()), None);
@@ -191,39 +199,44 @@ mod tests {
             VariableNode::new("a".to_string(),
                               Token::new(TokenType::Identifier,
                                          Some(TokenValue::Identifier("a".to_string())),
-                                         (0, 1)));
-        let int_node_42 =
-            IntegerNode::new(42,
-                             Token::new(TokenType::Integer, Some(TokenValue::Integer(42)), (3, 5)));
+                                         Span { start: 0, end: 1 }));
+        let int_node_42 = IntegerNode::new(42,
+                                           Token::new(TokenType::Integer,
+                                                      Some(TokenValue::Integer(42)),
+                                                      Span { start: 3, end: 5 }));
 
         let index_var_1 = ast.add_node(var_node_1);
         let index_int_42 = ast.add_node(int_node_42);
 
-        let ass_node_1 = AssignmentStmtNode::new(index_var_1,
-                                                 index_int_42,
-                                                 Token::new(TokenType::Assign, None, (1, 3)));
+        let ass_node_1 =
+            AssignmentStmtNode::new(index_var_1,
+                                    index_int_42,
+                                    Token::new(TokenType::Assign, None, Span { start: 1, end: 3 }));
         let index_ass_1 = ast.add_node(ass_node_1);
 
         let var_node_2 =
             VariableNode::new("a".to_string(),
                               Token::new(TokenType::Identifier,
                                          Some(TokenValue::Identifier("a".to_string())),
-                                         (0, 1)));
-        let int_node_24 =
-            IntegerNode::new(24,
-                             Token::new(TokenType::Integer, Some(TokenValue::Integer(24)), (3, 5)));
+                                         Span { start: 0, end: 1 }));
+        let int_node_24 = IntegerNode::new(24,
+                                           Token::new(TokenType::Integer,
+                                                      Some(TokenValue::Integer(24)),
+                                                      Span { start: 3, end: 5 }));
 
         let index_var_2 = ast.add_node(var_node_2);
         let index_int_24 = ast.add_node(int_node_24);
 
-        let ass_node_2 = AssignmentStmtNode::new(index_var_2,
-                                                 index_int_24,
-                                                 Token::new(TokenType::Assign, None, (1, 3)));
+        let ass_node_2 =
+            AssignmentStmtNode::new(index_var_2,
+                                    index_int_24,
+                                    Token::new(TokenType::Assign, None, Span { start: 1, end: 3 }));
         let index_ass_2 = ast.add_node(ass_node_2);
 
-        let stmt_node = CompoundStmtNode::new(vec![index_ass_1, index_ass_2],
-                                              Token::new(TokenType::Begin, None, (0, 1)),
-                                              Token::new(TokenType::End, None, (3, 4)));
+        let stmt_node =
+            CompoundStmtNode::new(vec![index_ass_1, index_ass_2],
+                                  Token::new(TokenType::Begin, None, Span { start: 0, end: 1 }),
+                                  Token::new(TokenType::End, None, Span { start: 3, end: 4 }));
         let index_stmt = ast.add_node(stmt_node);
 
         assert_eq!(sym_tbl.get(&"a".to_string()), None);

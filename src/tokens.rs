@@ -123,6 +123,15 @@ impl TokenValue {
     }
 }
 
+/// Describes the span of a Token (position in input stream)
+#[derive(Clone, Debug, Default)]
+pub struct Span {
+    /// Start of the span
+    pub start: usize,
+    /// End of the span
+    pub end: usize,
+}
+
 /// The `Token` type. Contains information about the recognized token.
 #[derive(Clone, Debug)]
 pub struct Token {
@@ -131,7 +140,7 @@ pub struct Token {
     /// An optional value
     pub value: Option<TokenValue>,
     /// The position in the input stream (for diagnostics reasons)
-    pub position: (usize, usize),
+    pub span: Span,
 }
 
 impl fmt::Display for Token {
@@ -157,14 +166,11 @@ impl fmt::Display for Token {
 
 impl Token {
     /// Constructs a new token.
-    pub fn new(token_type: TokenType,
-               value: Option<TokenValue>,
-               position: (usize, usize))
-               -> Token {
+    pub fn new(token_type: TokenType, value: Option<TokenValue>, span: Span) -> Token {
         Token {
             token_type: token_type,
             value: value,
-            position: position,
+            span: span,
         }
     }
 }

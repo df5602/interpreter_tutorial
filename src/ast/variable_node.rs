@@ -64,7 +64,7 @@ impl NodeVisitor for VariableNode {
             None => {
                 Err(SyntaxError {
                     msg: format!("No variable named `{}` in scope.", self.name),
-                    position: self.token.position,
+                    span: self.token.span.clone(),
                 })
             }
         }
@@ -77,7 +77,7 @@ impl VariableNode {
         VariableNode {
             name: name,
             parent: None,
-            position: token.position,
+            position: (token.span.start, token.span.end),
             token: token,
         }
     }
@@ -88,7 +88,7 @@ mod tests {
     use std::collections::HashMap;
 
     use super::*;
-    use tokens::{Token, TokenType, TokenValue};
+    use tokens::{Token, TokenType, TokenValue, Span};
     use ast::{Ast, AstNode, AstIndex, IntegerNode, AssignmentStmtNode};
     use interpreter::ReturnValue;
 
@@ -98,7 +98,7 @@ mod tests {
                                          Token::new(TokenType::Identifier,
                                                     Some(TokenValue::Identifier("foo"
                                                         .to_string())),
-                                                    (0, 4)));
+                                                    Span { start: 0, end: 4 }));
         assert_eq!(var_node.get_parent(), None);
     }
 
@@ -108,7 +108,7 @@ mod tests {
                                              Token::new(TokenType::Identifier,
                                                         Some(TokenValue::Identifier("foo"
                                                             .to_string())),
-                                                        (0, 4)));
+                                                        Span { start: 0, end: 4 }));
         assert!(var_node.set_parent(AstIndex(2)));
         assert_eq!(var_node.get_parent(), Some(AstIndex(2)));
     }
@@ -119,7 +119,7 @@ mod tests {
                                              Token::new(TokenType::Identifier,
                                                         Some(TokenValue::Identifier("foo"
                                                             .to_string())),
-                                                        (0, 4)));
+                                                        Span { start: 0, end: 4 }));
         assert!(var_node.set_parent(AstIndex(2)));
         assert!(!var_node.set_parent(AstIndex(3)));
     }
@@ -130,7 +130,7 @@ mod tests {
                                          Token::new(TokenType::Identifier,
                                                     Some(TokenValue::Identifier("foo"
                                                         .to_string())),
-                                                    (0, 4)));
+                                                    Span { start: 0, end: 4 }));
         let children = var_node.get_children();
         assert!(children.is_empty());
     }
@@ -141,7 +141,7 @@ mod tests {
                                          Token::new(TokenType::Identifier,
                                                     Some(TokenValue::Identifier("foo"
                                                         .to_string())),
-                                                    (0, 4)));
+                                                    Span { start: 0, end: 4 }));
         assert_eq!(var_node.get_value().unwrap(),
                    TokenValue::Identifier("foo".to_string()));
     }
@@ -152,7 +152,7 @@ mod tests {
                                              Token::new(TokenType::Identifier,
                                                         Some(TokenValue::Identifier("foo"
                                                             .to_string())),
-                                                        (0, 4)));
+                                                        Span { start: 0, end: 4 }));
         var_node.set_position((4, 5));
         assert_eq!(var_node.get_position(), (4, 5));
     }
@@ -166,17 +166,19 @@ mod tests {
             VariableNode::new("a".to_string(),
                               Token::new(TokenType::Identifier,
                                          Some(TokenValue::Identifier("a".to_string())),
-                                         (0, 1)));
-        let int_node_42 =
-            IntegerNode::new(42,
-                             Token::new(TokenType::Integer, Some(TokenValue::Integer(42)), (3, 5)));
+                                         Span { start: 0, end: 1 }));
+        let int_node_42 = IntegerNode::new(42,
+                                           Token::new(TokenType::Integer,
+                                                      Some(TokenValue::Integer(42)),
+                                                      Span { start: 3, end: 5 }));
 
         let index_var_a = ast.add_node(var_node_a);
         let index_int_42 = ast.add_node(int_node_42);
 
-        let ass_node_1 = AssignmentStmtNode::new(index_var_a,
-                                                 index_int_42,
-                                                 Token::new(TokenType::Assign, None, (1, 3)));
+        let ass_node_1 =
+            AssignmentStmtNode::new(index_var_a,
+                                    index_int_42,
+                                    Token::new(TokenType::Assign, None, Span { start: 1, end: 3 }));
         let index_ass_1 = ast.add_node(ass_node_1);
 
         assert!(ast.get_node(index_ass_1).visit(&ast, &mut sym_tbl).is_ok());
@@ -194,7 +196,7 @@ mod tests {
             VariableNode::new("a".to_string(),
                               Token::new(TokenType::Identifier,
                                          Some(TokenValue::Identifier("a".to_string())),
-                                         (0, 1)));
+                                         Span { start: 0, end: 1 }));
 
         let index_var_a = ast.add_node(var_node_a);
 

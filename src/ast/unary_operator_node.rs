@@ -1,7 +1,7 @@
 use std::fmt;
 use std::collections::HashMap;
 
-use tokens::{Token, OperatorType, TokenValue};
+use tokens::{Token, OperatorType, TokenValue, Span};
 use ast::{Ast, AstNode, AstIndex};
 use errors::SyntaxError;
 use interpreter::{NodeVisitor, ReturnValue};
@@ -92,7 +92,10 @@ impl NodeVisitor for UnaryOperatorNode {
 
                         Err(SyntaxError {
                             msg: format!("Integer overflow [{}: {}]", rhs, operand),
-                            position: self.position,
+                            span: Span {
+                                start: self.position.0,
+                                end: self.position.1,
+                            },
                         })
                     }
                 }
@@ -109,7 +112,7 @@ impl UnaryOperatorNode {
             operand: operand,
             operator: operator,
             parent: None,
-            position: token.position,
+            position: (token.span.start, token.span.end),
             token: token,
         }
     }
@@ -121,7 +124,7 @@ mod tests {
     use std::i64;
 
     use super::*;
-    use tokens::{Token, TokenType, OperatorType, TokenValue};
+    use tokens::{Token, TokenType, OperatorType, TokenValue, Span};
     use ast::{Ast, AstNode, AstIndex, IntegerNode};
 
     #[test]
@@ -131,7 +134,7 @@ mod tests {
                                    OperatorType::Minus,
                                    Token::new(TokenType::Operator,
                                               Some(TokenValue::Operator(OperatorType::Minus)),
-                                              (0, 0)));
+                                              Span::default()));
         assert_eq!(op_node.get_parent(), None);
     }
 
@@ -142,7 +145,7 @@ mod tests {
                                    OperatorType::Minus,
                                    Token::new(TokenType::Operator,
                                               Some(TokenValue::Operator(OperatorType::Minus)),
-                                              (0, 0)));
+                                              Span::default()));
         assert!(op_node.set_parent(AstIndex(2)));
         assert_eq!(op_node.get_parent(), Some(AstIndex(2)));
     }
@@ -154,7 +157,7 @@ mod tests {
                                    OperatorType::Minus,
                                    Token::new(TokenType::Operator,
                                               Some(TokenValue::Operator(OperatorType::Minus)),
-                                              (0, 0)));
+                                              Span::default()));
         assert!(op_node.set_parent(AstIndex(2)));
         assert!(!op_node.set_parent(AstIndex(3)));
     }
@@ -166,7 +169,7 @@ mod tests {
                                    OperatorType::Minus,
                                    Token::new(TokenType::Operator,
                                               Some(TokenValue::Operator(OperatorType::Minus)),
-                                              (0, 0)));
+                                              Span::default()));
         let children = op_node.get_children();
         assert_eq!(children[0], AstIndex(0));
         assert_eq!(children.len(), 1);
@@ -179,7 +182,7 @@ mod tests {
                                    OperatorType::Minus,
                                    Token::new(TokenType::Operator,
                                               Some(TokenValue::Operator(OperatorType::Minus)),
-                                              (0, 0)));
+                                              Span::default()));
         assert_eq!(op_node.get_value().unwrap(),
                    TokenValue::Operator(OperatorType::Minus));
     }
@@ -191,16 +194,17 @@ mod tests {
                                    OperatorType::Minus,
                                    Token::new(TokenType::Operator,
                                               Some(TokenValue::Operator(OperatorType::Minus)),
-                                              (3, 5)));
+                                              Span { start: 3, end: 5 }));
         op_node.set_position((4, 5));
         assert_eq!(op_node.get_position(), (4, 5));
     }
 
     #[test]
     fn unary_operator_node_visit_returns_operand_when_op_is_addition() {
-        let operand =
-            IntegerNode::new(2,
-                             Token::new(TokenType::Integer, Some(TokenValue::Integer(2)), (0, 0)));
+        let operand = IntegerNode::new(2,
+                                       Token::new(TokenType::Integer,
+                                                  Some(TokenValue::Integer(2)),
+                                                  Span::default()));
 
         let mut ast = Ast::new();
         let index_operand = ast.add_node(operand);
@@ -210,7 +214,7 @@ mod tests {
                                    OperatorType::Plus,
                                    Token::new(TokenType::Operator,
                                               Some(TokenValue::Operator(OperatorType::Plus)),
-                                              (0, 0)));
+                                              Span::default()));
         let index_op = ast.add_node(op_node);
         let mut sym_tbl = HashMap::new();
         assert_eq!(ast.get_node(index_op)
@@ -222,9 +226,10 @@ mod tests {
 
     #[test]
     fn unary_operator_node_visit_returns_negative_operand_when_op_is_subtraction() {
-        let operand =
-            IntegerNode::new(4,
-                             Token::new(TokenType::Integer, Some(TokenValue::Integer(4)), (0, 0)));
+        let operand = IntegerNode::new(4,
+                                       Token::new(TokenType::Integer,
+                                                  Some(TokenValue::Integer(4)),
+                                                  Span::default()));
 
         let mut ast = Ast::new();
         let index_operand = ast.add_node(operand);
@@ -234,7 +239,7 @@ mod tests {
                                    OperatorType::Minus,
                                    Token::new(TokenType::Operator,
                                               Some(TokenValue::Operator(OperatorType::Minus)),
-                                              (0, 0)));
+                                              Span::default()));
         let index_op = ast.add_node(op_node);
         let mut sym_tbl = HashMap::new();
         assert_eq!(ast.get_node(index_op)
@@ -249,7 +254,7 @@ mod tests {
         let operand = IntegerNode::new(i64::MIN,
                                        Token::new(TokenType::Integer,
                                                   Some(TokenValue::Integer(i64::MIN)),
-                                                  (0, 0)));
+                                                  Span::default()));
 
         let mut ast = Ast::new();
         let index_operand = ast.add_node(operand);
@@ -259,7 +264,7 @@ mod tests {
                                    OperatorType::Minus,
                                    Token::new(TokenType::Operator,
                                               Some(TokenValue::Operator(OperatorType::Minus)),
-                                              (0, 0)));
+                                              Span::default()));
         let index_op = ast.add_node(op_node);
         let mut sym_tbl = HashMap::new();
         assert!(ast.get_node(index_op)

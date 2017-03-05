@@ -3,13 +3,15 @@
 use leftpad::left_pad;
 use unicode_width::UnicodeWidthChar;
 
+use tokens::Span;
+
 /// Defines a syntax error.
 #[derive(Debug)]
 pub struct SyntaxError {
     /// The error message
     pub msg: String,
     /// The position in the input stream where the error occurred
-    pub position: (usize, usize),
+    pub span: Span,
 }
 
 // Prints error in the following format:
@@ -84,18 +86,18 @@ pub fn print_error(input: &str, e: &SyntaxError) {
         }
 
         // Record start and end positions of part that has to be printed.
-        if i == e.position.0 {
+        if i == e.span.start {
             start_byte = last_newline_byte;
             start_n = last_newline_n;
             start_line = line;
         }
-        if i == e.position.1 - 1 {
+        if i == e.span.end - 1 {
             end_reached = true;
         }
     }
 
     // Handle case where start position is at the end of the input stream
-    if e.position.0 + 1 > input.chars().count() {
+    if e.span.start + 1 > input.chars().count() {
         start_byte = last_newline_byte;
         start_n = last_newline_n;
         start_line = line;
@@ -143,12 +145,12 @@ pub fn print_error(input: &str, e: &SyntaxError) {
                     if preline {
                         print!(" "); // Avoid "swallowing" of the padding space by combining character
                     }
-                    if i < e.position.1 - start_n {
+                    if i < e.span.end - start_n {
                         marker.pop();
                     }
                     width = 1;
                 }
-                let glyph = if i >= e.position.0 - start_n && i < e.position.1 - start_n {
+                let glyph = if i >= e.span.start - start_n && i < e.span.end - start_n {
                     '^'
                 } else {
                     ' '
@@ -167,7 +169,7 @@ pub fn print_error(input: &str, e: &SyntaxError) {
             print!("{}| ", left_pad(&line.to_string(), line_no_length));
         }
     }
-    if idx < e.position.1 - 1 - start_n {
+    if idx < e.span.end - 1 - start_n {
         marker.push('^');
     }
     println!("\n{}| {}", left_pad("", line_no_length), marker);

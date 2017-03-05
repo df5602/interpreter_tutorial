@@ -24,6 +24,7 @@ mod interpreter;
 
 use ast::Ast;
 use errors::{SyntaxError, print_error};
+use tokens::Span;
 use lexer::PascalLexer;
 use parser::Parser;
 use interpreter::Interpreter;
@@ -101,7 +102,10 @@ fn sanitize_input(input: String) -> Result<String, (String, SyntaxError)> {
                  SyntaxError {
                      msg: "Input cannot contain control characters (except LF, CR and TAB)"
                          .to_string(),
-                     position: (i, i + char_len),
+                     span: Span {
+                         start: i,
+                         end: i + char_len,
+                     },
                  }))
         }
         None => Ok(sanitized),
