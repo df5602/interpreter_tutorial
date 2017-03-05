@@ -237,11 +237,11 @@ mod tests {
     #[test]
     fn binary_operator_node_visit_returns_sum_of_integer_nodes_when_op_is_addition() {
         let int_node_left = IntegerNode::new(2,
-                                             Token::new(TokenType::Integer,
+                                             Token::new(TokenType::IntegerLiteral,
                                                         Some(TokenValue::Integer(2)),
                                                         Span::default()));
         let int_node_right = IntegerNode::new(4,
-                                              Token::new(TokenType::Integer,
+                                              Token::new(TokenType::IntegerLiteral,
                                                          Some(TokenValue::Integer(4)),
                                                          Span::default()));
         let mut ast = Ast::new();
@@ -267,11 +267,11 @@ mod tests {
     #[test]
     fn binary_operator_node_visit_returns_error_when_addition_overflows() {
         let int_node_left = IntegerNode::new(i64::MAX,
-                                             Token::new(TokenType::Integer,
+                                             Token::new(TokenType::IntegerLiteral,
                                                         Some(TokenValue::Integer(i64::MAX)),
                                                         Span::default()));
         let int_node_right = IntegerNode::new(1,
-                                              Token::new(TokenType::Integer,
+                                              Token::new(TokenType::IntegerLiteral,
                                                          Some(TokenValue::Integer(1)),
                                                          Span::default()));
         let mut ast = Ast::new();
@@ -295,11 +295,11 @@ mod tests {
     #[test]
     fn binary_operator_node_visit_returns_difference_of_integer_nodes_when_op_is_subtraction() {
         let int_node_left = IntegerNode::new(4,
-                                             Token::new(TokenType::Integer,
+                                             Token::new(TokenType::IntegerLiteral,
                                                         Some(TokenValue::Integer(4)),
                                                         Span::default()));
         let int_node_right = IntegerNode::new(2,
-                                              Token::new(TokenType::Integer,
+                                              Token::new(TokenType::IntegerLiteral,
                                                          Some(TokenValue::Integer(2)),
                                                          Span::default()));
         let mut ast = Ast::new();
@@ -325,11 +325,11 @@ mod tests {
     #[test]
     fn binary_operator_node_visit_returns_error_when_subtraction_overflows() {
         let int_node_left = IntegerNode::new(-2,
-                                             Token::new(TokenType::Integer,
+                                             Token::new(TokenType::IntegerLiteral,
                                                         Some(TokenValue::Integer(-2)),
                                                         Span::default()));
         let int_node_right = IntegerNode::new(i64::MAX,
-                                              Token::new(TokenType::Integer,
+                                              Token::new(TokenType::IntegerLiteral,
                                                          Some(TokenValue::Integer(i64::MAX)),
                                                          Span::default()));
         let mut ast = Ast::new();
@@ -353,11 +353,11 @@ mod tests {
     #[test]
     fn binary_operator_node_visit_returns_product_of_integer_nodes_when_op_is_multiplication() {
         let int_node_left = IntegerNode::new(4,
-                                             Token::new(TokenType::Integer,
+                                             Token::new(TokenType::IntegerLiteral,
                                                         Some(TokenValue::Integer(4)),
                                                         Span::default()));
         let int_node_right = IntegerNode::new(2,
-                                              Token::new(TokenType::Integer,
+                                              Token::new(TokenType::IntegerLiteral,
                                                          Some(TokenValue::Integer(2)),
                                                          Span::default()));
         let mut ast = Ast::new();
@@ -383,11 +383,11 @@ mod tests {
     #[test]
     fn binary_operator_node_visit_returns_error_when_multiplication_overflows() {
         let int_node_left = IntegerNode::new(2,
-                                             Token::new(TokenType::Integer,
+                                             Token::new(TokenType::IntegerLiteral,
                                                         Some(TokenValue::Integer(2)),
                                                         Span::default()));
         let int_node_right = IntegerNode::new(i64::MAX,
-                                              Token::new(TokenType::Integer,
+                                              Token::new(TokenType::IntegerLiteral,
                                                          Some(TokenValue::Integer(i64::MAX)),
                                                          Span::default()));
         let mut ast = Ast::new();
@@ -411,11 +411,11 @@ mod tests {
     #[test]
     fn binary_operator_node_visit_returns_quotient_of_integer_nodes_when_op_is_division() {
         let int_node_left = IntegerNode::new(4,
-                                             Token::new(TokenType::Integer,
+                                             Token::new(TokenType::IntegerLiteral,
                                                         Some(TokenValue::Integer(4)),
                                                         Span::default()));
         let int_node_right = IntegerNode::new(2,
-                                              Token::new(TokenType::Integer,
+                                              Token::new(TokenType::IntegerLiteral,
                                                          Some(TokenValue::Integer(2)),
                                                          Span::default()));
         let mut ast = Ast::new();
@@ -441,11 +441,11 @@ mod tests {
     #[test]
     fn binary_operator_node_visit_returns_error_when_division_overflows() {
         let int_node_left = IntegerNode::new(i64::MIN,
-                                             Token::new(TokenType::Integer,
+                                             Token::new(TokenType::IntegerLiteral,
                                                         Some(TokenValue::Integer(i64::MIN)),
                                                         Span::default()));
         let int_node_right = IntegerNode::new(-1,
-                                              Token::new(TokenType::Integer,
+                                              Token::new(TokenType::IntegerLiteral,
                                                          Some(TokenValue::Integer(-1)),
                                                          Span::default()));
         let mut ast = Ast::new();
@@ -469,11 +469,11 @@ mod tests {
     #[test]
     fn binary_operator_node_visit_returns_error_when_op_is_division_and_rhs_is_zero() {
         let int_node_left = IntegerNode::new(4,
-                                             Token::new(TokenType::Integer,
+                                             Token::new(TokenType::IntegerLiteral,
                                                         Some(TokenValue::Integer(4)),
                                                         Span::default()));
         let int_node_right = IntegerNode::new(0,
-                                              Token::new(TokenType::Integer,
+                                              Token::new(TokenType::IntegerLiteral,
                                                          Some(TokenValue::Integer(0)),
                                                          Span::default()));
         let mut ast = Ast::new();

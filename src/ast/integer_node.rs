@@ -87,7 +87,7 @@ mod tests {
     #[test]
     fn integer_node_new_should_set_position_to_token_position() {
         let int_node = IntegerNode::new(42,
-                                        Token::new(TokenType::Integer,
+                                        Token::new(TokenType::IntegerLiteral,
                                                    Some(TokenValue::Integer(42)),
                                                    Span { start: 3, end: 5 }));
         assert_eq!(int_node.position, (3, 5));
@@ -96,7 +96,7 @@ mod tests {
     #[test]
     fn integer_node_get_parent_returns_none_when_node_has_no_parent() {
         let int_node = IntegerNode::new(42,
-                                        Token::new(TokenType::Integer,
+                                        Token::new(TokenType::IntegerLiteral,
                                                    Some(TokenValue::Integer(42)),
                                                    Span::default()));
         assert_eq!(int_node.get_parent(), None);
@@ -105,7 +105,7 @@ mod tests {
     #[test]
     fn integer_node_set_parent_sets_parent_node() {
         let mut int_node = IntegerNode::new(42,
-                                            Token::new(TokenType::Integer,
+                                            Token::new(TokenType::IntegerLiteral,
                                                        Some(TokenValue::Integer(42)),
                                                        Span::default()));
         assert!(int_node.set_parent(AstIndex(3)));
@@ -115,7 +115,7 @@ mod tests {
     #[test]
     fn integer_node_set_parent_fails_when_node_already_has_parent() {
         let mut int_node = IntegerNode::new(42,
-                                            Token::new(TokenType::Integer,
+                                            Token::new(TokenType::IntegerLiteral,
                                                        Some(TokenValue::Integer(42)),
                                                        Span::default()));
         assert!(int_node.set_parent(AstIndex(3)));
@@ -125,7 +125,7 @@ mod tests {
     #[test]
     fn integer_node_get_children_returns_no_children() {
         let int_node = IntegerNode::new(42,
-                                        Token::new(TokenType::Integer,
+                                        Token::new(TokenType::IntegerLiteral,
                                                    Some(TokenValue::Integer(42)),
                                                    Span::default()));
         let children = int_node.get_children();
@@ -135,7 +135,7 @@ mod tests {
     #[test]
     fn integer_node_get_value_returns_integer_value() {
         let int_node = IntegerNode::new(42,
-                                        Token::new(TokenType::Integer,
+                                        Token::new(TokenType::IntegerLiteral,
                                                    Some(TokenValue::Integer(42)),
                                                    Span::default()));
         assert_eq!(int_node.get_value().unwrap(), TokenValue::Integer(42));
@@ -144,7 +144,7 @@ mod tests {
     #[test]
     fn integer_node_get_position_returns_position() {
         let int_node = IntegerNode::new(42,
-                                        Token::new(TokenType::Integer,
+                                        Token::new(TokenType::IntegerLiteral,
                                                    Some(TokenValue::Integer(42)),
                                                    Span { start: 3, end: 5 }));
         assert_eq!(int_node.get_position(), (3, 5));
@@ -153,7 +153,7 @@ mod tests {
     #[test]
     fn integer_node_visit_returns_value() {
         let int_node = IntegerNode::new(42,
-                                        Token::new(TokenType::Integer,
+                                        Token::new(TokenType::IntegerLiteral,
                                                    Some(TokenValue::Integer(42)),
                                                    Span::default()));
         let ast = Ast::new();

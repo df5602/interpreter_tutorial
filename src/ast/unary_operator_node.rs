@@ -202,7 +202,7 @@ mod tests {
     #[test]
     fn unary_operator_node_visit_returns_operand_when_op_is_addition() {
         let operand = IntegerNode::new(2,
-                                       Token::new(TokenType::Integer,
+                                       Token::new(TokenType::IntegerLiteral,
                                                   Some(TokenValue::Integer(2)),
                                                   Span::default()));
 
@@ -227,7 +227,7 @@ mod tests {
     #[test]
     fn unary_operator_node_visit_returns_negative_operand_when_op_is_subtraction() {
         let operand = IntegerNode::new(4,
-                                       Token::new(TokenType::Integer,
+                                       Token::new(TokenType::IntegerLiteral,
                                                   Some(TokenValue::Integer(4)),
                                                   Span::default()));
 
@@ -252,7 +252,7 @@ mod tests {
     #[test]
     fn unary_operator_node_visit_returns_error_when_subtraction_overflows() {
         let operand = IntegerNode::new(i64::MIN,
-                                       Token::new(TokenType::Integer,
+                                       Token::new(TokenType::IntegerLiteral,
                                                   Some(TokenValue::Integer(i64::MIN)),
                                                   Span::default()));
 

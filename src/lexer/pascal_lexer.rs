@@ -38,7 +38,7 @@ impl Lexer for PascalLexer {
         // Return INTEGER when the next character is a digit
         if current_char.is_digit(10) {
             let value = self.get_integer()?;
-            return Ok(Token::new(TokenType::Integer,
+            return Ok(Token::new(TokenType::IntegerLiteral,
                                  Some(TokenValue::Integer(value)),
                                  Span {
                                      start: pos,
@@ -260,6 +260,38 @@ impl PascalLexer {
                                          end: pos,
                                      }))
             }
+            "program" => {
+                return Ok(Token::new(TokenType::Program,
+                                     None,
+                                     Span {
+                                         start: start_pos,
+                                         end: pos,
+                                     }))
+            }
+            "var" => {
+                return Ok(Token::new(TokenType::Var,
+                                     None,
+                                     Span {
+                                         start: start_pos,
+                                         end: pos,
+                                     }))
+            }
+            "integer" => {
+                return Ok(Token::new(TokenType::TypeSpecifier,
+                                     Some(TokenValue::Type(Type::Integer)),
+                                     Span {
+                                         start: start_pos,
+                                         end: pos,
+                                     }))
+            }
+            "real" => {
+                return Ok(Token::new(TokenType::TypeSpecifier,
+                                     Some(TokenValue::Type(Type::Real)),
+                                     Span {
+                                         start: start_pos,
+                                         end: pos,
+                                     }))
+            }
             "div" => {
                 return Ok(Token::new(TokenType::Operator,
                                      Some(TokenValue::Operator(OperatorType::Division)),
@@ -347,7 +379,7 @@ mod tests {
     fn lexer_get_next_token_returns_integer_when_input_is_digit() {
         let lexer = PascalLexer::new(&"3".to_string());
         let next_token = lexer.get_next_token().unwrap();
-        assert_eq!(TokenType::Integer, next_token.token_type);
+        assert_eq!(TokenType::IntegerLiteral, next_token.token_type);
     }
 
     #[test]
@@ -366,7 +398,7 @@ mod tests {
         let next_token = lexer.get_next_token().unwrap();
         assert_eq!(TokenType::Operator, next_token.token_type);
         let next_token = lexer.get_next_token().unwrap();
-        assert_eq!(TokenType::Integer, next_token.token_type);
+        assert_eq!(TokenType::IntegerLiteral, next_token.token_type);
     }
 
     #[test]
@@ -498,14 +530,14 @@ mod tests {
     fn lexer_should_recognize_expressions_that_contain_multi_digit_integer() {
         let lexer = PascalLexer::new(&"44+3".to_string());
         let mut next_token = lexer.get_next_token().unwrap();
-        assert_eq!(TokenType::Integer, next_token.token_type);
+        assert_eq!(TokenType::IntegerLiteral, next_token.token_type);
         assert_eq!(44, next_token.value.unwrap().extract_integer_value());
         next_token = lexer.get_next_token().unwrap();
         assert_eq!(TokenType::Operator, next_token.token_type);
         assert_eq!(OperatorType::Plus,
                    next_token.value.unwrap().extract_operator_type());
         next_token = lexer.get_next_token().unwrap();
-        assert_eq!(TokenType::Integer, next_token.token_type);
+        assert_eq!(TokenType::IntegerLiteral, next_token.token_type);
         assert_eq!(3, next_token.value.unwrap().extract_integer_value());
     }
 
@@ -513,14 +545,14 @@ mod tests {
     fn lexer_should_recognize_expressions_that_begin_with_whitespace_characters() {
         let lexer = PascalLexer::new(&" 2 + 3".to_string());
         let mut next_token = lexer.get_next_token().unwrap();
-        assert_eq!(TokenType::Integer, next_token.token_type);
+        assert_eq!(TokenType::IntegerLiteral, next_token.token_type);
         assert_eq!(2, next_token.value.unwrap().extract_integer_value());
         next_token = lexer.get_next_token().unwrap();
         assert_eq!(TokenType::Operator, next_token.token_type);
         assert_eq!(OperatorType::Plus,
                    next_token.value.unwrap().extract_operator_type());
         next_token = lexer.get_next_token().unwrap();
-        assert_eq!(TokenType::Integer, next_token.token_type);
+        assert_eq!(TokenType::IntegerLiteral, next_token.token_type);
         assert_eq!(3, next_token.value.unwrap().extract_integer_value());
     }
 
@@ -528,14 +560,14 @@ mod tests {
     fn lexer_should_recognize_expressions_that_contain_whitespace_characters() {
         let lexer = PascalLexer::new(&"2 + 3".to_string());
         let mut next_token = lexer.get_next_token().unwrap();
-        assert_eq!(TokenType::Integer, next_token.token_type);
+        assert_eq!(TokenType::IntegerLiteral, next_token.token_type);
         assert_eq!(2, next_token.value.unwrap().extract_integer_value());
         next_token = lexer.get_next_token().unwrap();
         assert_eq!(TokenType::Operator, next_token.token_type);
         assert_eq!(OperatorType::Plus,
                    next_token.value.unwrap().extract_operator_type());
         next_token = lexer.get_next_token().unwrap();
-        assert_eq!(TokenType::Integer, next_token.token_type);
+        assert_eq!(TokenType::IntegerLiteral, next_token.token_type);
         assert_eq!(3, next_token.value.unwrap().extract_integer_value());
     }
 
@@ -694,6 +726,54 @@ mod tests {
         assert_eq!(TokenType::Identifier, next_token.token_type);
         match next_token.value.unwrap() {
             TokenValue::Identifier(id) => assert_eq!("num", id),
+            _ => assert!(false),
+        }
+    }
+
+    #[test]
+    fn lexer_get_next_token_returns_program_token_when_input_is_program_keyword() {
+        let lexer = PascalLexer::new(&"PROGRAM".to_string());
+        let next_token = lexer.get_next_token().unwrap();
+        assert_eq!(TokenType::Program, next_token.token_type);
+    }
+
+    #[test]
+    fn lexer_get_next_token_returns_var_token_when_input_is_var_keyword() {
+        let lexer = PascalLexer::new(&"VAR".to_string());
+        let next_token = lexer.get_next_token().unwrap();
+        assert_eq!(TokenType::Var, next_token.token_type);
+    }
+
+    #[test]
+    fn lexer_get_next_token_returns_type_specifier_token_when_input_is_integer_keyword() {
+        let lexer = PascalLexer::new(&"INTEGER".to_string());
+        let next_token = lexer.get_next_token().unwrap();
+        assert_eq!(TokenType::TypeSpecifier, next_token.token_type);
+    }
+
+    #[test]
+    fn lexer_get_next_token_returns_type_integer_when_input_is_integer_keyword() {
+        let lexer = PascalLexer::new(&"integer".to_string());
+        let next_token = lexer.get_next_token().unwrap();
+        match next_token.value.unwrap() {
+            TokenValue::Type(type_spec) => assert_eq!(Type::Integer, type_spec),
+            _ => assert!(false),
+        }
+    }
+
+    #[test]
+    fn lexer_get_next_token_returns_type_specifier_token_when_input_is_real_keyword() {
+        let lexer = PascalLexer::new(&"REAL".to_string());
+        let next_token = lexer.get_next_token().unwrap();
+        assert_eq!(TokenType::TypeSpecifier, next_token.token_type);
+    }
+
+    #[test]
+    fn lexer_get_next_token_returns_type_real_when_input_is_real_keyword() {
+        let lexer = PascalLexer::new(&"real".to_string());
+        let next_token = lexer.get_next_token().unwrap();
+        match next_token.value.unwrap() {
+            TokenValue::Type(type_spec) => assert_eq!(Type::Real, type_spec),
             _ => assert!(false),
         }
     }

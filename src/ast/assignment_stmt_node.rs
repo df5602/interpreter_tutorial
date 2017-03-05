@@ -171,7 +171,7 @@ mod tests {
                                                     Some(TokenValue::Identifier("a".to_string())),
                                                     Span { start: 0, end: 1 }));
         let int_node = IntegerNode::new(42,
-                                        Token::new(TokenType::Integer,
+                                        Token::new(TokenType::IntegerLiteral,
                                                    Some(TokenValue::Integer(42)),
                                                    Span { start: 3, end: 5 }));
 
@@ -201,7 +201,7 @@ mod tests {
                                          Some(TokenValue::Identifier("a".to_string())),
                                          Span { start: 0, end: 1 }));
         let int_node_42 = IntegerNode::new(42,
-                                           Token::new(TokenType::Integer,
+                                           Token::new(TokenType::IntegerLiteral,
                                                       Some(TokenValue::Integer(42)),
                                                       Span { start: 3, end: 5 }));
 
@@ -220,7 +220,7 @@ mod tests {
                                          Some(TokenValue::Identifier("a".to_string())),
                                          Span { start: 0, end: 1 }));
         let int_node_24 = IntegerNode::new(24,
-                                           Token::new(TokenType::Integer,
+                                           Token::new(TokenType::IntegerLiteral,
                                                       Some(TokenValue::Integer(24)),
                                                       Span { start: 3, end: 5 }));
 

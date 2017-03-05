@@ -168,12 +168,12 @@ mod tests {
     fn compound_statement_node_visit_returns_void() {
         let mut ast = Ast::new();
         let lhs_1 = IntegerNode::new(2,
-                                     Token::new(TokenType::Integer,
+                                     Token::new(TokenType::IntegerLiteral,
                                                 Some(TokenValue::Integer(2)),
                                                 Span::default()));
         let index_lhs_1 = ast.add_node(lhs_1);
         let lhs_2 = IntegerNode::new(4,
-                                     Token::new(TokenType::Integer,
+                                     Token::new(TokenType::IntegerLiteral,
                                                 Some(TokenValue::Integer(4)),
                                                 Span::default()));
         let index_lhs_2 = ast.add_node(lhs_2);

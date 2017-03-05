@@ -62,10 +62,10 @@ mod tests {
 
     #[test]
     fn mocklexer_returns_first_token_when_calling_get_next_token_for_the_first_time() {
-        let tokens = vec![(TokenType::Integer, TokenValue::Integer(42))];
+        let tokens = vec![(TokenType::IntegerLiteral, TokenValue::Integer(42))];
         let mocklexer = MockLexer::new(tokens);
         let token = mocklexer.get_next_token().unwrap();
-        assert_eq!(token.token_type, TokenType::Integer);
+        assert_eq!(token.token_type, TokenType::IntegerLiteral);
         match token.value.unwrap() {
             TokenValue::Integer(value) => assert_eq!(42, value),
             _ => assert!(false),
@@ -74,7 +74,7 @@ mod tests {
 
     #[test]
     fn mocklexer_returns_second_token_when_calling_get_next_token_for_the_second_time() {
-        let tokens = vec![(TokenType::Integer, TokenValue::Integer(42)),
+        let tokens = vec![(TokenType::IntegerLiteral, TokenValue::Integer(42)),
                           (TokenType::Operator, TokenValue::Operator(OperatorType::Plus))];
         let mocklexer = MockLexer::new(tokens);
         let _tmp = mocklexer.get_next_token().unwrap();
@@ -97,7 +97,7 @@ mod tests {
 
     #[test]
     fn mocklexer_returns_eof_when_no_more_tokens_are_available() {
-        let tokens = vec![(TokenType::Integer, TokenValue::Integer(42))];
+        let tokens = vec![(TokenType::IntegerLiteral, TokenValue::Integer(42))];
         let mocklexer = MockLexer::new(tokens);
         let _tmp = mocklexer.get_next_token().unwrap();
         let token = mocklexer.get_next_token().unwrap();

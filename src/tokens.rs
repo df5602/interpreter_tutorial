@@ -5,12 +5,14 @@ use std::fmt;
 #[derive(Clone, Debug, PartialEq)]
 pub enum TokenType {
     /// A (multi-digit, base 10) unsigned integer
-    Integer,
+    IntegerLiteral,
     /// One of the following operators: '+', '-', '*', '/'
     Operator,
     /// Variable name (must start with an alphabetic character,
     /// followed by any number of alphanumerical characters)
     Identifier,
+    /// Type specifier
+    TypeSpecifier,
     /// Opening parenthesis: '('
     LParen,
     /// Closing parenthesis: ')'
@@ -25,6 +27,10 @@ pub enum TokenType {
     Begin,
     /// 'END' (to mark the end of a compound statement)
     End,
+    /// 'PROGRAM' (to mark the beginning of a program)
+    Program,
+    /// 'VAR' (to mark the beginning of a variable declarations block)
+    Var,
     /// End-of-file pseudo-token
     Eof,
 }
@@ -32,9 +38,10 @@ pub enum TokenType {
 impl fmt::Display for TokenType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            TokenType::Integer => write!(f, "INTEGER"),
+            TokenType::IntegerLiteral => write!(f, "INTEGER LITERAL"),
             TokenType::Operator => write!(f, "OPERATOR"),
             TokenType::Identifier => write!(f, "IDENTIFIER"),
+            TokenType::TypeSpecifier => write!(f, "TYPE SPECIFIER"),
             TokenType::LParen => write!(f, "LPAREN"),
             TokenType::RParen => write!(f, "RPAREN"),
             TokenType::Dot => write!(f, "DOT"),
@@ -42,6 +49,8 @@ impl fmt::Display for TokenType {
             TokenType::Assign => write!(f, "ASSIGN"),
             TokenType::Begin => write!(f, "BEGIN"),
             TokenType::End => write!(f, "END"),
+            TokenType::Program => write!(f, "PROGRAM"),
+            TokenType::Var => write!(f, "VAR"),
             TokenType::Eof => write!(f, "EOF"),
         }
     }
@@ -71,6 +80,24 @@ impl fmt::Display for OperatorType {
     }
 }
 
+// Defines the type of a variable
+#[derive(Clone, Debug, PartialEq)]
+pub enum Type {
+    /// Integer
+    Integer,
+    /// Real
+    Real,
+}
+
+impl fmt::Display for Type {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            Type::Integer => write!(f, "INTEGER"),
+            Type::Real => write!(f, "REAL"),
+        }
+    }
+}
+
 /// Defines the value of the token (optional).
 #[derive(Clone, Debug, PartialEq)]
 pub enum TokenValue {
@@ -80,6 +107,8 @@ pub enum TokenValue {
     Operator(OperatorType),
     /// An identifier name
     Identifier(String),
+    /// A type name
+    Type(Type),
     #[cfg(test)]
     /// No value (for testing only)
     Empty,
@@ -154,6 +183,9 @@ impl fmt::Display for Token {
                     }
                     TokenValue::Identifier(ref val) => {
                         write!(f, "Token({}, {})", self.token_type, val)
+                    }
+                    TokenValue::Type(ref type_name) => {
+                        write!(f, "Token({}, {})", self.token_type, type_name)
                     }
                     #[cfg(test)]
                     TokenValue::Empty => write!(f, "Token({})", self.token_type),

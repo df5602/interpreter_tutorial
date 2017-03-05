@@ -211,7 +211,7 @@ mod tests {
     fn ast_add_node_returns_zero_after_first_element_is_added() {
         let mut ast = Ast::new();
         let int_node = IntegerNode::new(42,
-                                        Token::new(TokenType::Integer,
+                                        Token::new(TokenType::IntegerLiteral,
                                                    Some(TokenValue::Integer(42)),
                                                    Span::default()));
         let index = ast.add_node(int_node);
@@ -222,12 +222,12 @@ mod tests {
     fn ast_add_node_returns_one_after_second_element_is_added() {
         let mut ast = Ast::new();
         let int_node_1 = IntegerNode::new(42,
-                                          Token::new(TokenType::Integer,
+                                          Token::new(TokenType::IntegerLiteral,
                                                      Some(TokenValue::Integer(42)),
                                                      Span::default()));
         let _i = ast.add_node(int_node_1);
         let int_node_2 = IntegerNode::new(24,
-                                          Token::new(TokenType::Integer,
+                                          Token::new(TokenType::IntegerLiteral,
                                                      Some(TokenValue::Integer(24)),
                                                      Span::default()));
         let index_2 = ast.add_node(int_node_2);
@@ -238,7 +238,7 @@ mod tests {
     fn ast_add_node_sets_root_to_inserted_node_when_first_node_is_added() {
         let mut ast = Ast::new();
         let int_node = IntegerNode::new(42,
-                                        Token::new(TokenType::Integer,
+                                        Token::new(TokenType::IntegerLiteral,
                                                    Some(TokenValue::Integer(42)),
                                                    Span::default()));
         let index = ast.add_node(int_node);
@@ -249,7 +249,7 @@ mod tests {
     fn ast_add_node_creates_contiguous_graph_when_first_node_is_added() {
         let mut ast = Ast::new();
         let int_node = IntegerNode::new(42,
-                                        Token::new(TokenType::Integer,
+                                        Token::new(TokenType::IntegerLiteral,
                                                    Some(TokenValue::Integer(42)),
                                                    Span::default()));
         let _index = ast.add_node(int_node);
@@ -260,12 +260,12 @@ mod tests {
     fn ast_add_node_root_points_to_first_added_element_when_two_unrelated_nodes_are_added() {
         let mut ast = Ast::new();
         let int_node1 = IntegerNode::new(42,
-                                         Token::new(TokenType::Integer,
+                                         Token::new(TokenType::IntegerLiteral,
                                                     Some(TokenValue::Integer(42)),
                                                     Span::default()));
         let index1 = ast.add_node(int_node1);
         let int_node2 = IntegerNode::new(24,
-                                         Token::new(TokenType::Integer,
+                                         Token::new(TokenType::IntegerLiteral,
                                                     Some(TokenValue::Integer(24)),
                                                     Span::default()));
         let _index2 = ast.add_node(int_node2);
@@ -276,12 +276,12 @@ mod tests {
     fn ast_add_node_creates_non_contiguous_graph_when_two_unrelated_nodes_are_added() {
         let mut ast = Ast::new();
         let int_node1 = IntegerNode::new(42,
-                                         Token::new(TokenType::Integer,
+                                         Token::new(TokenType::IntegerLiteral,
                                                     Some(TokenValue::Integer(42)),
                                                     Span::default()));
         let _index1 = ast.add_node(int_node1);
         let int_node2 = IntegerNode::new(24,
-                                         Token::new(TokenType::Integer,
+                                         Token::new(TokenType::IntegerLiteral,
                                                     Some(TokenValue::Integer(24)),
                                                     Span::default()));
         let _index2 = ast.add_node(int_node2);
@@ -292,12 +292,12 @@ mod tests {
     fn ast_add_node_parent_links_are_updated_when_node_with_child_links_is_added() {
         let mut ast = Ast::new();
         let int_node1 = IntegerNode::new(2,
-                                         Token::new(TokenType::Integer,
+                                         Token::new(TokenType::IntegerLiteral,
                                                     Some(TokenValue::Integer(2)),
                                                     Span::default()));
         let index1 = ast.add_node(int_node1);
         let int_node2 = IntegerNode::new(7,
-                                         Token::new(TokenType::Integer,
+                                         Token::new(TokenType::IntegerLiteral,
                                                     Some(TokenValue::Integer(7)),
                                                     Span::default()));
         let index2 = ast.add_node(int_node2);
@@ -318,12 +318,12 @@ mod tests {
     fn ast_add_node_sets_root_to_parent_node_when_parent_of_root_is_set() {
         let mut ast = Ast::new();
         let int_node1 = IntegerNode::new(2,
-                                         Token::new(TokenType::Integer,
+                                         Token::new(TokenType::IntegerLiteral,
                                                     Some(TokenValue::Integer(2)),
                                                     Span::default()));
         let index1 = ast.add_node(int_node1);
         let int_node2 = IntegerNode::new(7,
-                                         Token::new(TokenType::Integer,
+                                         Token::new(TokenType::IntegerLiteral,
                                                     Some(TokenValue::Integer(7)),
                                                     Span::default()));
         let index2 = ast.add_node(int_node2);
@@ -344,12 +344,12 @@ mod tests {
         () {
         let mut ast = Ast::new();
         let int_node1 = IntegerNode::new(2,
-                                         Token::new(TokenType::Integer,
+                                         Token::new(TokenType::IntegerLiteral,
                                                     Some(TokenValue::Integer(2)),
                                                     Span::default()));
         let index1 = ast.add_node(int_node1);
         let int_node2 = IntegerNode::new(7,
-                                         Token::new(TokenType::Integer,
+                                         Token::new(TokenType::IntegerLiteral,
                                                     Some(TokenValue::Integer(7)),
                                                     Span::default()));
         let index2 = ast.add_node(int_node2);
@@ -369,12 +369,12 @@ mod tests {
     fn ast_graph_with_two_disconnected_graphs_is_not_contiguous() {
         let mut ast = Ast::new();
         let int_node1 = IntegerNode::new(2,
-                                         Token::new(TokenType::Integer,
+                                         Token::new(TokenType::IntegerLiteral,
                                                     Some(TokenValue::Integer(2)),
                                                     Span::default()));
         let index1 = ast.add_node(int_node1);
         let int_node2 = IntegerNode::new(7,
-                                         Token::new(TokenType::Integer,
+                                         Token::new(TokenType::IntegerLiteral,
                                                     Some(TokenValue::Integer(7)),
                                                     Span::default()));
         let index2 = ast.add_node(int_node2);
@@ -387,12 +387,12 @@ mod tests {
                                                Span::default()));
         let _index_op1 = ast.add_node(op_node1);
         let int_node3 = IntegerNode::new(2,
-                                         Token::new(TokenType::Integer,
+                                         Token::new(TokenType::IntegerLiteral,
                                                     Some(TokenValue::Integer(2)),
                                                     Span::default()));
         let index3 = ast.add_node(int_node3);
         let int_node4 = IntegerNode::new(7,
-                                         Token::new(TokenType::Integer,
+                                         Token::new(TokenType::IntegerLiteral,
                                                     Some(TokenValue::Integer(7)),
                                                     Span::default()));
         let index4 = ast.add_node(int_node4);
@@ -413,12 +413,12 @@ mod tests {
     fn ast_add_node_cannot_set_parent_of_node_which_already_has_a_parent() {
         let mut ast = Ast::new();
         let int_node1 = IntegerNode::new(2,
-                                         Token::new(TokenType::Integer,
+                                         Token::new(TokenType::IntegerLiteral,
                                                     Some(TokenValue::Integer(2)),
                                                     Span::default()));
         let index1 = ast.add_node(int_node1);
         let int_node2 = IntegerNode::new(7,
-                                         Token::new(TokenType::Integer,
+                                         Token::new(TokenType::IntegerLiteral,
                                                     Some(TokenValue::Integer(7)),
                                                     Span::default()));
         let index2 = ast.add_node(int_node2);
@@ -431,7 +431,7 @@ mod tests {
                                                Span::default()));
         let _index_op1 = ast.add_node(op_node1);
         let int_node3 = IntegerNode::new(3,
-                                         Token::new(TokenType::Integer,
+                                         Token::new(TokenType::IntegerLiteral,
                                                     Some(TokenValue::Integer(3)),
                                                     Span::default()));
         let index3 = ast.add_node(int_node3);
