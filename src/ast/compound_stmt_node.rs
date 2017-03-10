@@ -106,39 +106,35 @@ mod tests {
 
     #[test]
     fn compound_statement_node_get_parent_returns_none_when_node_has_no_parent() {
-        let node =
-            CompoundStmtNode::new(vec![AstIndex(0), AstIndex(1)],
-                                  Token::new(TokenType::Begin, None, Span { start: 0, end: 1 }),
-                                  Token::new(TokenType::End, None, Span { start: 3, end: 4 }));
+        let node = CompoundStmtNode::new(vec![AstIndex(0), AstIndex(1)],
+                                         Token::new(TokenType::Begin, None, Span::new(0, 1)),
+                                         Token::new(TokenType::End, None, Span::new(3, 4)));
         assert_eq!(node.get_parent(), None);
     }
 
     #[test]
     fn compound_statement_node_set_parent_sets_parent_node() {
-        let mut node =
-            CompoundStmtNode::new(vec![AstIndex(0), AstIndex(1)],
-                                  Token::new(TokenType::Begin, None, Span { start: 0, end: 1 }),
-                                  Token::new(TokenType::End, None, Span { start: 3, end: 4 }));
+        let mut node = CompoundStmtNode::new(vec![AstIndex(0), AstIndex(1)],
+                                             Token::new(TokenType::Begin, None, Span::new(0, 1)),
+                                             Token::new(TokenType::End, None, Span::new(3, 4)));
         assert!(node.set_parent(AstIndex(2)));
         assert_eq!(node.get_parent(), Some(AstIndex(2)));
     }
 
     #[test]
     fn compound_statement_node_set_parent_fails_when_node_already_has_parent() {
-        let mut node =
-            CompoundStmtNode::new(vec![AstIndex(0), AstIndex(1)],
-                                  Token::new(TokenType::Begin, None, Span { start: 0, end: 1 }),
-                                  Token::new(TokenType::End, None, Span { start: 3, end: 4 }));
+        let mut node = CompoundStmtNode::new(vec![AstIndex(0), AstIndex(1)],
+                                             Token::new(TokenType::Begin, None, Span::new(0, 1)),
+                                             Token::new(TokenType::End, None, Span::new(3, 4)));
         assert!(node.set_parent(AstIndex(2)));
         assert!(!node.set_parent(AstIndex(3)));
     }
 
     #[test]
     fn compound_statement_node_get_children_returns_statements() {
-        let node =
-            CompoundStmtNode::new(vec![AstIndex(0), AstIndex(1)],
-                                  Token::new(TokenType::Begin, None, Span { start: 0, end: 1 }),
-                                  Token::new(TokenType::End, None, Span { start: 3, end: 4 }));
+        let node = CompoundStmtNode::new(vec![AstIndex(0), AstIndex(1)],
+                                         Token::new(TokenType::Begin, None, Span::new(0, 1)),
+                                         Token::new(TokenType::End, None, Span::new(3, 4)));
         let children = node.get_children();
         assert_eq!(children[0], AstIndex(0));
         assert_eq!(children[1], AstIndex(1));
@@ -147,19 +143,17 @@ mod tests {
 
     #[test]
     fn compound_statement_node_get_value_returns_none() {
-        let node =
-            CompoundStmtNode::new(vec![AstIndex(0), AstIndex(1)],
-                                  Token::new(TokenType::Begin, None, Span { start: 0, end: 1 }),
-                                  Token::new(TokenType::End, None, Span { start: 3, end: 4 }));
+        let node = CompoundStmtNode::new(vec![AstIndex(0), AstIndex(1)],
+                                         Token::new(TokenType::Begin, None, Span::new(0, 1)),
+                                         Token::new(TokenType::End, None, Span::new(3, 4)));
         assert_eq!(node.get_value(), None);
     }
 
     #[test]
     fn compound_statement_node_get_position_returns_position() {
-        let mut node =
-            CompoundStmtNode::new(vec![AstIndex(0), AstIndex(1)],
-                                  Token::new(TokenType::Begin, None, Span { start: 0, end: 1 }),
-                                  Token::new(TokenType::End, None, Span { start: 3, end: 4 }));
+        let mut node = CompoundStmtNode::new(vec![AstIndex(0), AstIndex(1)],
+                                             Token::new(TokenType::Begin, None, Span::new(0, 1)),
+                                             Token::new(TokenType::End, None, Span::new(3, 4)));
         node.set_position((2, 3));
         assert_eq!(node.get_position(), (2, 3));
     }
@@ -187,10 +181,9 @@ mod tests {
                                                Span::default()));
         let index_op_1 = ast.add_node(op_node_1);
 
-        let stmt_node =
-            CompoundStmtNode::new(vec![index_op_1],
-                                  Token::new(TokenType::Begin, None, Span { start: 0, end: 1 }),
-                                  Token::new(TokenType::End, None, Span { start: 3, end: 4 }));
+        let stmt_node = CompoundStmtNode::new(vec![index_op_1],
+                                              Token::new(TokenType::Begin, None, Span::new(0, 1)),
+                                              Token::new(TokenType::End, None, Span::new(3, 4)));
         let index_stmt = ast.add_node(stmt_node);
         let mut sym_tbl = HashMap::new();
         assert_eq!(ast.get_node(index_stmt).visit(&ast, &mut sym_tbl).unwrap(),

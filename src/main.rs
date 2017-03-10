@@ -102,10 +102,7 @@ fn sanitize_input(input: String) -> Result<String, (String, SyntaxError)> {
                  SyntaxError {
                      msg: "Input cannot contain control characters (except LF, CR and TAB)"
                          .to_string(),
-                     span: Span {
-                         start: i,
-                         end: i + char_len,
-                     },
+                     span: Span::new(i, i + char_len),
                  }))
         }
         None => Ok(sanitized),

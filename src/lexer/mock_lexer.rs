@@ -13,29 +13,16 @@ impl Lexer for MockLexer {
         let pos = self.pos.get();
         self.pos.set(pos + 1);
         if pos + 1 > self.tokens.len() {
-            Ok(Token::new(TokenType::Eof,
-                          None,
-                          Span {
-                              start: pos,
-                              end: pos + 1,
-                          }))
+            Ok(Token::new(TokenType::Eof, None, Span::new(pos, pos + 1)))
         } else {
             match self.tokens[pos].1 {
                 TokenValue::Empty => {
-                    Ok(Token::new(self.tokens[pos].0.clone(),
-                                  None,
-                                  Span {
-                                      start: pos,
-                                      end: pos + 1,
-                                  }))
+                    Ok(Token::new(self.tokens[pos].0.clone(), None, Span::new(pos, pos + 1)))
                 }
                 _ => {
                     Ok(Token::new(self.tokens[pos].0.clone(),
                                   Some(self.tokens[pos].1.clone()),
-                                  Span {
-                                      start: pos,
-                                      end: pos + 1,
-                                  }))
+                                  Span::new(pos, pos + 1)))
                 }
             }
         }

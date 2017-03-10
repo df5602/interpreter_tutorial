@@ -72,7 +72,9 @@ impl NodeVisitor for UnaryOperatorNode {
              ast: &Ast,
              sym_tbl: &mut HashMap<String, i64>)
              -> Result<ReturnValue, SyntaxError> {
-        let operand = ast.get_node(self.operand).visit(ast, sym_tbl)?.extract_integer_value();
+        let operand = ast.get_node(self.operand)
+            .visit(ast, sym_tbl)?
+            .extract_integer_value();
 
         match self.operator {
             OperatorType::Plus => Ok(ReturnValue::Integer(operand)),
@@ -91,12 +93,9 @@ impl NodeVisitor for UnaryOperatorNode {
                         };
 
                         Err(SyntaxError {
-                            msg: format!("Integer overflow [{}: {}]", rhs, operand),
-                            span: Span {
-                                start: self.position.0,
-                                end: self.position.1,
-                            },
-                        })
+                                msg: format!("Integer overflow [{}: {}]", rhs, operand),
+                                span: Span::new(self.position.0, self.position.1),
+                            })
                     }
                 }
             }
@@ -194,7 +193,7 @@ mod tests {
                                    OperatorType::Minus,
                                    Token::new(TokenType::Operator,
                                               Some(TokenValue::Operator(OperatorType::Minus)),
-                                              Span { start: 3, end: 5 }));
+                                              Span::new(3, 5)));
         op_node.set_position((4, 5));
         assert_eq!(op_node.get_position(), (4, 5));
     }
@@ -267,8 +266,6 @@ mod tests {
                                               Span::default()));
         let index_op = ast.add_node(op_node);
         let mut sym_tbl = HashMap::new();
-        assert!(ast.get_node(index_op)
-            .visit(&ast, &mut sym_tbl)
-            .is_err());
+        assert!(ast.get_node(index_op).visit(&ast, &mut sym_tbl).is_err());
     }
 }

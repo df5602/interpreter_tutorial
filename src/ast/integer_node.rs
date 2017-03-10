@@ -89,7 +89,7 @@ mod tests {
         let int_node = IntegerNode::new(42,
                                         Token::new(TokenType::IntegerLiteral,
                                                    Some(TokenValue::Integer(42)),
-                                                   Span { start: 3, end: 5 }));
+                                                   Span::new(3, 5)));
         assert_eq!(int_node.position, (3, 5));
     }
 
@@ -146,7 +146,7 @@ mod tests {
         let int_node = IntegerNode::new(42,
                                         Token::new(TokenType::IntegerLiteral,
                                                    Some(TokenValue::Integer(42)),
-                                                   Span { start: 3, end: 5 }));
+                                                   Span::new(3, 5)));
         assert_eq!(int_node.get_position(), (3, 5));
     }
 

@@ -25,7 +25,10 @@ impl<L: Lexer> Parser<L> {
     /// Consumes current token if it is of the expected type
     fn eat(&self, token_type: TokenType) -> Result<(usize, usize), SyntaxError> {
         let mut current_token = self.current_token.borrow_mut();
-        let span = current_token.as_ref().unwrap().span.clone();
+        let span = current_token.as_ref()
+            .unwrap()
+            .span
+            .clone();
 
         // If token has expected type...
         if current_token.as_ref().unwrap().token_type == token_type {
@@ -44,11 +47,11 @@ impl<L: Lexer> Parser<L> {
             }
         } else {
             Err(SyntaxError {
-                msg: format!("Expected {}, got {}",
-                             token_type,
-                             current_token.as_ref().unwrap().token_type),
-                span: span,
-            })
+                    msg: format!("Expected {}, got {}",
+                                 token_type,
+                                 current_token.as_ref().unwrap().token_type),
+                    span: span,
+                })
         }
     }
 
@@ -67,7 +70,10 @@ impl<L: Lexer> Parser<L> {
     /// Gets a clone of the current token
     /// Precondition: First token has been loaded
     fn get_current_token(&self) -> Token {
-        self.current_token.borrow().clone().unwrap()
+        self.current_token
+            .borrow()
+            .clone()
+            .unwrap()
     }
 
     /// Start parsing: load first token, parse input and checks that last token is an EOF
@@ -174,7 +180,10 @@ impl<L: Lexer> Parser<L> {
         self.eat(TokenType::Identifier)?;
 
         // Extract name
-        let name = variable.value.as_ref().unwrap().extract_identifier_value();
+        let name = variable.value
+            .as_ref()
+            .unwrap()
+            .extract_identifier_value();
 
         // Construct AST node
         let node = VariableNode::new(name, variable);
@@ -200,7 +209,10 @@ impl<L: Lexer> Parser<L> {
             self.eat(TokenType::Operator)?;
 
             // Extract value
-            let op_type = op.value.as_ref().unwrap().extract_operator_type();
+            let op_type = op.value
+                .as_ref()
+                .unwrap()
+                .extract_operator_type();
 
             // Expect a term on the right hand side
             let rhs = self.term(ast)?;
@@ -228,13 +240,19 @@ impl<L: Lexer> Parser<L> {
             let op = self.get_current_token();
             if op.token_type == TokenType::Operator {
                 // Extract value
-                let op_type = op.value.as_ref().unwrap().extract_operator_type();
+                let op_type = op.value
+                    .as_ref()
+                    .unwrap()
+                    .extract_operator_type();
                 if op_type != OperatorType::Times && op_type != OperatorType::IntegerDivision {
                     return Ok(result);
                 }
             }
             self.eat(TokenType::Operator)?;
-            let op_type = op.value.as_ref().unwrap().extract_operator_type();
+            let op_type = op.value
+                .as_ref()
+                .unwrap()
+                .extract_operator_type();
 
             // Expect a factor on the right hand side
             let rhs = self.factor(ast)?;
@@ -258,13 +276,19 @@ impl<L: Lexer> Parser<L> {
         if current_token.token_type == TokenType::IntegerLiteral {
             self.eat(TokenType::IntegerLiteral)?;
 
-            let value = current_token.value.as_ref().unwrap().extract_integer_value();
+            let value = current_token.value
+                .as_ref()
+                .unwrap()
+                .extract_integer_value();
             let node = IntegerNode::new(value, current_token);
 
             Ok(ast.add_node(node))
         } else if current_token.token_type == TokenType::Operator {
             // Extract value
-            let op_type = current_token.value.as_ref().unwrap().extract_operator_type();
+            let op_type = current_token.value
+                .as_ref()
+                .unwrap()
+                .extract_operator_type();
             if op_type == OperatorType::Minus || op_type == OperatorType::Plus {
                 self.eat(TokenType::Operator)?;
 
@@ -276,9 +300,9 @@ impl<L: Lexer> Parser<L> {
                 Ok(ast.add_node(node))
             } else {
                 Err(SyntaxError {
-                    msg: format!("Expected '+' or '-', got {}", op_type),
-                    span: current_token.span,
-                })
+                        msg: format!("Expected '+' or '-', got {}", op_type),
+                        span: current_token.span,
+                    })
             }
         } else if current_token.token_type == TokenType::LParen {
             let pos_lparen = self.eat(TokenType::LParen)?.0;
@@ -435,8 +459,17 @@ mod tests {
         let parser = Parser::new(lexer);
         let _ = parser.load_first_token();
         assert_eq!(TokenType::IntegerLiteral,
-                   parser.current_token.borrow().clone().unwrap().token_type);
-        let val = parser.current_token.borrow().clone().unwrap().value.unwrap();
+                   parser.current_token
+                       .borrow()
+                       .clone()
+                       .unwrap()
+                       .token_type);
+        let val = parser.current_token
+            .borrow()
+            .clone()
+            .unwrap()
+            .value
+            .unwrap();
         match val {
             TokenValue::Integer(val) => assert_eq!(2, val),
             _ => panic!(),

@@ -170,6 +170,15 @@ pub struct Span {
     pub end: usize,
 }
 
+impl Span {
+    pub fn new(start: usize, end: usize) -> Self {
+        Span {
+            start: start,
+            end: end,
+        }
+    }
+}
+
 /// The `Token` type. Contains information about the recognized token.
 #[derive(Clone, Debug)]
 pub struct Token {

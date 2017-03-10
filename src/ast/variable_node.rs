@@ -63,9 +63,9 @@ impl NodeVisitor for VariableNode {
             Some(value) => Ok(ReturnValue::Integer(*value)),
             None => {
                 Err(SyntaxError {
-                    msg: format!("No variable named `{}` in scope.", self.name),
-                    span: self.token.span.clone(),
-                })
+                        msg: format!("No variable named `{}` in scope.", self.name),
+                        span: self.token.span.clone(),
+                    })
             }
         }
     }
@@ -94,65 +94,65 @@ mod tests {
 
     #[test]
     fn variable_node_get_parent_returns_none_when_node_has_no_parent() {
-        let var_node = VariableNode::new("foo".to_string(),
-                                         Token::new(TokenType::Identifier,
-                                                    Some(TokenValue::Identifier("foo"
-                                                        .to_string())),
-                                                    Span { start: 0, end: 4 }));
+        let var_node =
+            VariableNode::new("foo".to_string(),
+                              Token::new(TokenType::Identifier,
+                                         Some(TokenValue::Identifier("foo".to_string())),
+                                         Span::new(0, 4)));
         assert_eq!(var_node.get_parent(), None);
     }
 
     #[test]
     fn variable_node_set_parent_sets_parent_node() {
-        let mut var_node = VariableNode::new("foo".to_string(),
-                                             Token::new(TokenType::Identifier,
-                                                        Some(TokenValue::Identifier("foo"
-                                                            .to_string())),
-                                                        Span { start: 0, end: 4 }));
+        let mut var_node =
+            VariableNode::new("foo".to_string(),
+                              Token::new(TokenType::Identifier,
+                                         Some(TokenValue::Identifier("foo".to_string())),
+                                         Span::new(0, 4)));
         assert!(var_node.set_parent(AstIndex(2)));
         assert_eq!(var_node.get_parent(), Some(AstIndex(2)));
     }
 
     #[test]
     fn variable_node_set_parent_fails_when_node_already_has_parent() {
-        let mut var_node = VariableNode::new("foo".to_string(),
-                                             Token::new(TokenType::Identifier,
-                                                        Some(TokenValue::Identifier("foo"
-                                                            .to_string())),
-                                                        Span { start: 0, end: 4 }));
+        let mut var_node =
+            VariableNode::new("foo".to_string(),
+                              Token::new(TokenType::Identifier,
+                                         Some(TokenValue::Identifier("foo".to_string())),
+                                         Span::new(0, 4)));
         assert!(var_node.set_parent(AstIndex(2)));
         assert!(!var_node.set_parent(AstIndex(3)));
     }
 
     #[test]
     fn variable_node_get_children_returns_no_children() {
-        let var_node = VariableNode::new("foo".to_string(),
-                                         Token::new(TokenType::Identifier,
-                                                    Some(TokenValue::Identifier("foo"
-                                                        .to_string())),
-                                                    Span { start: 0, end: 4 }));
+        let var_node =
+            VariableNode::new("foo".to_string(),
+                              Token::new(TokenType::Identifier,
+                                         Some(TokenValue::Identifier("foo".to_string())),
+                                         Span::new(0, 4)));
         let children = var_node.get_children();
         assert!(children.is_empty());
     }
 
     #[test]
     fn variable_node_get_value_returns_variable_name() {
-        let var_node = VariableNode::new("foo".to_string(),
-                                         Token::new(TokenType::Identifier,
-                                                    Some(TokenValue::Identifier("foo"
-                                                        .to_string())),
-                                                    Span { start: 0, end: 4 }));
+        let var_node =
+            VariableNode::new("foo".to_string(),
+                              Token::new(TokenType::Identifier,
+                                         Some(TokenValue::Identifier("foo".to_string())),
+                                         Span::new(0, 4)));
         assert_eq!(var_node.get_value().unwrap(),
                    TokenValue::Identifier("foo".to_string()));
     }
 
     #[test]
     fn variable_node_get_position_returns_position() {
-        let mut var_node = VariableNode::new("foo".to_string(),
-                                             Token::new(TokenType::Identifier,
-                                                        Some(TokenValue::Identifier("foo"
-                                                            .to_string())),
-                                                        Span { start: 0, end: 4 }));
+        let mut var_node =
+            VariableNode::new("foo".to_string(),
+                              Token::new(TokenType::Identifier,
+                                         Some(TokenValue::Identifier("foo".to_string())),
+                                         Span::new(0, 4)));
         var_node.set_position((4, 5));
         assert_eq!(var_node.get_position(), (4, 5));
     }
@@ -166,11 +166,11 @@ mod tests {
             VariableNode::new("a".to_string(),
                               Token::new(TokenType::Identifier,
                                          Some(TokenValue::Identifier("a".to_string())),
-                                         Span { start: 0, end: 1 }));
+                                         Span::new(0, 1)));
         let int_node_42 = IntegerNode::new(42,
                                            Token::new(TokenType::IntegerLiteral,
                                                       Some(TokenValue::Integer(42)),
-                                                      Span { start: 3, end: 5 }));
+                                                      Span::new(3, 5)));
 
         let index_var_a = ast.add_node(var_node_a);
         let index_int_42 = ast.add_node(int_node_42);
@@ -178,7 +178,7 @@ mod tests {
         let ass_node_1 =
             AssignmentStmtNode::new(index_var_a,
                                     index_int_42,
-                                    Token::new(TokenType::Assign, None, Span { start: 1, end: 3 }));
+                                    Token::new(TokenType::Assign, None, Span::new(1, 3)));
         let index_ass_1 = ast.add_node(ass_node_1);
 
         assert!(ast.get_node(index_ass_1).visit(&ast, &mut sym_tbl).is_ok());
@@ -196,7 +196,7 @@ mod tests {
             VariableNode::new("a".to_string(),
                               Token::new(TokenType::Identifier,
                                          Some(TokenValue::Identifier("a".to_string())),
-                                         Span { start: 0, end: 1 }));
+                                         Span::new(0, 1)));
 
         let index_var_a = ast.add_node(var_node_a);
 

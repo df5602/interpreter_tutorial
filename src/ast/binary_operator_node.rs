@@ -75,8 +75,12 @@ impl NodeVisitor for BinaryOperatorNode {
              ast: &Ast,
              sym_tbl: &mut HashMap<String, i64>)
              -> Result<ReturnValue, SyntaxError> {
-        let lhs = ast.get_node(self.left).visit(ast, sym_tbl)?.extract_integer_value();
-        let rhs = ast.get_node(self.right).visit(ast, sym_tbl)?.extract_integer_value();
+        let lhs = ast.get_node(self.left)
+            .visit(ast, sym_tbl)?
+            .extract_integer_value();
+        let rhs = ast.get_node(self.right)
+            .visit(ast, sym_tbl)?
+            .extract_integer_value();
 
         let result = match self.operator {
             OperatorType::Plus => lhs.checked_add(rhs),
@@ -85,12 +89,9 @@ impl NodeVisitor for BinaryOperatorNode {
             OperatorType::IntegerDivision => {
                 if rhs == 0 {
                     return Err(SyntaxError {
-                        msg: "Division by zero".to_string(),
-                        span: Span {
-                            start: self.position.0,
-                            end: self.position.1,
-                        },
-                    });
+                                   msg: "Division by zero".to_string(),
+                                   span: Span::new(self.position.0, self.position.1),
+                               });
                 } else {
                     lhs.checked_div(rhs)
                 }
@@ -122,12 +123,9 @@ impl NodeVisitor for BinaryOperatorNode {
                 };
 
                 Err(SyntaxError {
-                    msg: format!("Integer overflow [{}: {}; {}: {}]", left, lhs, right, rhs),
-                    span: Span {
-                        start: self.position.0,
-                        end: self.position.1,
-                    },
-                })
+                        msg: format!("Integer overflow [{}: {}; {}: {}]", left, lhs, right, rhs),
+                        span: Span::new(self.position.0, self.position.1),
+                    })
             }
         }
     }
@@ -230,7 +228,7 @@ mod tests {
                                     OperatorType::Plus,
                                     Token::new(TokenType::Operator,
                                                Some(TokenValue::Operator(OperatorType::Plus)),
-                                               Span { start: 3, end: 5 }));
+                                               Span::new(3, 5)));
         op_node.set_position((4, 5));
         assert_eq!(op_node.get_position(), (4, 5));
     }
@@ -288,9 +286,7 @@ mod tests {
                                                Span::default()));
         let index_op = ast.add_node(op_node);
         let mut sym_tbl = HashMap::new();
-        assert!(ast.get_node(index_op)
-            .visit(&ast, &mut sym_tbl)
-            .is_err());
+        assert!(ast.get_node(index_op).visit(&ast, &mut sym_tbl).is_err());
     }
 
     #[test]
@@ -346,9 +342,7 @@ mod tests {
                                                Span::default()));
         let index_op = ast.add_node(op_node);
         let mut sym_tbl = HashMap::new();
-        assert!(ast.get_node(index_op)
-            .visit(&ast, &mut sym_tbl)
-            .is_err());
+        assert!(ast.get_node(index_op).visit(&ast, &mut sym_tbl).is_err());
     }
 
     #[test]
@@ -404,9 +398,7 @@ mod tests {
                                                Span::default()));
         let index_op = ast.add_node(op_node);
         let mut sym_tbl = HashMap::new();
-        assert!(ast.get_node(index_op)
-            .visit(&ast, &mut sym_tbl)
-            .is_err());
+        assert!(ast.get_node(index_op).visit(&ast, &mut sym_tbl).is_err());
     }
 
     #[test]
@@ -462,9 +454,7 @@ mod tests {
                                                Span::default()));
         let index_op = ast.add_node(op_node);
         let mut sym_tbl = HashMap::new();
-        assert!(ast.get_node(index_op)
-            .visit(&ast, &mut sym_tbl)
-            .is_err());
+        assert!(ast.get_node(index_op).visit(&ast, &mut sym_tbl).is_err());
     }
 
     #[test]
