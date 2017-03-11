@@ -197,7 +197,6 @@ impl PascalLexer {
         let mut pos = start_pos;
         let mut current_char = self.chars[pos];
         assert!(current_char.is_alphabetic() || current_char == '_');
-        let mut result = current_char.to_string();
 
         loop {
             pos += 1;
@@ -207,9 +206,7 @@ impl PascalLexer {
             }
 
             current_char = self.chars[pos];
-            if current_char.is_alphanumeric() {
-                result.push(current_char);
-            } else {
+            if !current_char.is_alphanumeric() {
                 break;
             }
         }
@@ -217,7 +214,11 @@ impl PascalLexer {
         self.pos.set(pos);
 
         // Convert to lower case, since identifiers and keywords are case-insensitive
-        result = result.to_lowercase();
+        let result = self.chars[start_pos..pos]
+            .iter()
+            .cloned()
+            .collect::<String>()
+            .to_lowercase();
 
         match result.as_ref() {
             "begin" => return Ok(Token::new(TokenType::Begin, None, Span::new(start_pos, pos))),
@@ -663,9 +664,6 @@ mod tests {
     #[bench]
     #[cfg(feature = "benchmarks")]
     fn lexer_overall(b: &mut Bencher) {
-        // Past performance:
-        // 11.03.2017 Baseline: 5,731 ns/iter (+/- 148)
-        // 11.03.2017 new(): Replace collect() with manual pushing: 5,557 ns/iter (+/- 296)
         b.iter(|| {
             let lexer = PascalLexer::new("BEGIN a := 3; b := 4; BEGIN c := a + b END END.");
             while let Ok(token) = lexer.get_next_token() {
@@ -680,18 +678,12 @@ mod tests {
     #[bench]
     #[cfg(feature = "benchmarks")]
     fn lexer_constructor(b: &mut Bencher) {
-        // Past performance:
-        // 11.03.2017 Baseline: 326 ns/iter (+/- 7)
-        // 11.03.2017 Replace collect() with manual pushing: 161 ns/iter (+/- 5)
         b.iter(|| { let _ = PascalLexer::new("BEGIN a := 3; b := 4; BEGIN c := a + b END END."); })
     }
 
     #[bench]
     #[cfg(feature = "benchmarks")]
     fn lexer_parse_integer(b: &mut Bencher) {
-        // Past performance:
-        // 11.03.2017 Baseline: 321 ns/iter (+/- 218)
-        // 11.03.2017 new(): Replace collect() with manual pushing: 123 ns/iter (+/- 0)
         b.iter(|| {
                    let lexer = PascalLexer::new("312645978");
                    let _ = lexer.get_next_token();
@@ -701,9 +693,6 @@ mod tests {
     #[bench]
     #[cfg(feature = "benchmarks")]
     fn lexer_parse_identifier(b: &mut Bencher) {
-        // Past performance:
-        // 11.03.2017 Baseline: 1,132 ns/iter (+/- 164)
-        // 11.03.2017 new(): Replace collect() with manual pushing: 1,092 ns/iter (+/- 443)
         b.iter(|| {
                    let lexer = PascalLexer::new("number");
                    let _ = lexer.get_next_token();
