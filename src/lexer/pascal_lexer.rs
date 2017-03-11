@@ -134,8 +134,14 @@ impl Lexer for PascalLexer {
 impl PascalLexer {
     /// Constructs new `PascalLexer` that tokenizes the input passed in `text`.
     pub fn new(text: &str) -> PascalLexer {
+        // The following leads to a speedup of almost factor 2 compared with
+        // calling text.chars().collect() directy.
+        let mut tmp = Vec::with_capacity(text.len());
+        for ch in text.chars() {
+            tmp.push(ch);
+        }
         PascalLexer {
-            chars: text.chars().collect(),
+            chars: tmp,
             pos: Cell::new(0),
         }
     }
@@ -659,6 +665,7 @@ mod tests {
     fn lexer_overall(b: &mut Bencher) {
         // Past performance:
         // 11.03.2017 Baseline: 5,731 ns/iter (+/- 148)
+        // 11.03.2017 new(): Replace collect() with manual pushing: 5,557 ns/iter (+/- 296)
         b.iter(|| {
             let lexer = PascalLexer::new("BEGIN a := 3; b := 4; BEGIN c := a + b END END.");
             while let Ok(token) = lexer.get_next_token() {
@@ -675,6 +682,7 @@ mod tests {
     fn lexer_constructor(b: &mut Bencher) {
         // Past performance:
         // 11.03.2017 Baseline: 326 ns/iter (+/- 7)
+        // 11.03.2017 Replace collect() with manual pushing: 161 ns/iter (+/- 5)
         b.iter(|| { let _ = PascalLexer::new("BEGIN a := 3; b := 4; BEGIN c := a + b END END."); })
     }
 
@@ -683,6 +691,7 @@ mod tests {
     fn lexer_parse_integer(b: &mut Bencher) {
         // Past performance:
         // 11.03.2017 Baseline: 321 ns/iter (+/- 218)
+        // 11.03.2017 new(): Replace collect() with manual pushing: 123 ns/iter (+/- 0)
         b.iter(|| {
                    let lexer = PascalLexer::new("312645978");
                    let _ = lexer.get_next_token();
@@ -693,7 +702,8 @@ mod tests {
     #[cfg(feature = "benchmarks")]
     fn lexer_parse_identifier(b: &mut Bencher) {
         // Past performance:
-        // 11.03.2017 Baseline: 1132 ns/iter (+/- 164)
+        // 11.03.2017 Baseline: 1,132 ns/iter (+/- 164)
+        // 11.03.2017 new(): Replace collect() with manual pushing: 1,092 ns/iter (+/- 443)
         b.iter(|| {
                    let lexer = PascalLexer::new("number");
                    let _ = lexer.get_next_token();
