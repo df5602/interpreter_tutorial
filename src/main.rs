@@ -1,3 +1,5 @@
+#![cfg_attr(feature = "benchmarks", feature(test))]
+
 #![cfg_attr(feature = "fuzzing", feature(question_mark))]
 #![cfg_attr(feature = "fuzzing", feature(plugin))]
 #![cfg_attr(feature = "fuzzing", plugin(afl_plugin))]
@@ -14,6 +16,9 @@ extern crate unicode_width;
 
 #[cfg(feature = "fuzzing")]
 extern crate afl;
+
+#[cfg(feature = "benchmarks")]
+extern crate test;
 
 mod tokens;
 mod ast;

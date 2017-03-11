@@ -286,6 +286,9 @@ impl PascalLexer {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(feature = "benchmarks")]
+    use test::Bencher;
+
     use lexer::Lexer;
 
     fn assert_input_generates_token(input: &str, token: TokenType) {
@@ -649,5 +652,51 @@ mod tests {
     #[test]
     fn lexer_get_next_token_returns_type_real_when_input_is_real_keyword() {
         assert_input_generates_token_with_value!("real", TokenValue::Type, Type::Real);
+    }
+
+    #[bench]
+    #[cfg(feature = "benchmarks")]
+    fn lexer_overall(b: &mut Bencher) {
+        // Past performance:
+        // 11.03.2017 Baseline: 5,731 ns/iter (+/- 148)
+        b.iter(|| {
+            let lexer = PascalLexer::new("BEGIN a := 3; b := 4; BEGIN c := a + b END END.");
+            while let Ok(token) = lexer.get_next_token() {
+                match token.token_type {
+                    TokenType::Eof => break,
+                    _ => {}
+                }
+            }
+        })
+    }
+
+    #[bench]
+    #[cfg(feature = "benchmarks")]
+    fn lexer_constructor(b: &mut Bencher) {
+        // Past performance:
+        // 11.03.2017 Baseline: 326 ns/iter (+/- 7)
+        b.iter(|| { let _ = PascalLexer::new("BEGIN a := 3; b := 4; BEGIN c := a + b END END."); })
+    }
+
+    #[bench]
+    #[cfg(feature = "benchmarks")]
+    fn lexer_parse_integer(b: &mut Bencher) {
+        // Past performance:
+        // 11.03.2017 Baseline: 321 ns/iter (+/- 218)
+        b.iter(|| {
+                   let lexer = PascalLexer::new("312645978");
+                   let _ = lexer.get_next_token();
+               })
+    }
+
+    #[bench]
+    #[cfg(feature = "benchmarks")]
+    fn lexer_parse_identifier(b: &mut Bencher) {
+        // Past performance:
+        // 11.03.2017 Baseline: 1132 ns/iter (+/- 164)
+        b.iter(|| {
+                   let lexer = PascalLexer::new("number");
+                   let _ = lexer.get_next_token();
+               })
     }
 }

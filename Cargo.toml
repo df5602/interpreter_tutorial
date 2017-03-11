@@ -12,3 +12,4 @@ afl-plugin = { version = "0.1", optional = true }
 [features]
 default = []
 fuzzing = ["afl-plugin", "afl"]
+benchmarks = []
