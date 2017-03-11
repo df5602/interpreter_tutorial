@@ -214,11 +214,12 @@ impl PascalLexer {
         self.pos.set(pos);
 
         // Convert to lower case, since identifiers and keywords are case-insensitive
-        let result = self.chars[start_pos..pos]
-            .iter()
-            .cloned()
-            .collect::<String>()
-            .to_lowercase();
+        let mut result = String::with_capacity(pos - start_pos);
+        for c in self.chars[start_pos..pos].iter() {
+            for d in c.to_lowercase() {
+                result.push(d);
+            }
+        }
 
         match result.as_ref() {
             "begin" => return Ok(Token::new(TokenType::Begin, None, Span::new(start_pos, pos))),
