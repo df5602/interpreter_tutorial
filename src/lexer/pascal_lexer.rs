@@ -288,16 +288,31 @@ mod tests {
     use super::*;
     use lexer::Lexer;
 
+    fn assert_input_generates_token(input: &str, token: TokenType) {
+        let lexer = PascalLexer::new(input);
+        let next_token = lexer.get_next_token().unwrap();
+        assert_eq!(next_token.token_type, token);
+    }
+
+    macro_rules! assert_input_generates_token_with_value {
+        ($input:expr, $variant:path, $val:expr) => (
+            let lexer = PascalLexer::new($input);
+            let next_token = lexer.get_next_token().unwrap();
+            match next_token.value.unwrap() {
+                $variant(value) => assert_eq!($val, value),
+                _ => assert!(false),
+            }
+        )
+    }
+
     #[test]
     fn lexer_get_next_token_returns_eof_when_input_is_empty() {
-        let lexer = PascalLexer::new(&"".to_string());
-        let next_token = lexer.get_next_token().unwrap();
-        assert_eq!(TokenType::Eof, next_token.token_type);
+        assert_input_generates_token("", TokenType::Eof);
     }
 
     #[test]
     fn lexer_get_next_token_returns_token_or_error_when_input_is_not_empty() {
-        let lexer = PascalLexer::new(&"3+5".to_string());
+        let lexer = PascalLexer::new("3+5");
         let next_token = lexer.get_next_token();
         match next_token {
             Ok(token) => assert!(token.token_type != TokenType::Eof),
@@ -307,24 +322,17 @@ mod tests {
 
     #[test]
     fn lexer_get_next_token_returns_integer_when_input_is_digit() {
-        let lexer = PascalLexer::new(&"3".to_string());
-        let next_token = lexer.get_next_token().unwrap();
-        assert_eq!(TokenType::IntegerLiteral, next_token.token_type);
+        assert_input_generates_token("3", TokenType::IntegerLiteral);
     }
 
     #[test]
     fn lexer_get_next_token_returns_integer_value_when_input_is_digit() {
-        let lexer = PascalLexer::new(&"3".to_string());
-        let next_token = lexer.get_next_token().unwrap();
-        match next_token.value.unwrap() {
-            TokenValue::Integer(value) => assert_eq!(3, value),
-            _ => assert!(false),
-        }
+        assert_input_generates_token_with_value!("3", TokenValue::Integer, 3);
     }
 
     #[test]
     fn lexer_get_next_token_returns_next_token_when_called_second_time() {
-        let lexer = PascalLexer::new(&"+3".to_string());
+        let lexer = PascalLexer::new("+3");
         let next_token = lexer.get_next_token().unwrap();
         assert_eq!(TokenType::Operator, next_token.token_type);
         let next_token = lexer.get_next_token().unwrap();
@@ -333,106 +341,75 @@ mod tests {
 
     #[test]
     fn lexer_get_next_token_returns_plus_when_input_is_plus() {
-        let lexer = PascalLexer::new(&"+".to_string());
-        let next_token = lexer.get_next_token().unwrap();
-        assert_eq!(TokenType::Operator, next_token.token_type);
+        assert_input_generates_token("+", TokenType::Operator);
     }
 
     #[test]
     fn lexer_get_next_token_returns_operator_value_plus_when_input_is_operator_plus() {
-        let lexer = PascalLexer::new(&"+".to_string());
-        let next_token = lexer.get_next_token().unwrap();
-        match next_token.value.unwrap() {
-            TokenValue::Operator(value) => assert_eq!(OperatorType::Plus, value),
-            _ => assert!(false),
-        }
+        assert_input_generates_token_with_value!("+", TokenValue::Operator, OperatorType::Plus);
     }
 
     #[test]
     fn lexer_get_next_token_returns_minus_when_input_is_minus() {
-        let lexer = PascalLexer::new(&"-".to_string());
-        let next_token = lexer.get_next_token().unwrap();
-        assert_eq!(TokenType::Operator, next_token.token_type);
+        assert_input_generates_token("-", TokenType::Operator);
     }
 
     #[test]
     fn lexer_get_next_token_returns_operator_value_minus_when_input_is_operator_minus() {
-        let lexer = PascalLexer::new(&"-".to_string());
-        let next_token = lexer.get_next_token().unwrap();
-        match next_token.value.unwrap() {
-            TokenValue::Operator(value) => assert_eq!(OperatorType::Minus, value),
-            _ => assert!(false),
-        }
+        assert_input_generates_token_with_value!("-", TokenValue::Operator, OperatorType::Minus);
     }
 
     #[test]
     fn lexer_get_next_token_returns_times_when_input_is_times() {
-        let lexer = PascalLexer::new(&"*".to_string());
-        let next_token = lexer.get_next_token().unwrap();
-        assert_eq!(TokenType::Operator, next_token.token_type);
+        assert_input_generates_token("*", TokenType::Operator);
     }
 
     #[test]
     fn lexer_get_next_token_returns_operator_value_times_when_input_is_operator_times() {
-        let lexer = PascalLexer::new(&"*".to_string());
-        let next_token = lexer.get_next_token().unwrap();
-        match next_token.value.unwrap() {
-            TokenValue::Operator(value) => assert_eq!(OperatorType::Times, value),
-            _ => assert!(false),
-        }
+        assert_input_generates_token_with_value!("*", TokenValue::Operator, OperatorType::Times);
     }
 
     #[test]
     fn lexer_get_next_token_returns_integer_division_when_input_is_integer_division() {
-        let lexer = PascalLexer::new(&"div".to_string());
-        let next_token = lexer.get_next_token().unwrap();
-        assert_eq!(TokenType::Operator, next_token.token_type);
+        assert_input_generates_token("div", TokenType::Operator);
     }
 
     #[test]
     fn lexer_get_next_token_returns_op_value_integer_division_when_input_is_integer_division() {
-        let lexer = PascalLexer::new(&"div".to_string());
-        let next_token = lexer.get_next_token().unwrap();
-        match next_token.value.unwrap() {
-            TokenValue::Operator(value) => assert_eq!(OperatorType::IntegerDivision, value),
-            _ => assert!(false),
-        }
+        assert_input_generates_token_with_value!("div",
+                                                 TokenValue::Operator,
+                                                 OperatorType::IntegerDivision);
     }
 
     #[test]
     fn lexer_get_next_token_returns_float_division_when_input_is_float_division() {
-        let lexer = PascalLexer::new(&"/".to_string());
-        let next_token = lexer.get_next_token().unwrap();
-        assert_eq!(TokenType::Operator, next_token.token_type);
+        assert_input_generates_token("/", TokenType::Operator);
     }
 
     #[test]
     fn lexer_get_next_token_returns_op_value_float_division_when_input_is_float_division() {
-        let lexer = PascalLexer::new(&"/".to_string());
-        let next_token = lexer.get_next_token().unwrap();
-        match next_token.value.unwrap() {
-            TokenValue::Operator(value) => assert_eq!(OperatorType::FloatDivision, value),
-            _ => assert!(false),
-        }
+        assert_input_generates_token_with_value!("/",
+                                                 TokenValue::Operator,
+                                                 OperatorType::FloatDivision);
     }
 
     #[test]
     fn lexer_get_integer_returns_multi_digit_integer() {
-        let lexer = PascalLexer::new(&"123".to_string());
+        let lexer = PascalLexer::new("123");
         let result = lexer.get_integer().unwrap();
         assert_eq!(123, result);
     }
 
     #[test]
     fn lexer_get_integer_should_advance_position_correctly() {
-        let lexer = PascalLexer::new(&"123".to_string());
+        let lexer = PascalLexer::new("123");
         let _result = lexer.get_integer().unwrap();
         assert_eq!(3, lexer.pos.get());
     }
 
     #[test]
     fn lexer_get_integer_should_only_advance_as_long_as_there_are_more_digits() {
-        let lexer = PascalLexer::new(&"12a".to_string());
+        let lexer = PascalLexer::new("12a");
         let result = lexer.get_integer().unwrap();
         assert_eq!(12, result);
         assert_eq!(2, lexer.pos.get());
@@ -440,42 +417,42 @@ mod tests {
 
     #[test]
     fn lexer_get_integer_should_return_error_when_input_is_larger_than_fit_in_i64() {
-        let lexer = PascalLexer::new(&"9223372036854775808".to_string());
+        let lexer = PascalLexer::new("9223372036854775808");
         let result = lexer.get_integer();
         assert!(result.is_err());
     }
 
     #[test]
     fn lexer_get_integer_should_return_number_when_input_fits_in_i64() {
-        let lexer = PascalLexer::new(&"9223372036854775807".to_string());
+        let lexer = PascalLexer::new("9223372036854775807");
         let result = lexer.get_integer().unwrap();
         assert_eq!(9223372036854775807, result);
     }
 
     #[test]
     fn lexer_skip_whitespace_should_skip_all_whitespaces_until_eof() {
-        let lexer = PascalLexer::new(&"  \n".to_string());
+        let lexer = PascalLexer::new("  \n");
         lexer.skip_whitespace();
         assert_eq!(3, lexer.pos.get());
     }
 
     #[test]
     fn lexer_skip_whitespace_should_skip_all_whitespaces_until_first_non_whitespace_char() {
-        let lexer = PascalLexer::new(&"  3".to_string());
+        let lexer = PascalLexer::new("  3");
         lexer.skip_whitespace();
         assert_eq!(2, lexer.pos.get());
     }
 
     #[test]
     fn lexer_skip_whitespace_should_not_skip_non_whitespace_characters() {
-        let lexer = PascalLexer::new(&"123".to_string());
+        let lexer = PascalLexer::new("123");
         lexer.skip_whitespace();
         assert_eq!(0, lexer.pos.get());
     }
 
     #[test]
     fn lexer_should_recognize_expressions_that_contain_multi_digit_integer() {
-        let lexer = PascalLexer::new(&"44+3".to_string());
+        let lexer = PascalLexer::new("44+3");
         let mut next_token = lexer.get_next_token().unwrap();
         assert_eq!(TokenType::IntegerLiteral, next_token.token_type);
         assert_eq!(44, next_token.value.unwrap().extract_integer_value());
@@ -490,7 +467,7 @@ mod tests {
 
     #[test]
     fn lexer_should_recognize_expressions_that_begin_with_whitespace_characters() {
-        let lexer = PascalLexer::new(&" 2 + 3".to_string());
+        let lexer = PascalLexer::new(" 2 + 3");
         let mut next_token = lexer.get_next_token().unwrap();
         assert_eq!(TokenType::IntegerLiteral, next_token.token_type);
         assert_eq!(2, next_token.value.unwrap().extract_integer_value());
@@ -505,7 +482,7 @@ mod tests {
 
     #[test]
     fn lexer_should_recognize_expressions_that_contain_whitespace_characters() {
-        let lexer = PascalLexer::new(&"2 + 3".to_string());
+        let lexer = PascalLexer::new("2 + 3");
         let mut next_token = lexer.get_next_token().unwrap();
         assert_eq!(TokenType::IntegerLiteral, next_token.token_type);
         assert_eq!(2, next_token.value.unwrap().extract_integer_value());
@@ -520,149 +497,111 @@ mod tests {
 
     #[test]
     fn lexer_get_next_token_returns_left_parenthesis_when_input_is_left_parenthesis() {
-        let lexer = PascalLexer::new(&"(".to_string());
-        let next_token = lexer.get_next_token().unwrap();
-        assert_eq!(TokenType::LParen, next_token.token_type);
+        assert_input_generates_token("(", TokenType::LParen);
     }
 
     #[test]
     fn lexer_get_next_token_returns_right_parenthesis_when_input_is_right_parenthesis() {
-        let lexer = PascalLexer::new(&")".to_string());
-        let next_token = lexer.get_next_token().unwrap();
-        assert_eq!(TokenType::RParen, next_token.token_type);
+        assert_input_generates_token(")", TokenType::RParen);
     }
 
     #[test]
     fn lexer_get_next_token_returns_dot_token_when_input_is_dot() {
-        let lexer = PascalLexer::new(&".".to_string());
-        let next_token = lexer.get_next_token().unwrap();
-        assert_eq!(TokenType::Dot, next_token.token_type);
+        assert_input_generates_token(".", TokenType::Dot);
     }
 
     #[test]
     fn lexer_get_next_token_returns_semicolon_token_when_input_is_semicolon() {
-        let lexer = PascalLexer::new(&";".to_string());
-        let next_token = lexer.get_next_token().unwrap();
-        assert_eq!(TokenType::Semicolon, next_token.token_type);
+        assert_input_generates_token(";", TokenType::Semicolon);
     }
 
     #[test]
     fn lexer_get_next_token_returns_colon_token_when_input_is_colon() {
-        let lexer = PascalLexer::new(&":".to_string());
-        let next_token = lexer.get_next_token().unwrap();
-        assert_eq!(TokenType::Colon, next_token.token_type);
+        assert_input_generates_token(":", TokenType::Colon);
     }
 
     #[test]
     fn lexer_get_next_token_doesnt_return_colon_token_when_input_is_colon_followed_by_eq() {
-        let lexer = PascalLexer::new(&":=".to_string());
+        let lexer = PascalLexer::new(":=");
         let next_token = lexer.get_next_token().unwrap();
         assert!(next_token.token_type != TokenType::Colon);
     }
 
     #[test]
     fn lexer_get_next_token_returns_assign_token_when_input_is_assignment_operator() {
-        let lexer = PascalLexer::new(&":=".to_string());
-        let next_token = lexer.get_next_token().unwrap();
-        assert_eq!(TokenType::Assign, next_token.token_type);
+        assert_input_generates_token(":=", TokenType::Assign);
     }
 
     #[test]
     fn lexer_get_next_token_doesnt_return_assign_token_when_input_is_only_colon() {
-        let lexer = PascalLexer::new(&":".to_string());
+        let lexer = PascalLexer::new(":");
         let next_token = lexer.get_next_token().unwrap();
         assert!(next_token.token_type != TokenType::Assign);
     }
 
     #[test]
     fn lexer_get_next_token_doesnt_ret_assign_tok_when_input_is_colon_not_followed_by_eq_sign() {
-        let lexer = PascalLexer::new(&":?".to_string());
+        let lexer = PascalLexer::new(":?");
         let next_token = lexer.get_next_token().unwrap();
         assert!(next_token.token_type != TokenType::Assign);
     }
 
     #[test]
     fn lexer_get_next_token_returns_comma_token_when_input_is_comma() {
-        let lexer = PascalLexer::new(&",".to_string());
-        let next_token = lexer.get_next_token().unwrap();
-        assert_eq!(TokenType::Comma, next_token.token_type);
+        assert_input_generates_token(",", TokenType::Comma);
     }
 
     #[test]
     fn lexer_get_next_token_returns_begin_token_when_input_is_begin_keyword_uppercase() {
-        let lexer = PascalLexer::new(&"BEGIN".to_string());
-        let next_token = lexer.get_next_token().unwrap();
-        assert_eq!(TokenType::Begin, next_token.token_type);
+        assert_input_generates_token("BEGIN", TokenType::Begin);
     }
 
     #[test]
     fn lexer_get_next_token_returns_begin_token_when_input_is_begin_keyword_mixed_case() {
-        let lexer = PascalLexer::new(&"beGIN".to_string());
-        let next_token = lexer.get_next_token().unwrap();
-        assert_eq!(TokenType::Begin, next_token.token_type);
+        assert_input_generates_token("beGIN", TokenType::Begin);
     }
 
     #[test]
     fn lexer_get_next_token_returns_end_token_when_input_is_end_keyword_uppercase() {
-        let lexer = PascalLexer::new(&"END".to_string());
-        let next_token = lexer.get_next_token().unwrap();
-        assert_eq!(TokenType::End, next_token.token_type);
+        assert_input_generates_token("END", TokenType::End);
     }
 
     #[test]
     fn lexer_get_next_token_returns_end_token_when_input_is_end_keyword_lowercase() {
-        let lexer = PascalLexer::new(&"end".to_string());
-        let next_token = lexer.get_next_token().unwrap();
-        assert_eq!(TokenType::End, next_token.token_type);
+        assert_input_generates_token("end", TokenType::End);
     }
 
     #[test]
     fn lexer_get_next_token_returns_identifier_token_when_input_is_string() {
-        let lexer = PascalLexer::new(&"number".to_string());
-        let next_token = lexer.get_next_token().unwrap();
-        assert_eq!(TokenType::Identifier, next_token.token_type);
-        match next_token.value.unwrap() {
-            TokenValue::Identifier(id) => assert_eq!("number", id),
-            _ => assert!(false),
-        }
+        assert_input_generates_token("number", TokenType::Identifier);
+    }
+
+    #[test]
+    fn lexer_get_next_token_returns_identifier_token_with_id_value_when_input_is_string() {
+        assert_input_generates_token_with_value!("number", TokenValue::Identifier, "number");
     }
 
     #[test]
     fn lexer_identifiers_are_case_insensitive() {
-        let lexer = PascalLexer::new(&"nUmBeR".to_string());
-        let next_token = lexer.get_next_token().unwrap();
-        assert_eq!(TokenType::Identifier, next_token.token_type);
-        match next_token.value.unwrap() {
-            TokenValue::Identifier(id) => assert_eq!("number", id),
-            _ => assert!(false),
-        }
+        assert_input_generates_token("nUmBeR", TokenType::Identifier);
+        assert_input_generates_token_with_value!("nUmBeR", TokenValue::Identifier, "number");
     }
 
     #[test]
     fn lexer_get_next_token_returns_identifier_token_when_input_contains_digits() {
-        let lexer = PascalLexer::new(&"numb3r".to_string());
-        let next_token = lexer.get_next_token().unwrap();
-        assert_eq!(TokenType::Identifier, next_token.token_type);
-        match next_token.value.unwrap() {
-            TokenValue::Identifier(id) => assert_eq!("numb3r", id),
-            _ => assert!(false),
-        }
+        assert_input_generates_token("numb3r", TokenType::Identifier);
+        assert_input_generates_token_with_value!("numb3r", TokenValue::Identifier, "numb3r");
     }
 
     #[test]
     fn lexer_get_next_token_non_alphanumeric_characters_are_not_part_of_identifier() {
-        let lexer = PascalLexer::new(&"number?123".to_string());
-        let next_token = lexer.get_next_token().unwrap();
-        assert_eq!(TokenType::Identifier, next_token.token_type);
-        match next_token.value.unwrap() {
-            TokenValue::Identifier(id) => assert_eq!("number", id),
-            _ => assert!(false),
-        }
+        assert_input_generates_token("number?123", TokenType::Identifier);
+        assert_input_generates_token_with_value!("number?123", TokenValue::Identifier, "number");
     }
 
     #[test]
     fn lexer_get_next_token_identifiers_dont_start_with_digit() {
-        let lexer = PascalLexer::new(&"1foo".to_string());
+        let lexer = PascalLexer::new("1foo");
         let next_token = lexer.get_next_token().unwrap();
         match next_token.token_type {
             TokenType::Identifier => assert!(false),
@@ -672,71 +611,43 @@ mod tests {
 
     #[test]
     fn lexer_get_next_token_identifiers_can_start_with_underscore() {
-        let lexer = PascalLexer::new(&"_number".to_string());
-        let next_token = lexer.get_next_token().unwrap();
-        assert_eq!(TokenType::Identifier, next_token.token_type);
-        match next_token.value.unwrap() {
-            TokenValue::Identifier(id) => assert_eq!("_number", id),
-            _ => assert!(false),
-        }
+        assert_input_generates_token("_number", TokenType::Identifier);
+        assert_input_generates_token_with_value!("_number", TokenValue::Identifier, "_number");
     }
 
     #[test]
     fn lexer_get_next_token_identifiers_dont_end_with_underscore() {
-        let lexer = PascalLexer::new(&"num_".to_string());
-        let next_token = lexer.get_next_token().unwrap();
-        assert_eq!(TokenType::Identifier, next_token.token_type);
-        match next_token.value.unwrap() {
-            TokenValue::Identifier(id) => assert_eq!("num", id),
-            _ => assert!(false),
-        }
+        assert_input_generates_token("num_", TokenType::Identifier);
+        assert_input_generates_token_with_value!("num_", TokenValue::Identifier, "num");
     }
 
     #[test]
     fn lexer_get_next_token_returns_program_token_when_input_is_program_keyword() {
-        let lexer = PascalLexer::new(&"PROGRAM".to_string());
-        let next_token = lexer.get_next_token().unwrap();
-        assert_eq!(TokenType::Program, next_token.token_type);
+        assert_input_generates_token("PROGRAM", TokenType::Program);
     }
 
     #[test]
     fn lexer_get_next_token_returns_var_token_when_input_is_var_keyword() {
-        let lexer = PascalLexer::new(&"VAR".to_string());
-        let next_token = lexer.get_next_token().unwrap();
-        assert_eq!(TokenType::Var, next_token.token_type);
+        assert_input_generates_token("VAR", TokenType::Var);
     }
 
     #[test]
     fn lexer_get_next_token_returns_type_specifier_token_when_input_is_integer_keyword() {
-        let lexer = PascalLexer::new(&"INTEGER".to_string());
-        let next_token = lexer.get_next_token().unwrap();
-        assert_eq!(TokenType::TypeSpecifier, next_token.token_type);
+        assert_input_generates_token("INTEGER", TokenType::TypeSpecifier);
     }
 
     #[test]
     fn lexer_get_next_token_returns_type_integer_when_input_is_integer_keyword() {
-        let lexer = PascalLexer::new(&"integer".to_string());
-        let next_token = lexer.get_next_token().unwrap();
-        match next_token.value.unwrap() {
-            TokenValue::Type(type_spec) => assert_eq!(Type::Integer, type_spec),
-            _ => assert!(false),
-        }
+        assert_input_generates_token_with_value!("integer", TokenValue::Type, Type::Integer);
     }
 
     #[test]
     fn lexer_get_next_token_returns_type_specifier_token_when_input_is_real_keyword() {
-        let lexer = PascalLexer::new(&"REAL".to_string());
-        let next_token = lexer.get_next_token().unwrap();
-        assert_eq!(TokenType::TypeSpecifier, next_token.token_type);
+        assert_input_generates_token("REAL", TokenType::TypeSpecifier);
     }
 
     #[test]
     fn lexer_get_next_token_returns_type_real_when_input_is_real_keyword() {
-        let lexer = PascalLexer::new(&"real".to_string());
-        let next_token = lexer.get_next_token().unwrap();
-        match next_token.value.unwrap() {
-            TokenValue::Type(type_spec) => assert_eq!(Type::Real, type_spec),
-            _ => assert!(false),
-        }
+        assert_input_generates_token_with_value!("real", TokenValue::Type, Type::Real);
     }
 }
