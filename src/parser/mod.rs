@@ -327,11 +327,64 @@ mod tests {
     use ast::Ast;
     use lexer::{Lexer, MockLexer};
 
+    // Helpers to make tests a little more concise
+    macro_rules! plus {
+        () => ((TokenType::Operator, TokenValue::Operator(OperatorType::Plus)))
+    }
+
+    macro_rules! minus {
+        () => ((TokenType::Operator, TokenValue::Operator(OperatorType::Minus)))
+    }
+
+    macro_rules! times {
+        () => ((TokenType::Operator, TokenValue::Operator(OperatorType::Times)))
+    }
+
+    macro_rules! int_div {
+        () => ((TokenType::Operator,
+                           TokenValue::Operator(OperatorType::IntegerDivision)))
+    }
+
+    macro_rules! integer {
+        ($value:expr) => ((TokenType::IntegerLiteral, TokenValue::Integer($value)))
+    }
+
+    macro_rules! identifier {
+        ($value:expr) => ((TokenType::Identifier, TokenValue::Identifier($value.to_string())))
+    }
+
+    macro_rules! lparen {
+        () => ((TokenType::LParen, TokenValue::Empty))
+    }
+
+    macro_rules! rparen {
+        () => ((TokenType::RParen, TokenValue::Empty))
+    }
+
+    macro_rules! begin {
+        () => ((TokenType::Begin, TokenValue::Empty))
+    }
+
+    macro_rules! end {
+        () => ((TokenType::End, TokenValue::Empty))
+    }
+
+    macro_rules! assign {
+        () => ((TokenType::Assign, TokenValue::Empty))
+    }
+
+    macro_rules! semicolon {
+        () => ((TokenType::Semicolon, TokenValue::Empty))
+    }
+
+    macro_rules! dot {
+        () => ((TokenType::Dot, TokenValue::Empty))
+    }
+
     #[test]
     fn parser_eat_should_consume_token_if_it_has_the_correct_type() {
         // Input: +4
-        let tokens = vec![(TokenType::Operator, TokenValue::Operator(OperatorType::Plus)),
-                          (TokenType::IntegerLiteral, TokenValue::Integer(4))];
+        let tokens = vec![plus!(), integer!(4)];
         let lexer = MockLexer::new(tokens);
         let parser = Parser::new(lexer);
         *parser.current_token.borrow_mut() = Some(parser.lexer.get_next_token().unwrap());
@@ -346,8 +399,7 @@ mod tests {
     #[test]
     fn parser_eat_should_not_consume_token_if_it_has_the_wrong_type() {
         // Input: +4
-        let tokens = vec![(TokenType::Operator, TokenValue::Operator(OperatorType::Plus)),
-                          (TokenType::IntegerLiteral, TokenValue::Integer(4))];
+        let tokens = vec![plus!(), integer!(4)];
         let lexer = MockLexer::new(tokens);
         let parser = Parser::new(lexer);
         *parser.current_token.borrow_mut() = Some(parser.lexer.get_next_token().unwrap());
@@ -359,9 +411,7 @@ mod tests {
     // expr -> INTEGER OPERATOR INTEGER
     fn parser_expr_should_create_operator_node_when_expression_is_addition() {
         // Input: 3+4
-        let tokens = vec![(TokenType::IntegerLiteral, TokenValue::Integer(3)),
-                          (TokenType::Operator, TokenValue::Operator(OperatorType::Plus)),
-                          (TokenType::IntegerLiteral, TokenValue::Integer(4))];
+        let tokens = vec![integer!(3), plus!(), integer!(4)];
         let lexer = MockLexer::new(tokens);
         let parser = Parser::new(lexer);
         assert!(parser.load_first_token().is_ok());
@@ -385,9 +435,7 @@ mod tests {
     // expr -> INTEGER OPERATOR INTEGER
     fn parser_expr_should_create_operator_node_when_expression_is_subtraction() {
         // Input: 4-3
-        let tokens = vec![(TokenType::IntegerLiteral, TokenValue::Integer(4)),
-                          (TokenType::Operator, TokenValue::Operator(OperatorType::Minus)),
-                          (TokenType::IntegerLiteral, TokenValue::Integer(3))];
+        let tokens = vec![integer!(4), minus!(), integer!(3)];
         let lexer = MockLexer::new(tokens);
         let parser = Parser::new(lexer);
         assert!(parser.load_first_token().is_ok());
@@ -410,9 +458,7 @@ mod tests {
     #[test]
     fn parser_expr_should_not_parse_expressions_that_dont_have_integer_after_operator() {
         // Input: 4+-
-        let tokens = vec![(TokenType::IntegerLiteral, TokenValue::Integer(4)),
-                          (TokenType::Operator, TokenValue::Operator(OperatorType::Plus)),
-                          (TokenType::Operator, TokenValue::Operator(OperatorType::Minus))];
+        let tokens = vec![integer!(4), plus!(), minus!()];
         let lexer = MockLexer::new(tokens);
         let parser = Parser::new(lexer);
         assert!(parser.load_first_token().is_ok());
@@ -436,11 +482,7 @@ mod tests {
     #[test]
     fn parser_expr_should_not_parse_expressions_that_dont_terminate_with_eof() {
         // Input: 1+3 div
-        let tokens = vec![(TokenType::IntegerLiteral, TokenValue::Integer(1)),
-                          (TokenType::Operator, TokenValue::Operator(OperatorType::Plus)),
-                          (TokenType::IntegerLiteral, TokenValue::Integer(3)),
-                          (TokenType::Operator,
-                           TokenValue::Operator(OperatorType::IntegerDivision))];
+        let tokens = vec![integer!(1), plus!(), integer!(3), int_div!()];
         let lexer = MockLexer::new(tokens);
         let parser = Parser::new(lexer);
         assert!(parser.load_first_token().is_ok());
@@ -452,9 +494,7 @@ mod tests {
     #[test]
     fn parser_load_first_token_should_load_first_token() {
         // Input: 2+3
-        let tokens = vec![(TokenType::IntegerLiteral, TokenValue::Integer(2)),
-                          (TokenType::Operator, TokenValue::Operator(OperatorType::Plus)),
-                          (TokenType::IntegerLiteral, TokenValue::Integer(3))];
+        let tokens = vec![integer!(2), plus!(), integer!(3)];
         let lexer = MockLexer::new(tokens);
         let parser = Parser::new(lexer);
         let _ = parser.load_first_token();
@@ -479,7 +519,7 @@ mod tests {
     #[test]
     fn parser_expr_should_create_integer_node_if_input_consists_of_only_integer() {
         // Input: 42
-        let tokens = vec![(TokenType::IntegerLiteral, TokenValue::Integer(42))];
+        let tokens = vec![integer!(42)];
         let lexer = MockLexer::new(tokens);
         let parser = Parser::new(lexer);
         assert!(parser.load_first_token().is_ok());
@@ -493,9 +533,7 @@ mod tests {
     #[test]
     fn parser_term_should_create_operator_node_when_expression_is_multiplication() {
         // Input: 3*4
-        let tokens = vec![(TokenType::IntegerLiteral, TokenValue::Integer(3)),
-                          (TokenType::Operator, TokenValue::Operator(OperatorType::Times)),
-                          (TokenType::IntegerLiteral, TokenValue::Integer(4))];
+        let tokens = vec![integer!(3), times!(), integer!(4)];
         let lexer = MockLexer::new(tokens);
         let parser = Parser::new(lexer);
         assert!(parser.load_first_token().is_ok());
@@ -518,10 +556,7 @@ mod tests {
     #[test]
     fn parser_term_should_create_operator_node_when_expression_is_division() {
         // Input: 4 div 2
-        let tokens = vec![(TokenType::IntegerLiteral, TokenValue::Integer(4)),
-                          (TokenType::Operator,
-                           TokenValue::Operator(OperatorType::IntegerDivision)),
-                          (TokenType::IntegerLiteral, TokenValue::Integer(2))];
+        let tokens = vec![integer!(4), int_div!(), integer!(2)];
         let lexer = MockLexer::new(tokens);
         let parser = Parser::new(lexer);
         assert!(parser.load_first_token().is_ok());
@@ -544,7 +579,7 @@ mod tests {
     #[test]
     fn parser_term_should_return_integer_node_if_input_consists_of_only_integer() {
         // Input: 42
-        let tokens = vec![(TokenType::IntegerLiteral, TokenValue::Integer(42))];
+        let tokens = vec![integer!(42)];
         let lexer = MockLexer::new(tokens);
         let parser = Parser::new(lexer);
         assert!(parser.load_first_token().is_ok());
@@ -558,10 +593,7 @@ mod tests {
     #[test]
     fn parser_term_should_not_parse_expressions_that_dont_have_integer_after_operator() {
         // Input: 4*div
-        let tokens = vec![(TokenType::IntegerLiteral, TokenValue::Integer(4)),
-                          (TokenType::Operator, TokenValue::Operator(OperatorType::Times)),
-                          (TokenType::Operator,
-                           TokenValue::Operator(OperatorType::IntegerDivision))];
+        let tokens = vec![integer!(4), times!(), int_div!()];
         let lexer = MockLexer::new(tokens);
         let parser = Parser::new(lexer);
         assert!(parser.load_first_token().is_ok());
@@ -585,11 +617,7 @@ mod tests {
     #[test]
     fn parser_term_should_not_parse_expressions_that_dont_terminate_with_eof() {
         // Input: 1*3 div
-        let tokens = vec![(TokenType::IntegerLiteral, TokenValue::Integer(1)),
-                          (TokenType::Operator, TokenValue::Operator(OperatorType::Times)),
-                          (TokenType::IntegerLiteral, TokenValue::Integer(3)),
-                          (TokenType::Operator,
-                           TokenValue::Operator(OperatorType::IntegerDivision))];
+        let tokens = vec![integer!(1), times!(), integer!(3), int_div!()];
         let lexer = MockLexer::new(tokens);
         let parser = Parser::new(lexer);
         assert!(parser.load_first_token().is_ok());
@@ -601,7 +629,7 @@ mod tests {
     #[test]
     fn parser_factor_should_return_integer_node_if_input_consists_of_only_integer() {
         // Input: 42
-        let tokens = vec![(TokenType::IntegerLiteral, TokenValue::Integer(42))];
+        let tokens = vec![integer!(42)];
         let lexer = MockLexer::new(tokens);
         let parser = Parser::new(lexer);
         assert!(parser.load_first_token().is_ok());
@@ -615,11 +643,7 @@ mod tests {
     #[test]
     fn parser_factor_creates_graph_of_expr_if_input_consists_of_expr_in_parentheses() {
         // Input: (6+3)
-        let tokens = vec![(TokenType::LParen, TokenValue::Empty),
-                          (TokenType::IntegerLiteral, TokenValue::Integer(6)),
-                          (TokenType::Operator, TokenValue::Operator(OperatorType::Plus)),
-                          (TokenType::IntegerLiteral, TokenValue::Integer(3)),
-                          (TokenType::RParen, TokenValue::Empty)];
+        let tokens = vec![lparen!(), integer!(6), plus!(), integer!(3), rparen!()];
         let lexer = MockLexer::new(tokens);
         let parser = Parser::new(lexer);
         assert!(parser.load_first_token().is_ok());
@@ -642,9 +666,7 @@ mod tests {
     #[test]
     fn parser_factor_creates_integer_node_if_input_consists_of_integer_in_parentheses() {
         // Input: (6)
-        let tokens = vec![(TokenType::LParen, TokenValue::Empty),
-                          (TokenType::IntegerLiteral, TokenValue::Integer(6)),
-                          (TokenType::RParen, TokenValue::Empty)];
+        let tokens = vec![lparen!(), integer!(6), rparen!()];
         let lexer = MockLexer::new(tokens);
         let parser = Parser::new(lexer);
         assert!(parser.load_first_token().is_ok());
@@ -658,8 +680,7 @@ mod tests {
     #[test]
     fn parser_factor_creates_unary_operator_node_if_input_consists_of_unary_minus() {
         // Input: -5
-        let tokens = vec![(TokenType::Operator, TokenValue::Operator(OperatorType::Minus)),
-                          (TokenType::IntegerLiteral, TokenValue::Integer(5))];
+        let tokens = vec![minus!(), integer!(5)];
         let lexer = MockLexer::new(tokens);
         let parser = Parser::new(lexer);
         assert!(parser.load_first_token().is_ok());
@@ -679,8 +700,7 @@ mod tests {
     #[test]
     fn parser_factor_creates_unary_operator_node_if_input_consists_of_unary_plus() {
         // Input: +5
-        let tokens = vec![(TokenType::Operator, TokenValue::Operator(OperatorType::Plus)),
-                          (TokenType::IntegerLiteral, TokenValue::Integer(5))];
+        let tokens = vec![plus!(), integer!(5)];
         let lexer = MockLexer::new(tokens);
         let parser = Parser::new(lexer);
         assert!(parser.load_first_token().is_ok());
@@ -700,8 +720,7 @@ mod tests {
     #[test]
     fn parser_factor_returns_error_if_input_consists_of_unary_times() {
         // Input: *5
-        let tokens = vec![(TokenType::Operator, TokenValue::Operator(OperatorType::Times)),
-                          (TokenType::IntegerLiteral, TokenValue::Integer(5))];
+        let tokens = vec![times!(), integer!(5)];
         let lexer = MockLexer::new(tokens);
         let parser = Parser::new(lexer);
         assert!(parser.load_first_token().is_ok());
@@ -713,9 +732,7 @@ mod tests {
     #[test]
     fn parser_factor_returns_error_if_input_consists_of_unary_division() {
         // Input: div 5
-        let tokens = vec![(TokenType::Operator,
-                           TokenValue::Operator(OperatorType::IntegerDivision)),
-                          (TokenType::IntegerLiteral, TokenValue::Integer(5))];
+        let tokens = vec![int_div!(), integer!(5)];
         let lexer = MockLexer::new(tokens);
         let parser = Parser::new(lexer);
         assert!(parser.load_first_token().is_ok());
@@ -727,8 +744,7 @@ mod tests {
     #[test]
     fn parser_factor_returns_error_if_lparen_is_followed_by_rparen() {
         // Input: ()
-        let tokens = vec![(TokenType::LParen, TokenValue::Empty),
-                          (TokenType::RParen, TokenValue::Empty)];
+        let tokens = vec![lparen!(), rparen!()];
         let lexer = MockLexer::new(tokens);
         let parser = Parser::new(lexer);
         assert!(parser.load_first_token().is_ok());
@@ -740,10 +756,7 @@ mod tests {
     #[test]
     fn parser_factor_returns_error_if_operator_is_followed_by_rparen() {
         // Input: (6+)
-        let tokens = vec![(TokenType::LParen, TokenValue::Empty),
-                          (TokenType::IntegerLiteral, TokenValue::Integer(6)),
-                          (TokenType::Operator, TokenValue::Operator(OperatorType::Plus)),
-                          (TokenType::RParen, TokenValue::Empty)];
+        let tokens = vec![lparen!(), integer!(6), plus!(), rparen!()];
         let lexer = MockLexer::new(tokens);
         let parser = Parser::new(lexer);
         assert!(parser.load_first_token().is_ok());
@@ -755,10 +768,7 @@ mod tests {
     #[test]
     fn parser_factor_returns_error_if_parentheses_are_mismatched() {
         // Input: (6+3
-        let tokens = vec![(TokenType::LParen, TokenValue::Empty),
-                          (TokenType::IntegerLiteral, TokenValue::Integer(6)),
-                          (TokenType::Operator, TokenValue::Operator(OperatorType::Plus)),
-                          (TokenType::IntegerLiteral, TokenValue::Integer(3))];
+        let tokens = vec![lparen!(), integer!(6), plus!(), integer!(3)];
         let lexer = MockLexer::new(tokens);
         let parser = Parser::new(lexer);
         assert!(parser.load_first_token().is_ok());
@@ -770,7 +780,7 @@ mod tests {
     #[test]
     fn parser_factor_creates_variable_node_when_it_encounters_identifier() {
         // Input: a
-        let tokens = vec![(TokenType::Identifier, TokenValue::Identifier("a".to_string()))];
+        let tokens = vec![identifier!("a")];
         let lexer = MockLexer::new(tokens);
         let parser = Parser::new(lexer);
         assert!(parser.load_first_token().is_ok());
@@ -786,12 +796,7 @@ mod tests {
     #[test]
     fn parser_start_returns_error_if_parentheses_are_mismatched() {
         // Input: (6+3))
-        let tokens = vec![(TokenType::LParen, TokenValue::Empty),
-                          (TokenType::IntegerLiteral, TokenValue::Integer(6)),
-                          (TokenType::Operator, TokenValue::Operator(OperatorType::Plus)),
-                          (TokenType::IntegerLiteral, TokenValue::Integer(3)),
-                          (TokenType::RParen, TokenValue::Empty),
-                          (TokenType::RParen, TokenValue::Empty)];
+        let tokens = vec![lparen!(), integer!(6), plus!(), integer!(3), rparen!(), rparen!()];
         let lexer = MockLexer::new(tokens);
         let parser = Parser::new(lexer);
         let mut ast = Ast::new();
@@ -802,7 +807,7 @@ mod tests {
     #[test]
     fn parser_variable_creates_variable_node_when_token_is_identifier() {
         // Input: a
-        let tokens = vec![(TokenType::Identifier, TokenValue::Identifier("a".to_string()))];
+        let tokens = vec![identifier!("a")];
         let lexer = MockLexer::new(tokens);
         let parser = Parser::new(lexer);
         assert!(parser.load_first_token().is_ok());
@@ -817,7 +822,7 @@ mod tests {
     #[test]
     fn parser_variable_returns_error_when_token_is_no_identifier() {
         // Input: 5
-        let tokens = vec![(TokenType::IntegerLiteral, TokenValue::Integer(5))];
+        let tokens = vec![integer!(5)];
         let lexer = MockLexer::new(tokens);
         let parser = Parser::new(lexer);
         assert!(parser.load_first_token().is_ok());
@@ -829,9 +834,7 @@ mod tests {
     #[test]
     fn parser_assignment_statement_parses_assignment_statement() {
         // Input: a := 5
-        let tokens = vec![(TokenType::Identifier, TokenValue::Identifier("a".to_string())),
-                          (TokenType::Assign, TokenValue::Empty),
-                          (TokenType::IntegerLiteral, TokenValue::Integer(5))];
+        let tokens = vec![identifier!("a"), assign!(), integer!(5)];
         let lexer = MockLexer::new(tokens);
         let parser = Parser::new(lexer);
         assert!(parser.load_first_token().is_ok());
@@ -852,11 +855,7 @@ mod tests {
     #[test]
     fn parser_assignment_statement_parses_assignment_statement_with_expression() {
         // Input: a := 5 + 7
-        let tokens = vec![(TokenType::Identifier, TokenValue::Identifier("a".to_string())),
-                          (TokenType::Assign, TokenValue::Empty),
-                          (TokenType::IntegerLiteral, TokenValue::Integer(5)),
-                          (TokenType::Operator, TokenValue::Operator(OperatorType::Plus)),
-                          (TokenType::IntegerLiteral, TokenValue::Integer(7))];
+        let tokens = vec![identifier!("a"), assign!(), integer!(5), plus!(), integer!(7)];
         let lexer = MockLexer::new(tokens);
         let parser = Parser::new(lexer);
         assert!(parser.load_first_token().is_ok());
@@ -878,9 +877,7 @@ mod tests {
     #[test]
     fn parser_assignment_statement_doesnt_parse_assignment_without_variable_on_the_left() {
         // Input: 1 := 5
-        let tokens = vec![(TokenType::IntegerLiteral, TokenValue::Integer(1)),
-                          (TokenType::Assign, TokenValue::Empty),
-                          (TokenType::IntegerLiteral, TokenValue::Integer(5))];
+        let tokens = vec![integer!(1), assign!(), integer!(5)];
         let lexer = MockLexer::new(tokens);
         let parser = Parser::new(lexer);
         assert!(parser.load_first_token().is_ok());
@@ -891,9 +888,7 @@ mod tests {
     #[test]
     fn parser_assignment_statement_doesnt_parse_assignment_without_assign_token_in_the_middle() {
         // Input: a + 5
-        let tokens = vec![(TokenType::Identifier, TokenValue::Identifier("a".to_string())),
-                          (TokenType::Operator, TokenValue::Operator(OperatorType::Plus)),
-                          (TokenType::IntegerLiteral, TokenValue::Integer(5))];
+        let tokens = vec![identifier!("a"), plus!(), integer!(5)];
         let lexer = MockLexer::new(tokens);
         let parser = Parser::new(lexer);
         assert!(parser.load_first_token().is_ok());
@@ -904,9 +899,7 @@ mod tests {
     #[test]
     fn parser_assignment_statement_doesnt_parse_assignment_without_expression_on_the_right() {
         // Input: a := BEGIN
-        let tokens = vec![(TokenType::Identifier, TokenValue::Identifier("a".to_string())),
-                          (TokenType::Assign, TokenValue::Empty),
-                          (TokenType::Begin, TokenValue::Empty)];
+        let tokens = vec![identifier!("a"), assign!(), begin!()];
         let lexer = MockLexer::new(tokens);
         let parser = Parser::new(lexer);
         assert!(parser.load_first_token().is_ok());
@@ -917,9 +910,7 @@ mod tests {
     #[test]
     fn parser_statement_returns_assignment_statement_if_statement_is_assignment_statement() {
         // Input: a := 5
-        let tokens = vec![(TokenType::Identifier, TokenValue::Identifier("a".to_string())),
-                          (TokenType::Assign, TokenValue::Empty),
-                          (TokenType::IntegerLiteral, TokenValue::Integer(5))];
+        let tokens = vec![identifier!("a"), assign!(), integer!(5)];
         let lexer = MockLexer::new(tokens);
         let parser = Parser::new(lexer);
         assert!(parser.load_first_token().is_ok());
@@ -940,7 +931,7 @@ mod tests {
     #[test]
     fn parser_statement_returns_none_if_no_statement_is_present() {
         // Input: END
-        let tokens = vec![(TokenType::End, TokenValue::Empty)];
+        let tokens = vec![end!()];
         let lexer = MockLexer::new(tokens);
         let parser = Parser::new(lexer);
         assert!(parser.load_first_token().is_ok());
@@ -952,9 +943,7 @@ mod tests {
     #[test]
     fn parser_statement_list_returns_assignment_statement_if_statement_is_assignment() {
         // Input: a := 5
-        let tokens = vec![(TokenType::Identifier, TokenValue::Identifier("a".to_string())),
-                          (TokenType::Assign, TokenValue::Empty),
-                          (TokenType::IntegerLiteral, TokenValue::Integer(5))];
+        let tokens = vec![identifier!("a"), assign!(), integer!(5)];
         let lexer = MockLexer::new(tokens);
         let parser = Parser::new(lexer);
         assert!(parser.load_first_token().is_ok());
@@ -978,13 +967,13 @@ mod tests {
     #[test]
     fn parser_statement_list_returns_two_statements_when_statements_are_separated_by_semicolon() {
         // Input: a := 5; b := 6
-        let tokens = vec![(TokenType::Identifier, TokenValue::Identifier("a".to_string())),
-                          (TokenType::Assign, TokenValue::Empty),
-                          (TokenType::IntegerLiteral, TokenValue::Integer(5)),
-                          (TokenType::Semicolon, TokenValue::Empty),
-                          (TokenType::Identifier, TokenValue::Identifier("b".to_string())),
-                          (TokenType::Assign, TokenValue::Empty),
-                          (TokenType::IntegerLiteral, TokenValue::Integer(6))];
+        let tokens = vec![identifier!("a"),
+                          assign!(),
+                          integer!(5),
+                          semicolon!(),
+                          identifier!("b"),
+                          assign!(),
+                          integer!(6)];
         let lexer = MockLexer::new(tokens);
         let parser = Parser::new(lexer);
         assert!(parser.load_first_token().is_ok());
@@ -1020,12 +1009,12 @@ mod tests {
     #[test]
     fn parser_statement_list_returns_only_first_stmt_when_stmts_are_not_separated_by_semicolon() {
         // Input: a := 5 b := 6
-        let tokens = vec![(TokenType::Identifier, TokenValue::Identifier("a".to_string())),
-                          (TokenType::Assign, TokenValue::Empty),
-                          (TokenType::IntegerLiteral, TokenValue::Integer(5)),
-                          (TokenType::Identifier, TokenValue::Identifier("b".to_string())),
-                          (TokenType::Assign, TokenValue::Empty),
-                          (TokenType::IntegerLiteral, TokenValue::Integer(6))];
+        let tokens = vec![identifier!("a"),
+                          assign!(),
+                          integer!(5),
+                          identifier!("b"),
+                          assign!(),
+                          integer!(6)];
         let lexer = MockLexer::new(tokens);
         let parser = Parser::new(lexer);
         assert!(parser.load_first_token().is_ok());
@@ -1049,10 +1038,7 @@ mod tests {
     #[test]
     fn parser_statement_list_can_begin_with_semicolon() {
         // Input: ;b := 6
-        let tokens = vec![(TokenType::Semicolon, TokenValue::Empty),
-                          (TokenType::Identifier, TokenValue::Identifier("b".to_string())),
-                          (TokenType::Assign, TokenValue::Empty),
-                          (TokenType::IntegerLiteral, TokenValue::Integer(6))];
+        let tokens = vec![semicolon!(), identifier!("b"), assign!(), integer!(6)];
         let lexer = MockLexer::new(tokens);
         let parser = Parser::new(lexer);
         assert!(parser.load_first_token().is_ok());
@@ -1076,10 +1062,7 @@ mod tests {
     #[test]
     fn parser_statement_list_can_end_with_semicolon() {
         // Input: b := 6;
-        let tokens = vec![(TokenType::Identifier, TokenValue::Identifier("b".to_string())),
-                          (TokenType::Assign, TokenValue::Empty),
-                          (TokenType::IntegerLiteral, TokenValue::Integer(6)),
-                          (TokenType::Semicolon, TokenValue::Empty)];
+        let tokens = vec![identifier!("b"), assign!(), integer!(6), semicolon!()];
         let lexer = MockLexer::new(tokens);
         let parser = Parser::new(lexer);
         assert!(parser.load_first_token().is_ok());
@@ -1103,11 +1086,7 @@ mod tests {
     #[test]
     fn parser_compound_statement_parses_compound_statement() {
         // Input: BEGIN a := 5 END
-        let tokens = vec![(TokenType::Begin, TokenValue::Empty),
-                          (TokenType::Identifier, TokenValue::Identifier("a".to_string())),
-                          (TokenType::Assign, TokenValue::Empty),
-                          (TokenType::IntegerLiteral, TokenValue::Integer(5)),
-                          (TokenType::End, TokenValue::Empty)];
+        let tokens = vec![begin!(), identifier!("a"), assign!(), integer!(5), end!()];
         let lexer = MockLexer::new(tokens);
         let parser = Parser::new(lexer);
         assert!(parser.load_first_token().is_ok());
@@ -1133,10 +1112,7 @@ mod tests {
     #[test]
     fn parser_compound_statement_returns_error_when_begin_is_missing() {
         // Input: a := 5 END
-        let tokens = vec![(TokenType::Identifier, TokenValue::Identifier("a".to_string())),
-                          (TokenType::Assign, TokenValue::Empty),
-                          (TokenType::IntegerLiteral, TokenValue::Integer(5)),
-                          (TokenType::End, TokenValue::Empty)];
+        let tokens = vec![identifier!("a"), assign!(), integer!(5), end!()];
         let lexer = MockLexer::new(tokens);
         let parser = Parser::new(lexer);
         assert!(parser.load_first_token().is_ok());
@@ -1148,10 +1124,7 @@ mod tests {
     #[test]
     fn parser_compound_statement_returns_error_when_end_is_missing() {
         // Input: BEGIN a := 5
-        let tokens = vec![(TokenType::Begin, TokenValue::Empty),
-                          (TokenType::Identifier, TokenValue::Identifier("a".to_string())),
-                          (TokenType::Assign, TokenValue::Empty),
-                          (TokenType::IntegerLiteral, TokenValue::Integer(5))];
+        let tokens = vec![begin!(), identifier!("a"), assign!(), integer!(5)];
         let lexer = MockLexer::new(tokens);
         let parser = Parser::new(lexer);
         assert!(parser.load_first_token().is_ok());
@@ -1163,14 +1136,14 @@ mod tests {
     #[test]
     fn parser_compound_statement_returns_error_when_statements_arent_separated_with_semicolons() {
         // Input: BEGIN a := 5 b := 6 END
-        let tokens = vec![(TokenType::Begin, TokenValue::Empty),
-                          (TokenType::Identifier, TokenValue::Identifier("a".to_string())),
-                          (TokenType::Assign, TokenValue::Empty),
-                          (TokenType::IntegerLiteral, TokenValue::Integer(5)),
-                          (TokenType::Identifier, TokenValue::Identifier("b".to_string())),
-                          (TokenType::Assign, TokenValue::Empty),
-                          (TokenType::IntegerLiteral, TokenValue::Integer(6)),
-                          (TokenType::End, TokenValue::Empty)];
+        let tokens = vec![begin!(),
+                          identifier!("a"),
+                          assign!(),
+                          integer!(5),
+                          identifier!("b"),
+                          assign!(),
+                          integer!(6),
+                          end!()];
         let lexer = MockLexer::new(tokens);
         let parser = Parser::new(lexer);
         assert!(parser.load_first_token().is_ok());
@@ -1182,13 +1155,8 @@ mod tests {
     #[test]
     fn parser_compound_statement_parses_nested_compound_statement() {
         // Input: BEGIN BEGIN a := 5 END END
-        let tokens = vec![(TokenType::Begin, TokenValue::Empty),
-                          (TokenType::Begin, TokenValue::Empty),
-                          (TokenType::Identifier, TokenValue::Identifier("a".to_string())),
-                          (TokenType::Assign, TokenValue::Empty),
-                          (TokenType::IntegerLiteral, TokenValue::Integer(5)),
-                          (TokenType::End, TokenValue::Empty),
-                          (TokenType::End, TokenValue::Empty)];
+        let tokens =
+            vec![begin!(), begin!(), identifier!("a"), assign!(), integer!(5), end!(), end!()];
         let lexer = MockLexer::new(tokens);
         let parser = Parser::new(lexer);
         assert!(parser.load_first_token().is_ok());
@@ -1216,12 +1184,7 @@ mod tests {
     #[test]
     fn parser_program_parses_program() {
         // Input: BEGIN a := 5 END.
-        let tokens = vec![(TokenType::Begin, TokenValue::Empty),
-                          (TokenType::Identifier, TokenValue::Identifier("a".to_string())),
-                          (TokenType::Assign, TokenValue::Empty),
-                          (TokenType::IntegerLiteral, TokenValue::Integer(5)),
-                          (TokenType::End, TokenValue::Empty),
-                          (TokenType::Dot, TokenValue::Empty)];
+        let tokens = vec![begin!(), identifier!("a"), assign!(), integer!(5), end!(), dot!()];
         let lexer = MockLexer::new(tokens);
         let parser = Parser::new(lexer);
         assert!(parser.load_first_token().is_ok());
@@ -1247,7 +1210,7 @@ mod tests {
     #[test]
     fn parser_program_returns_error_when_compound_statement_is_missing() {
         // Input: .
-        let tokens = vec![(TokenType::Dot, TokenValue::Empty)];
+        let tokens = vec![dot!()];
         let lexer = MockLexer::new(tokens);
         let parser = Parser::new(lexer);
         assert!(parser.load_first_token().is_ok());
@@ -1259,11 +1222,7 @@ mod tests {
     #[test]
     fn parser_program_returns_error_when_dot_is_missing() {
         // Input: BEGIN a := 5 END
-        let tokens = vec![(TokenType::Begin, TokenValue::Empty),
-                          (TokenType::Identifier, TokenValue::Identifier("a".to_string())),
-                          (TokenType::Assign, TokenValue::Empty),
-                          (TokenType::IntegerLiteral, TokenValue::Integer(5)),
-                          (TokenType::End, TokenValue::Empty)];
+        let tokens = vec![begin!(), identifier!("a"), assign!(), integer!(5), end!()];
         let lexer = MockLexer::new(tokens);
         let parser = Parser::new(lexer);
         assert!(parser.load_first_token().is_ok());
@@ -1275,18 +1234,18 @@ mod tests {
     #[test]
     fn parser_program_returns_error_when_two_compound_statements_are_present() {
         // Input: BEGIN a := 5 END; BEGIN b := 6 END.
-        let tokens = vec![(TokenType::Begin, TokenValue::Empty),
-                          (TokenType::Identifier, TokenValue::Identifier("a".to_string())),
-                          (TokenType::Assign, TokenValue::Empty),
-                          (TokenType::IntegerLiteral, TokenValue::Integer(5)),
-                          (TokenType::End, TokenValue::Empty),
-                          (TokenType::Semicolon, TokenValue::Empty),
-                          (TokenType::Begin, TokenValue::Empty),
-                          (TokenType::Identifier, TokenValue::Identifier("b".to_string())),
-                          (TokenType::Assign, TokenValue::Empty),
-                          (TokenType::IntegerLiteral, TokenValue::Integer(6)),
-                          (TokenType::End, TokenValue::Empty),
-                          (TokenType::Dot, TokenValue::Empty)];
+        let tokens = vec![begin!(),
+                          identifier!("a"),
+                          assign!(),
+                          integer!(5),
+                          end!(),
+                          semicolon!(),
+                          begin!(),
+                          identifier!("b"),
+                          assign!(),
+                          integer!(6),
+                          end!(),
+                          dot!()];
         let lexer = MockLexer::new(tokens);
         let parser = Parser::new(lexer);
         assert!(parser.load_first_token().is_ok());
