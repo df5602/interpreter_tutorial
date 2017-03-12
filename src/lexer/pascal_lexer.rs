@@ -19,18 +19,30 @@ impl Lexer for PascalLexer {
     /// Returns the next token in the input
     /// Result is the token, if possible, Error "Invalid token" otherwise
     fn get_next_token(&self) -> Result<Token, SyntaxError> {
-        // Advance to the next non-whitespace character
-        self.skip_whitespace();
+        let mut pos: usize;
+        let mut current_char: char;
 
-        let pos = self.pos.get();
+        loop {
+            // Advance to the next non-whitespace character
+            self.skip_whitespace();
 
-        // Return EOF when we have reached the end of the input
-        if pos + 1 > self.chars.len() {
-            self.pos.set(pos + 1);
-            return Ok(Token::new(TokenType::Eof, None, Span::new(pos, pos + 1)));
+            pos = self.pos.get();
+
+            // Return EOF when we have reached the end of the input
+            if pos + 1 > self.chars.len() {
+                self.pos.set(pos + 1);
+                return Ok(Token::new(TokenType::Eof, None, Span::new(pos, pos + 1)));
+            }
+
+            current_char = self.chars[pos];
+
+            // Skip comments
+            if current_char == '{' {
+                self.skip_comments();
+            } else {
+                break;
+            }
         }
-
-        let current_char = self.chars[pos];
 
         // Return number when the next character is a digit
         if current_char.is_digit(10) {
@@ -125,7 +137,7 @@ impl Lexer for PascalLexer {
 
         // Current character didn't match any known token, return error
         Err(SyntaxError {
-                msg: "Invalid token".to_string(),
+                msg: format!("Invalid token: `{}`", current_char),
                 span: Span::new(pos, pos + 1),
             })
     }
@@ -313,6 +325,29 @@ impl PascalLexer {
 
         // Set new position
         self.pos.set(pos);
+    }
+
+    /// Skips comments (any characters enclosed in curly braces).
+    /// Nested comments are not supported.
+    fn skip_comments(&self) {
+        let mut pos = self.pos.get();
+        assert!(self.chars[pos] == '{');
+
+        loop {
+            // Terminate if we have reached the end of the input
+            if pos + 1 > self.chars.len() {
+                break;
+            }
+
+            // Continue unless current character is the closing brace
+            if self.chars[pos] == '}' {
+                break;
+            } else {
+                pos += 1;
+            }
+        }
+
+        self.pos.set(pos + 1);
     }
 
     /// Peeks `n` characters in front of the current position.
@@ -583,6 +618,38 @@ mod tests {
         let lexer = PascalLexer::new("123");
         lexer.skip_whitespace();
         assert_eq!(0, lexer.pos.get());
+    }
+
+    #[test]
+    fn lexer_skip_comments_should_skip_all_characters_enclosed_in_curly_braces() {
+        let lexer = PascalLexer::new("{comment}");
+        lexer.skip_comments();
+        assert_eq!(9, lexer.pos.get());
+    }
+
+    #[test]
+    fn lexer_get_next_token_should_skip_comments() {
+        assert_input_generates_token("{I am a comment}BEGIN", TokenType::Begin);
+    }
+
+    #[test]
+    fn lexer_get_next_token_should_handle_whitespace_after_comment() {
+        assert_input_generates_token("{I am a comment} BEGIN", TokenType::Begin);
+    }
+
+    #[test]
+    fn lexer_get_next_token_should_skip_double_comments() {
+        assert_input_generates_token("{ Comment 1 }{ Comment 2} BEGIN", TokenType::Begin);
+    }
+
+    #[test]
+    fn lexer_get_next_token_should_skip_double_comments_separated_by_whitespace() {
+        assert_input_generates_token("{ Comment 1 } { Comment 2} BEGIN", TokenType::Begin);
+    }
+
+    #[test]
+    fn lexer_get_next_token_should_skip_single_comment() {
+        assert_input_generates_token("{ Comment 1 }", TokenType::Eof);
     }
 
     #[test]
