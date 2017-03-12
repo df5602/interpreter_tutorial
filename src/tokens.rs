@@ -6,6 +6,8 @@ use std::fmt;
 pub enum TokenType {
     /// A (multi-digit, base 10) unsigned integer
     IntegerLiteral,
+    /// A floating point number
+    RealLiteral,
     /// One of the following operators: '+', '-', '*', 'div' (integer division), '/' (float division)
     Operator,
     /// Variable name (must start with an alphabetic character,
@@ -43,6 +45,7 @@ impl fmt::Display for TokenType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             TokenType::IntegerLiteral => write!(f, "INTEGER LITERAL"),
+            TokenType::RealLiteral => write!(f, "REAL LITERAL"),
             TokenType::Operator => write!(f, "OPERATOR"),
             TokenType::Identifier => write!(f, "IDENTIFIER"),
             TokenType::TypeSpecifier => write!(f, "TYPE SPECIFIER"),
@@ -112,6 +115,8 @@ impl fmt::Display for Type {
 pub enum TokenValue {
     /// Signed integer as i64
     Integer(i64),
+    /// Floating point number
+    Real(f64),
     /// An operator
     Operator(OperatorType),
     /// An identifier name
@@ -196,6 +201,7 @@ impl fmt::Display for Token {
             Some(ref value) => {
                 match *value {
                     TokenValue::Integer(val) => write!(f, "Token({}, {})", self.token_type, val),
+                    TokenValue::Real(val) => write!(f, "Token({}, {})", self.token_type, val),
                     TokenValue::Operator(ref val) => {
                         write!(f, "Token({}, {})", self.token_type, val)
                     }

@@ -1,6 +1,8 @@
 //! This module contains a lexer that recognizes `Token`s in a Pascal program.
 use std::cell::Cell;
 use std::i64;
+use std::str::FromStr;
+use std::error::Error;
 use tokens::*;
 use errors::SyntaxError;
 use lexer::Lexer;
@@ -30,12 +32,21 @@ impl Lexer for PascalLexer {
 
         let current_char = self.chars[pos];
 
-        // Return INTEGER when the next character is a digit
+        // Return number when the next character is a digit
         if current_char.is_digit(10) {
-            let value = self.get_integer()?;
-            return Ok(Token::new(TokenType::IntegerLiteral,
-                                 Some(TokenValue::Integer(value)),
-                                 Span::new(pos, self.pos.get())));
+            return self.parse_number();
+        }
+
+        // Return floating point number when the next character is a dot followed by a digit,
+        // otherwise, return DOT when the next character is '.'
+        if current_char == '.' {
+            let next_char = self.peek(1);
+            if next_char.is_some() && next_char.unwrap().is_digit(10) {
+                return self.parse_number();
+            } else {
+                self.pos.set(pos + 1);
+                return Ok(Token::new(TokenType::Dot, None, Span::new(pos, pos + 1)));
+            }
         }
 
         // Return IDENTIFIER or keyword when the next character is alphabetic
@@ -86,12 +97,6 @@ impl Lexer for PascalLexer {
         if current_char == ')' {
             self.pos.set(pos + 1);
             return Ok(Token::new(TokenType::RParen, None, Span::new(pos, pos + 1)));
-        }
-
-        // Return DOT when the next character is '.'
-        if current_char == '.' {
-            self.pos.set(pos + 1);
-            return Ok(Token::new(TokenType::Dot, None, Span::new(pos, pos + 1)));
         }
 
         // Return COMMA when the next character is ','
@@ -148,14 +153,16 @@ impl PascalLexer {
 
     /// Returns a multi-digit (unsigned, base 10) integer
     /// Precondition: First character is digit
-    fn get_integer(&self) -> Result<i64, SyntaxError> {
+    fn parse_number(&self) -> Result<Token, SyntaxError> {
         let mut pos = self.pos.get();
-        let start_pos = pos;
         let mut current_char = self.chars[pos];
-        let mut overflow = false;
-        assert!(current_char.is_digit(10));
-        let mut result = current_char.to_digit(10).unwrap() as i64;
+        assert!(current_char.is_digit(10) || current_char == '.');
 
+        let start_pos = pos;
+        let mut overflow = false;
+        let mut is_float = current_char == '.';
+
+        // Find end of number
         loop {
             pos += 1;
 
@@ -164,19 +171,42 @@ impl PascalLexer {
             }
 
             current_char = self.chars[pos];
-            if current_char.is_digit(10) {
-                let current_digit = current_char.to_digit(10).unwrap() as i64;
-                if overflow || (result > (i64::MAX - current_digit) / 10) {
-                    overflow = true;
+            if !current_char.is_digit(10) {
+                // Accept first dot as point in a floating point number
+                if !is_float && current_char == '.' {
+                    is_float = true;
                 } else {
-                    result = result * 10 + current_digit;
+                    break;
                 }
-            } else {
-                break;
             }
         }
 
         self.pos.set(pos);
+
+        // Convert to String, so that we can use the built-in parse methods (necessary
+        // for floating point)
+        let mut number = String::with_capacity(pos - start_pos);
+        for ch in self.chars[start_pos..pos].iter() {
+            number.push(*ch);
+        }
+
+        // Parse number
+        let mut token_value = None;
+        if !is_float {
+            let parsed_number = i64::from_str(&number);
+            match parsed_number {
+                Ok(value) => token_value = Some(TokenValue::Integer(value)),
+                Err(_) => overflow = true,  // This is actually slightly dirty, because Over/Underflow isn't
+                // the only Error returned by from_str(). However, the Error kind
+                // is private, so we can't match on it.
+            }
+        } else {
+            let parsed_number = f64::from_str(&number);
+            match parsed_number {
+                Ok(value) => token_value = Some(TokenValue::Real(value)),
+                Err(e) => panic!("Error parsing floating point number: {}", e.description()),
+            }
+        }
 
         if overflow {
             Err(SyntaxError {
@@ -184,8 +214,16 @@ impl PascalLexer {
                         .to_string(),
                     span: Span::new(start_pos, pos),
                 })
+        } else if !is_float {
+            assert!(token_value.is_some());
+            Ok(Token::new(TokenType::IntegerLiteral,
+                          token_value,
+                          Span::new(start_pos, pos)))
         } else {
-            Ok(result)
+            assert!(token_value.is_some());
+            Ok(Token::new(TokenType::RealLiteral,
+                          token_value,
+                          Span::new(start_pos, pos)))
         }
     }
 
@@ -405,39 +443,125 @@ mod tests {
     }
 
     #[test]
-    fn lexer_get_integer_returns_multi_digit_integer() {
+    fn lexer_parse_number_returns_multi_digit_integer() {
         let lexer = PascalLexer::new("123");
-        let result = lexer.get_integer().unwrap();
-        assert_eq!(123, result);
+        let token = lexer.parse_number().unwrap();
+        match token.value.unwrap() {
+            TokenValue::Integer(value) => assert_eq!(123, value),
+            _ => assert!(false),
+        }
     }
 
     #[test]
-    fn lexer_get_integer_should_advance_position_correctly() {
+    fn lexer_parse_number_should_advance_position_correctly() {
         let lexer = PascalLexer::new("123");
-        let _result = lexer.get_integer().unwrap();
+        let _result = lexer.parse_number().unwrap();
         assert_eq!(3, lexer.pos.get());
     }
 
     #[test]
-    fn lexer_get_integer_should_only_advance_as_long_as_there_are_more_digits() {
+    fn lexer_parse_number_should_only_advance_as_long_as_there_are_more_digits() {
         let lexer = PascalLexer::new("12a");
-        let result = lexer.get_integer().unwrap();
-        assert_eq!(12, result);
+        let token = lexer.parse_number().unwrap();
+        match token.value.unwrap() {
+            TokenValue::Integer(value) => assert_eq!(12, value),
+            _ => assert!(false),
+        }
         assert_eq!(2, lexer.pos.get());
     }
 
     #[test]
-    fn lexer_get_integer_should_return_error_when_input_is_larger_than_fit_in_i64() {
+    fn lexer_parse_number_should_return_error_when_input_is_larger_than_fit_in_i64() {
         let lexer = PascalLexer::new("9223372036854775808");
-        let result = lexer.get_integer();
+        let result = lexer.parse_number();
         assert!(result.is_err());
     }
 
     #[test]
-    fn lexer_get_integer_should_return_number_when_input_fits_in_i64() {
+    fn lexer_parse_number_should_return_number_when_input_fits_in_i64() {
         let lexer = PascalLexer::new("9223372036854775807");
-        let result = lexer.get_integer().unwrap();
-        assert_eq!(9223372036854775807, result);
+        let token = lexer.parse_number().unwrap();
+        match token.value.unwrap() {
+            TokenValue::Integer(value) => assert_eq!(9223372036854775807, value),
+            _ => assert!(false),
+        }
+    }
+
+    #[test]
+    fn lexer_parse_number_returns_floating_point_number() {
+        let lexer = PascalLexer::new("12.3");
+        let token = lexer.parse_number().unwrap();
+        match token.value.unwrap() {
+            TokenValue::Real(value) => assert_eq!(12.3, value),
+            _ => assert!(false),
+        }
+    }
+
+    #[test]
+    fn lexer_parse_number_returns_floating_point_number_with_only_one_point() {
+        let lexer = PascalLexer::new("12.3.0");
+        let token = lexer.parse_number().unwrap();
+        match token.value.unwrap() {
+            TokenValue::Real(value) => assert_eq!(12.3, value),
+            _ => assert!(false),
+        }
+    }
+
+    #[test]
+    fn lexer_parse_number_accepts_floating_point_numbers_with_trailing_dot() {
+        let lexer = PascalLexer::new("12.");
+        let token = lexer.parse_number().unwrap();
+        match token.value.unwrap() {
+            TokenValue::Real(value) => assert_eq!(12.0, value),
+            _ => assert!(false),
+        }
+    }
+
+    #[test]
+    fn lexer_parse_number_accepts_floating_point_numbers_with_leading_dot() {
+        let lexer = PascalLexer::new(".12");
+        let token = lexer.parse_number().unwrap();
+        match token.value.unwrap() {
+            TokenValue::Real(value) => assert_eq!(0.12, value),
+            _ => assert!(false),
+        }
+    }
+
+    #[test]
+    fn lexer_get_next_token_accepts_floating_point_numbers_with_leading_dot() {
+        assert_input_generates_token_with_value!(".12", TokenValue::Real, 0.12);
+    }
+
+    #[test]
+    fn lexer_parse_number_should_advance_position_correctly_when_parsing_float() {
+        let lexer = PascalLexer::new("123.0");
+        let _result = lexer.parse_number().unwrap();
+        assert_eq!(5, lexer.pos.get());
+    }
+
+    #[test]
+    fn lexer_parse_number_advances_position_correctly_when_parsing_float_with_trailing_dot() {
+        let lexer = PascalLexer::new("123.");
+        let _result = lexer.parse_number().unwrap();
+        assert_eq!(4, lexer.pos.get());
+    }
+
+    #[test]
+    fn lexer_parse_number_advances_position_correctly_when_parsing_float_with_leading_dot() {
+        let lexer = PascalLexer::new(".123");
+        let _result = lexer.parse_number().unwrap();
+        assert_eq!(4, lexer.pos.get());
+    }
+
+    #[test]
+    fn lexer_parse_number_only_advances_as_long_as_there_are_more_digits_in_the_flt_number() {
+        let lexer = PascalLexer::new("12.1123a");
+        let token = lexer.parse_number().unwrap();
+        match token.value.unwrap() {
+            TokenValue::Real(value) => assert_eq!(12.1123, value),
+            _ => assert!(false),
+        }
+        assert_eq!(7, lexer.pos.get());
     }
 
     #[test]
@@ -541,6 +665,13 @@ mod tests {
     #[test]
     fn lexer_get_next_token_returns_assign_token_when_input_is_assignment_operator() {
         assert_input_generates_token(":=", TokenType::Assign);
+    }
+
+    #[test]
+    fn lexer_get_next_token_advances_position_correctly_for_assign_token() {
+        let lexer = PascalLexer::new(":=");
+        let _ = lexer.get_next_token();
+        assert_eq!(lexer.get_position(), 2);
     }
 
     #[test]
