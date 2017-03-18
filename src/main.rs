@@ -23,6 +23,7 @@ extern crate test;
 mod tokens;
 mod ast;
 mod errors;
+#[macro_use]
 mod lexer;
 mod parser;
 mod interpreter;

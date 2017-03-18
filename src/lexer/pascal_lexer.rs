@@ -331,7 +331,7 @@ impl PascalLexer {
     /// Nested comments are not supported.
     fn skip_comments(&self) {
         let mut pos = self.pos.get();
-        assert!(self.chars[pos] == '{');
+        assert_eq!(self.chars[pos], '{');
 
         loop {
             // Terminate if we have reached the end of the input

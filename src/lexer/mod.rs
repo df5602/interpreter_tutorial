@@ -8,6 +8,7 @@ mod pascal_lexer;
 pub use self::pascal_lexer::PascalLexer;
 
 #[cfg(test)]
+#[macro_use]
 mod mock_lexer;
 #[cfg(test)]
 pub use self::mock_lexer::MockLexer;

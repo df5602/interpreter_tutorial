@@ -42,6 +42,60 @@ impl MockLexer {
     }
 }
 
+// Helpers to make tests a little more concise
+macro_rules! plus {
+        () => ((TokenType::Operator, TokenValue::Operator(OperatorType::Plus)))
+    }
+
+macro_rules! minus {
+        () => ((TokenType::Operator, TokenValue::Operator(OperatorType::Minus)))
+    }
+
+macro_rules! times {
+        () => ((TokenType::Operator, TokenValue::Operator(OperatorType::Times)))
+    }
+
+macro_rules! int_div {
+        () => ((TokenType::Operator,
+                           TokenValue::Operator(OperatorType::IntegerDivision)))
+    }
+
+macro_rules! integer {
+        ($value:expr) => ((TokenType::IntegerLiteral, TokenValue::Integer($value)))
+    }
+
+macro_rules! identifier {
+        ($value:expr) => ((TokenType::Identifier, TokenValue::Identifier($value.to_string())))
+    }
+
+macro_rules! lparen {
+        () => ((TokenType::LParen, TokenValue::Empty))
+    }
+
+macro_rules! rparen {
+        () => ((TokenType::RParen, TokenValue::Empty))
+    }
+
+macro_rules! begin {
+        () => ((TokenType::Begin, TokenValue::Empty))
+    }
+
+macro_rules! end {
+        () => ((TokenType::End, TokenValue::Empty))
+    }
+
+macro_rules! assign {
+        () => ((TokenType::Assign, TokenValue::Empty))
+    }
+
+macro_rules! semicolon {
+        () => ((TokenType::Semicolon, TokenValue::Empty))
+    }
+
+macro_rules! dot {
+        () => ((TokenType::Dot, TokenValue::Empty))
+    }
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -49,7 +103,7 @@ mod tests {
 
     #[test]
     fn mocklexer_returns_first_token_when_calling_get_next_token_for_the_first_time() {
-        let tokens = vec![(TokenType::IntegerLiteral, TokenValue::Integer(42))];
+        let tokens = vec![integer!(42)];
         let mocklexer = MockLexer::new(tokens);
         let token = mocklexer.get_next_token().unwrap();
         assert_eq!(token.token_type, TokenType::IntegerLiteral);
@@ -61,8 +115,7 @@ mod tests {
 
     #[test]
     fn mocklexer_returns_second_token_when_calling_get_next_token_for_the_second_time() {
-        let tokens = vec![(TokenType::IntegerLiteral, TokenValue::Integer(42)),
-                          (TokenType::Operator, TokenValue::Operator(OperatorType::Plus))];
+        let tokens = vec![integer!(42), plus!()];
         let mocklexer = MockLexer::new(tokens);
         let _tmp = mocklexer.get_next_token().unwrap();
         let token = mocklexer.get_next_token().unwrap();
@@ -75,7 +128,7 @@ mod tests {
 
     #[test]
     fn mocklexer_returns_token_with_value_none_when_encountering_novalue() {
-        let tokens = vec![(TokenType::LParen, TokenValue::Empty)];
+        let tokens = vec![lparen!()];
         let mocklexer = MockLexer::new(tokens);
         let token = mocklexer.get_next_token().unwrap();
         assert_eq!(token.token_type, TokenType::LParen);
@@ -84,7 +137,7 @@ mod tests {
 
     #[test]
     fn mocklexer_returns_eof_when_no_more_tokens_are_available() {
-        let tokens = vec![(TokenType::IntegerLiteral, TokenValue::Integer(42))];
+        let tokens = vec![integer!(42)];
         let mocklexer = MockLexer::new(tokens);
         let _tmp = mocklexer.get_next_token().unwrap();
         let token = mocklexer.get_next_token().unwrap();
