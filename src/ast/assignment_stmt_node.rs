@@ -168,27 +168,10 @@ mod tests {
         let mut ast = Ast::new();
         let mut sym_tbl = HashMap::new();
 
-        let var_node =
-            VariableNode::new("a".to_string(),
-                              Token::new(TokenType::Identifier,
-                                         Some(TokenValue::Identifier("a".to_string())),
-                                         Span::new(0, 1)));
-        let int_node = IntegerNode::new(42,
-                                        Token::new(TokenType::IntegerLiteral,
-                                                   Some(TokenValue::Integer(42)),
-                                                   Span::new(3, 5)));
-
-        let index_var = ast.add_node(var_node);
-        let index_int = ast.add_node(int_node);
-
-        let ass_node =
-            AssignmentStmtNode::new(index_var,
-                                    index_int,
-                                    Token::new(TokenType::Assign, None, Span::new(1, 3)));
-        let index_ass = ast.add_node(ass_node);
+        let index = assign_node!(ast, var_node!(ast, "a"), int_node!(ast, 42));
 
         assert_eq!(sym_tbl.get(&"a".to_string()), None);
-        assert_eq!(ast.get_node(index_ass).visit(&ast, &mut sym_tbl).unwrap(),
+        assert_eq!(ast.get_node(index).visit(&ast, &mut sym_tbl).unwrap(),
                    ReturnValue::Void);
         assert_eq!(sym_tbl.get(&"a".to_string()), Some(&42));
     }
@@ -198,48 +181,10 @@ mod tests {
         let mut ast = Ast::new();
         let mut sym_tbl = HashMap::new();
 
-        let var_node_1 =
-            VariableNode::new("a".to_string(),
-                              Token::new(TokenType::Identifier,
-                                         Some(TokenValue::Identifier("a".to_string())),
-                                         Span::new(0, 1)));
-        let int_node_42 = IntegerNode::new(42,
-                                           Token::new(TokenType::IntegerLiteral,
-                                                      Some(TokenValue::Integer(42)),
-                                                      Span::new(3, 5)));
-
-        let index_var_1 = ast.add_node(var_node_1);
-        let index_int_42 = ast.add_node(int_node_42);
-
-        let ass_node_1 =
-            AssignmentStmtNode::new(index_var_1,
-                                    index_int_42,
-                                    Token::new(TokenType::Assign, None, Span::new(1, 3)));
-        let index_ass_1 = ast.add_node(ass_node_1);
-
-        let var_node_2 =
-            VariableNode::new("a".to_string(),
-                              Token::new(TokenType::Identifier,
-                                         Some(TokenValue::Identifier("a".to_string())),
-                                         Span::new(0, 1)));
-        let int_node_24 = IntegerNode::new(24,
-                                           Token::new(TokenType::IntegerLiteral,
-                                                      Some(TokenValue::Integer(24)),
-                                                      Span::new(3, 5)));
-
-        let index_var_2 = ast.add_node(var_node_2);
-        let index_int_24 = ast.add_node(int_node_24);
-
-        let ass_node_2 =
-            AssignmentStmtNode::new(index_var_2,
-                                    index_int_24,
-                                    Token::new(TokenType::Assign, None, Span::new(1, 3)));
-        let index_ass_2 = ast.add_node(ass_node_2);
-
-        let stmt_node = CompoundStmtNode::new(vec![index_ass_1, index_ass_2],
-                                              Token::new(TokenType::Begin, None, Span::new(0, 1)),
-                                              Token::new(TokenType::End, None, Span::new(3, 4)));
-        let index_stmt = ast.add_node(stmt_node);
+        let index_stmt =
+            cmpd_stmt_node!(ast,
+                            vec![assign_node!(ast, var_node!(ast, "a"), int_node!(ast, 42)),
+                                 assign_node!(ast, var_node!(ast, "a"), int_node!(ast, 24))]);
 
         assert_eq!(sym_tbl.get(&"a".to_string()), None);
 

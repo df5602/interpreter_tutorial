@@ -200,21 +200,8 @@ mod tests {
 
     #[test]
     fn unary_operator_node_visit_returns_operand_when_op_is_addition() {
-        let operand = IntegerNode::new(2,
-                                       Token::new(TokenType::IntegerLiteral,
-                                                  Some(TokenValue::Integer(2)),
-                                                  Span::default()));
-
         let mut ast = Ast::new();
-        let index_operand = ast.add_node(operand);
-
-        let op_node =
-            UnaryOperatorNode::new(index_operand,
-                                   OperatorType::Plus,
-                                   Token::new(TokenType::Operator,
-                                              Some(TokenValue::Operator(OperatorType::Plus)),
-                                              Span::default()));
-        let index_op = ast.add_node(op_node);
+        let index_op = unop_node!(ast, int_node!(ast, 2), OperatorType::Plus);
         let mut sym_tbl = HashMap::new();
         assert_eq!(ast.get_node(index_op)
                        .visit(&ast, &mut sym_tbl)
@@ -225,21 +212,8 @@ mod tests {
 
     #[test]
     fn unary_operator_node_visit_returns_negative_operand_when_op_is_subtraction() {
-        let operand = IntegerNode::new(4,
-                                       Token::new(TokenType::IntegerLiteral,
-                                                  Some(TokenValue::Integer(4)),
-                                                  Span::default()));
-
         let mut ast = Ast::new();
-        let index_operand = ast.add_node(operand);
-
-        let op_node =
-            UnaryOperatorNode::new(index_operand,
-                                   OperatorType::Minus,
-                                   Token::new(TokenType::Operator,
-                                              Some(TokenValue::Operator(OperatorType::Minus)),
-                                              Span::default()));
-        let index_op = ast.add_node(op_node);
+        let index_op = unop_node!(ast, int_node!(ast, 4), OperatorType::Minus);
         let mut sym_tbl = HashMap::new();
         assert_eq!(ast.get_node(index_op)
                        .visit(&ast, &mut sym_tbl)
@@ -250,21 +224,8 @@ mod tests {
 
     #[test]
     fn unary_operator_node_visit_returns_error_when_subtraction_overflows() {
-        let operand = IntegerNode::new(i64::MIN,
-                                       Token::new(TokenType::IntegerLiteral,
-                                                  Some(TokenValue::Integer(i64::MIN)),
-                                                  Span::default()));
-
         let mut ast = Ast::new();
-        let index_operand = ast.add_node(operand);
-
-        let op_node =
-            UnaryOperatorNode::new(index_operand,
-                                   OperatorType::Minus,
-                                   Token::new(TokenType::Operator,
-                                              Some(TokenValue::Operator(OperatorType::Minus)),
-                                              Span::default()));
-        let index_op = ast.add_node(op_node);
+        let index_op = unop_node!(ast, int_node!(ast, i64::MIN), OperatorType::Minus);
         let mut sym_tbl = HashMap::new();
         assert!(ast.get_node(index_op).visit(&ast, &mut sym_tbl).is_err());
     }

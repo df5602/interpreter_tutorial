@@ -162,24 +162,8 @@ mod tests {
         let mut ast = Ast::new();
         let mut sym_tbl = HashMap::new();
 
-        let var_node_a =
-            VariableNode::new("a".to_string(),
-                              Token::new(TokenType::Identifier,
-                                         Some(TokenValue::Identifier("a".to_string())),
-                                         Span::new(0, 1)));
-        let int_node_42 = IntegerNode::new(42,
-                                           Token::new(TokenType::IntegerLiteral,
-                                                      Some(TokenValue::Integer(42)),
-                                                      Span::new(3, 5)));
-
-        let index_var_a = ast.add_node(var_node_a);
-        let index_int_42 = ast.add_node(int_node_42);
-
-        let ass_node_1 =
-            AssignmentStmtNode::new(index_var_a,
-                                    index_int_42,
-                                    Token::new(TokenType::Assign, None, Span::new(1, 3)));
-        let index_ass_1 = ast.add_node(ass_node_1);
+        let index_var_a = var_node!(ast, "a");
+        let index_ass_1 = assign_node!(ast, index_var_a, int_node!(ast, 42));
 
         assert!(ast.get_node(index_ass_1).visit(&ast, &mut sym_tbl).is_ok());
         assert_eq!(sym_tbl.get(&"a".to_string()), Some(&42));
@@ -192,13 +176,7 @@ mod tests {
         let mut ast = Ast::new();
         let mut sym_tbl = HashMap::new();
 
-        let var_node_a =
-            VariableNode::new("a".to_string(),
-                              Token::new(TokenType::Identifier,
-                                         Some(TokenValue::Identifier("a".to_string())),
-                                         Span::new(0, 1)));
-
-        let index_var_a = ast.add_node(var_node_a);
+        let index_var_a = var_node!(ast, "a");
 
         assert_eq!(sym_tbl.get(&"a".to_string()), None);
         assert!(ast.get_node(index_var_a).visit(&ast, &mut sym_tbl).is_err());

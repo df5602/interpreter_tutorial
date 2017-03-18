@@ -161,30 +161,12 @@ mod tests {
     #[test]
     fn compound_statement_node_visit_returns_void() {
         let mut ast = Ast::new();
-        let lhs_1 = IntegerNode::new(2,
-                                     Token::new(TokenType::IntegerLiteral,
-                                                Some(TokenValue::Integer(2)),
-                                                Span::default()));
-        let index_lhs_1 = ast.add_node(lhs_1);
-        let lhs_2 = IntegerNode::new(4,
-                                     Token::new(TokenType::IntegerLiteral,
-                                                Some(TokenValue::Integer(4)),
-                                                Span::default()));
-        let index_lhs_2 = ast.add_node(lhs_2);
 
-        let op_node_1 =
-            BinaryOperatorNode::new(index_lhs_1,
-                                    index_lhs_2,
-                                    OperatorType::Plus,
-                                    Token::new(TokenType::Operator,
-                                               Some(TokenValue::Operator(OperatorType::Plus)),
-                                               Span::default()));
-        let index_op_1 = ast.add_node(op_node_1);
-
-        let stmt_node = CompoundStmtNode::new(vec![index_op_1],
-                                              Token::new(TokenType::Begin, None, Span::new(0, 1)),
-                                              Token::new(TokenType::End, None, Span::new(3, 4)));
-        let index_stmt = ast.add_node(stmt_node);
+        let index_stmt = cmpd_stmt_node!(ast,
+                                         vec![binop_node!(ast,
+                                                          int_node!(ast, 2),
+                                                          int_node!(ast, 4),
+                                                          OperatorType::Plus)]);
         let mut sym_tbl = HashMap::new();
         assert_eq!(ast.get_node(index_stmt).visit(&ast, &mut sym_tbl).unwrap(),
                    ReturnValue::Void);
