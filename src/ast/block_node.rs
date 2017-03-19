@@ -1,7 +1,7 @@
 use std::fmt;
 use std::collections::HashMap;
 
-use tokens::TokenValue;
+use tokens::{TokenValue, Span};
 use errors::SyntaxError;
 use ast::{Ast, AstNode, AstIndex};
 use interpreter::{NodeVisitor, ReturnValue};
@@ -13,7 +13,7 @@ pub struct BlockNode {
     declarations: Vec<AstIndex>,
     compound_statement: AstIndex,
     parent: Option<AstIndex>,
-    position: (usize, usize),
+    span: Span,
 }
 
 impl fmt::Display for BlockNode {
@@ -59,12 +59,12 @@ impl AstNode for BlockNode {
         None
     }
 
-    fn get_position(&self) -> (usize, usize) {
-        self.position
+    fn get_span(&self) -> Span {
+        self.span.clone()
     }
 
-    fn set_position(&mut self, position: (usize, usize)) {
-        self.position = position;
+    fn set_span(&mut self, span: Span) {
+        self.span = span;
     }
 }
 
@@ -87,7 +87,7 @@ impl BlockNode {
             declarations: declarations,
             compound_statement: compound_statement,
             parent: None,
-            position: (0, 0),
+            span: Span::new(0, 0),
         }
     }
 }
@@ -134,9 +134,9 @@ mod tests {
     }
 
     #[test]
-    fn block_node_get_position_returns_position() {
+    fn block_node_get_span_returns_span() {
         let mut node = BlockNode::new(vec![AstIndex(0), AstIndex(1)], AstIndex(2));
-        node.set_position((2, 3));
-        assert_eq!(node.get_position(), (2, 3));
+        node.set_span(Span::new(2, 3));
+        assert_eq!(node.get_span(), Span::new(2, 3));
     }
 }

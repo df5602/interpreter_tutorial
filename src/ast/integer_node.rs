@@ -2,7 +2,7 @@ use std::fmt;
 use std::collections::HashMap;
 
 use ast::{Ast, AstIndex, AstNode};
-use tokens::{Token, TokenValue};
+use tokens::{Token, TokenValue, Span};
 use errors::SyntaxError;
 use interpreter::{NodeVisitor, ReturnValue};
 
@@ -11,7 +11,7 @@ use interpreter::{NodeVisitor, ReturnValue};
 pub struct IntegerNode {
     value: i64,
     parent: Option<AstIndex>,
-    position: (usize, usize),
+    span: Span,
     token: Token,
 }
 
@@ -45,12 +45,12 @@ impl AstNode for IntegerNode {
         Some(TokenValue::Integer(self.value))
     }
 
-    fn get_position(&self) -> (usize, usize) {
-        self.position
+    fn get_span(&self) -> Span {
+        self.span.clone()
     }
 
-    fn set_position(&mut self, position: (usize, usize)) {
-        self.position = position;
+    fn set_span(&mut self, span: Span) {
+        self.span = span;
     }
 }
 
@@ -69,7 +69,7 @@ impl IntegerNode {
         IntegerNode {
             value: value,
             parent: None,
-            position: (token.span.start, token.span.end),
+            span: token.span.clone(),
             token: token,
         }
     }
@@ -85,12 +85,12 @@ mod tests {
     use interpreter::NodeVisitor;
 
     #[test]
-    fn integer_node_new_should_set_position_to_token_position() {
+    fn integer_node_new_should_set_span_to_token_span() {
         let int_node = IntegerNode::new(42,
                                         Token::new(TokenType::IntegerLiteral,
                                                    Some(TokenValue::Integer(42)),
                                                    Span::new(3, 5)));
-        assert_eq!(int_node.position, (3, 5));
+        assert_eq!(int_node.get_span(), Span::new(3, 5));
     }
 
     #[test]
@@ -142,12 +142,12 @@ mod tests {
     }
 
     #[test]
-    fn integer_node_get_position_returns_position() {
+    fn integer_node_get_span_returns_span() {
         let int_node = IntegerNode::new(42,
                                         Token::new(TokenType::IntegerLiteral,
                                                    Some(TokenValue::Integer(42)),
                                                    Span::new(3, 5)));
-        assert_eq!(int_node.get_position(), (3, 5));
+        assert_eq!(int_node.get_span(), Span::new(3, 5));
     }
 
     #[test]

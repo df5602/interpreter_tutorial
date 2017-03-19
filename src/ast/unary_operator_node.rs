@@ -13,7 +13,7 @@ pub struct UnaryOperatorNode {
     operand: AstIndex,
     operator: OperatorType,
     parent: Option<AstIndex>,
-    position: (usize, usize),
+    span: Span,
     token: Token,
 }
 
@@ -58,12 +58,12 @@ impl AstNode for UnaryOperatorNode {
         Some(TokenValue::Operator(self.operator.clone()))
     }
 
-    fn get_position(&self) -> (usize, usize) {
-        self.position
+    fn get_span(&self) -> Span {
+        self.span.clone()
     }
 
-    fn set_position(&mut self, position: (usize, usize)) {
-        self.position = position;
+    fn set_span(&mut self, span: Span) {
+        self.span = span;
     }
 }
 
@@ -94,7 +94,7 @@ impl NodeVisitor for UnaryOperatorNode {
 
                         Err(SyntaxError {
                                 msg: format!("Integer overflow [{}: {}]", rhs, operand),
-                                span: Span::new(self.position.0, self.position.1),
+                                span: self.span.clone(),
                             })
                     }
                 }
@@ -111,7 +111,7 @@ impl UnaryOperatorNode {
             operand: operand,
             operator: operator,
             parent: None,
-            position: (token.span.start, token.span.end),
+            span: token.span.clone(),
             token: token,
         }
     }
@@ -187,15 +187,15 @@ mod tests {
     }
 
     #[test]
-    fn unary_operator_node_get_position_returns_position() {
+    fn unary_operator_node_get_span_returns_span() {
         let mut op_node =
             UnaryOperatorNode::new(AstIndex(0),
                                    OperatorType::Minus,
                                    Token::new(TokenType::Operator,
                                               Some(TokenValue::Operator(OperatorType::Minus)),
                                               Span::new(3, 5)));
-        op_node.set_position((4, 5));
-        assert_eq!(op_node.get_position(), (4, 5));
+        op_node.set_span(Span::new(4, 5));
+        assert_eq!(op_node.get_span(), Span::new(4, 5));
     }
 
     #[test]

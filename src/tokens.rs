@@ -167,7 +167,7 @@ impl TokenValue {
 }
 
 /// Describes the span of a Token (position in input stream)
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct Span {
     /// Start of the span
     pub start: usize,
@@ -191,7 +191,7 @@ pub struct Token {
     pub token_type: TokenType,
     /// An optional value
     pub value: Option<TokenValue>,
-    /// The position in the input stream (for diagnostics reasons)
+    /// The span in the input stream (for diagnostics reasons)
     pub span: Span,
 }
 

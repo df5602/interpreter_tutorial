@@ -1,7 +1,7 @@
 //! This module contains the parser.
 
 use std::cell::RefCell;
-use tokens::{Token, TokenType, OperatorType};
+use tokens::{Token, TokenType, OperatorType, Span};
 use ast::{Ast, AstIndex, BinaryOperatorNode, UnaryOperatorNode, IntegerNode, VariableNode,
           AssignmentStmtNode, CompoundStmtNode};
 use errors::SyntaxError;
@@ -311,7 +311,7 @@ impl<L: Lexer> Parser<L> {
 
             let pos_rparen = self.eat(TokenType::RParen)?.1;
 
-            ast.get_node_mut(result).set_position((pos_lparen, pos_rparen));
+            ast.get_node_mut(result).set_span(Span::new(pos_lparen, pos_rparen));
 
             Ok(result)
         } else {

@@ -1,7 +1,7 @@
 use std::fmt;
 use std::collections::HashMap;
 
-use tokens::{Token, TokenValue};
+use tokens::{Token, TokenValue, Span};
 use errors::SyntaxError;
 use ast::{Ast, AstNode, AstIndex};
 use interpreter::{NodeVisitor, ReturnValue};
@@ -13,7 +13,7 @@ use interpreter::{NodeVisitor, ReturnValue};
 pub struct CompoundStmtNode {
     statement_list: Vec<AstIndex>,
     parent: Option<AstIndex>,
-    position: (usize, usize),
+    span: Span,
     token_begin: Token,
     token_end: Token,
 }
@@ -57,12 +57,12 @@ impl AstNode for CompoundStmtNode {
         None
     }
 
-    fn get_position(&self) -> (usize, usize) {
-        self.position
+    fn get_span(&self) -> Span {
+        self.span.clone()
     }
 
-    fn set_position(&mut self, position: (usize, usize)) {
-        self.position = position;
+    fn set_span(&mut self, span: Span) {
+        self.span = span;
     }
 }
 
@@ -88,7 +88,7 @@ impl CompoundStmtNode {
         CompoundStmtNode {
             statement_list: statements,
             parent: None,
-            position: (0, 0),
+            span: Span::new(0, 0),
             token_begin: token_begin,
             token_end: token_end,
         }
@@ -150,12 +150,12 @@ mod tests {
     }
 
     #[test]
-    fn compound_statement_node_get_position_returns_position() {
+    fn compound_statement_node_get_span_returns_span() {
         let mut node = CompoundStmtNode::new(vec![AstIndex(0), AstIndex(1)],
                                              Token::new(TokenType::Begin, None, Span::new(0, 1)),
                                              Token::new(TokenType::End, None, Span::new(3, 4)));
-        node.set_position((2, 3));
-        assert_eq!(node.get_position(), (2, 3));
+        node.set_span(Span::new(2, 3));
+        assert_eq!(node.get_span(), Span::new(2, 3));
     }
 
     #[test]

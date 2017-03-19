@@ -1,7 +1,7 @@
 use std::fmt;
 use std::collections::HashMap;
 
-use tokens::{Token, TokenValue};
+use tokens::{Token, TokenValue, Span};
 use errors::SyntaxError;
 use ast::{Ast, AstNode, AstIndex};
 use interpreter::{NodeVisitor, ReturnValue};
@@ -13,7 +13,7 @@ pub struct AssignmentStmtNode {
     variable: AstIndex,
     expression: AstIndex,
     parent: Option<AstIndex>,
-    position: (usize, usize),
+    span: Span,
     token: Token,
 }
 
@@ -58,12 +58,12 @@ impl AstNode for AssignmentStmtNode {
         None
     }
 
-    fn get_position(&self) -> (usize, usize) {
-        self.position
+    fn get_span(&self) -> Span {
+        self.span.clone()
     }
 
-    fn set_position(&mut self, position: (usize, usize)) {
-        self.position = position;
+    fn set_span(&mut self, span: Span) {
+        self.span = span;
     }
 }
 
@@ -91,7 +91,7 @@ impl AssignmentStmtNode {
             variable: variable,
             expression: expression,
             parent: None,
-            position: (0, 0),
+            span: Span::new(0, 0),
             token: token,
         }
     }
@@ -154,13 +154,13 @@ mod tests {
     }
 
     #[test]
-    fn assignment_statement_node_get_position_returns_position() {
+    fn assignment_statement_node_get_span_returns_span() {
         let mut node =
             AssignmentStmtNode::new(AstIndex(0),
                                     AstIndex(1),
                                     Token::new(TokenType::Assign, None, Span::new(0, 2)));
-        node.set_position((4, 5));
-        assert_eq!(node.get_position(), (4, 5));
+        node.set_span(Span::new(4, 5));
+        assert_eq!(node.get_span(), Span::new(4, 5));
     }
 
     #[test]

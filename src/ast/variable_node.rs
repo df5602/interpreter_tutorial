@@ -1,7 +1,7 @@
 use std::fmt;
 use std::collections::HashMap;
 
-use tokens::{Token, TokenValue};
+use tokens::{Token, TokenValue, Span};
 use errors::SyntaxError;
 use ast::{Ast, AstNode, AstIndex};
 use interpreter::{NodeVisitor, ReturnValue};
@@ -11,7 +11,7 @@ use interpreter::{NodeVisitor, ReturnValue};
 pub struct VariableNode {
     name: String,
     parent: Option<AstIndex>,
-    position: (usize, usize),
+    span: Span,
     token: Token,
 }
 
@@ -45,12 +45,12 @@ impl AstNode for VariableNode {
         Some(TokenValue::Identifier(self.name.clone()))
     }
 
-    fn get_position(&self) -> (usize, usize) {
-        self.position
+    fn get_span(&self) -> Span {
+        self.span.clone()
     }
 
-    fn set_position(&mut self, position: (usize, usize)) {
-        self.position = position;
+    fn set_span(&mut self, span: Span) {
+        self.span = span;
     }
 }
 
@@ -77,7 +77,7 @@ impl VariableNode {
         VariableNode {
             name: name,
             parent: None,
-            position: (token.span.start, token.span.end),
+            span: token.span.clone(),
             token: token,
         }
     }
@@ -147,14 +147,14 @@ mod tests {
     }
 
     #[test]
-    fn variable_node_get_position_returns_position() {
+    fn variable_node_get_span_returns_span() {
         let mut var_node =
             VariableNode::new("foo".to_string(),
                               Token::new(TokenType::Identifier,
                                          Some(TokenValue::Identifier("foo".to_string())),
                                          Span::new(0, 4)));
-        var_node.set_position((4, 5));
-        assert_eq!(var_node.get_position(), (4, 5));
+        var_node.set_span(Span::new(4, 5));
+        assert_eq!(var_node.get_span(), Span::new(4, 5));
     }
 
     #[test]

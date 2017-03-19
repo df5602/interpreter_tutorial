@@ -4,7 +4,7 @@
 use std::fmt;
 use std::{usize, cmp};
 
-use tokens::TokenValue;
+use tokens::{TokenValue, Span};
 use interpreter::NodeVisitor;
 
 /// The `AstNode` trait. Nodes implementing the `AstNode` trait must
@@ -20,10 +20,10 @@ pub trait AstNode: NodeVisitor + fmt::Display {
     fn get_children(&self) -> Vec<AstIndex>;
     /// Returns the value stored in `self`, if applicable, or `None`.
     fn get_value(&self) -> Option<TokenValue>;
-    /// Returns the position in the input stream which correspond to `self`.
-    fn get_position(&self) -> (usize, usize);
-    /// Sets the position in the input stream which corresponds to `self`.
-    fn set_position(&mut self, position: (usize, usize));
+    /// Returns the span in the input stream which correspond to `self`.
+    fn get_span(&self) -> Span;
+    /// Sets the span in the input stream which corresponds to `self`.
+    fn set_span(&mut self, span: Span);
 }
 
 /// Index into the AST.
@@ -146,21 +146,21 @@ impl<'a> Ast<'a> {
     }
 
     /// Sets the node stored at `index` as the parent node of its children.
-    /// Updates the position of the node stored at `index` to encompass the
-    /// positions of all child nodes.
+    /// Updates the span of the node stored at `index` to encompass the
+    /// spans of all child nodes.
     fn set_as_parent(&mut self, index: AstIndex) {
         let children = (*self.nodes[index.0]).get_children();
         if children.is_empty() {
             return;
         }
 
-        let position = (*self.nodes[index.0]).get_position();
+        let span = (*self.nodes[index.0]).get_span();
 
-        // Take position of node into account, not just its children
-        let (mut pos_min, mut pos_max) = if position.0 == 0 && position.1 == 0 {
+        // Take span of node into account, not just its children
+        let (mut pos_min, mut pos_max) = if span.start == 0 && span.end == 0 {
             (usize::MAX, usize::MIN)
         } else {
-            (position.0, position.1)
+            (span.start, span.end)
         };
 
         for child in children {
@@ -171,13 +171,13 @@ impl<'a> Ast<'a> {
             if let Some(i) = self.non_connected_nodes.iter().position(|&n| n == child) {
                 self.non_connected_nodes.remove(i);
             }
-            // Get position of child
-            let position = (*self.nodes[child.0]).get_position();
-            pos_min = cmp::min(pos_min, position.0);
-            pos_max = cmp::max(pos_max, position.1);
+            // Get span of child
+            let span = (*self.nodes[child.0]).get_span();
+            pos_min = cmp::min(pos_min, span.start);
+            pos_max = cmp::max(pos_max, span.end);
         }
 
-        (*self.nodes[index.0]).set_position((pos_min, pos_max));
+        (*self.nodes[index.0]).set_span(Span::new(pos_min, pos_max));
     }
 
     /// Checks whether the node stored at `index` is connected to the

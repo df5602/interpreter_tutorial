@@ -14,7 +14,7 @@ pub struct BinaryOperatorNode {
     right: AstIndex,
     operator: OperatorType,
     parent: Option<AstIndex>,
-    position: (usize, usize),
+    span: Span,
     token: Token,
 }
 
@@ -61,12 +61,12 @@ impl AstNode for BinaryOperatorNode {
         Some(TokenValue::Operator(self.operator.clone()))
     }
 
-    fn get_position(&self) -> (usize, usize) {
-        self.position
+    fn get_span(&self) -> Span {
+        self.span.clone()
     }
 
-    fn set_position(&mut self, position: (usize, usize)) {
-        self.position = position;
+    fn set_span(&mut self, span: Span) {
+        self.span = span;
     }
 }
 
@@ -90,7 +90,7 @@ impl NodeVisitor for BinaryOperatorNode {
                 if rhs == 0 {
                     return Err(SyntaxError {
                                    msg: "Division by zero".to_string(),
-                                   span: Span::new(self.position.0, self.position.1),
+                                   span: self.span.clone(),
                                });
                 } else {
                     lhs.checked_div(rhs)
@@ -124,7 +124,7 @@ impl NodeVisitor for BinaryOperatorNode {
 
                 Err(SyntaxError {
                         msg: format!("Integer overflow [{}: {}; {}: {}]", left, lhs, right, rhs),
-                        span: Span::new(self.position.0, self.position.1),
+                        span: self.span.clone(),
                     })
             }
         }
@@ -139,7 +139,7 @@ impl BinaryOperatorNode {
             right: right,
             operator: operator,
             parent: None,
-            position: (0, 0),
+            span: Span::new(0, 0),
             token: token,
         }
     }
@@ -221,7 +221,7 @@ mod tests {
     }
 
     #[test]
-    fn binary_operator_node_get_position_returns_position() {
+    fn binary_operator_node_get_span_returns_span() {
         let mut op_node =
             BinaryOperatorNode::new(AstIndex(0),
                                     AstIndex(1),
@@ -229,8 +229,8 @@ mod tests {
                                     Token::new(TokenType::Operator,
                                                Some(TokenValue::Operator(OperatorType::Plus)),
                                                Span::new(3, 5)));
-        op_node.set_position((4, 5));
-        assert_eq!(op_node.get_position(), (4, 5));
+        op_node.set_span(Span::new(4, 5));
+        assert_eq!(op_node.get_span(), Span::new(4, 5));
     }
 
     #[test]
