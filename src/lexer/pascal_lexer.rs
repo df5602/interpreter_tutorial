@@ -208,9 +208,18 @@ impl PascalLexer {
             let parsed_number = i64::from_str(&number);
             match parsed_number {
                 Ok(value) => token_value = Some(TokenValue::Integer(value)),
-                Err(_) => overflow = true,  // This is actually slightly dirty, because Over/Underflow isn't
-                // the only Error returned by from_str(). However, the Error kind
-                // is private, so we can't match on it.
+                Err(e) => {
+                    // The Error kind returned by i64::from_str() is unfortunately private,
+                    // so we can't match on it. The following workaround creates an overflow error,
+                    // which can be used to compare against the real error returned by the from_str()
+                    // function to determine whether we have an overflow error or something else.
+                    let overflow_error = i64::from_str("9223372036854775808").unwrap_err();
+                    if e == overflow_error {
+                        overflow = true;
+                    } else {
+                        panic!("Error parsing integer: {}", e.description())
+                    }
+                }
             }
         } else {
             let parsed_number = f64::from_str(&number);
