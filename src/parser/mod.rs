@@ -3,7 +3,7 @@
 use std::cell::RefCell;
 use tokens::{Token, TokenType, OperatorType, Span};
 use ast::{Ast, AstIndex, BinaryOperatorNode, UnaryOperatorNode, IntegerNode, VariableNode,
-          AssignmentStmtNode, CompoundStmtNode};
+          AssignmentStmtNode, CompoundStmtNode, BlockNode};
 use errors::SyntaxError;
 use lexer::Lexer;
 
@@ -96,12 +96,20 @@ impl<L: Lexer> Parser<L> {
     /// program -> compound_statement DOT
     fn program(&self, ast: &mut Ast) -> Result<AstIndex, SyntaxError> {
         // Expect compound statement
-        let result = self.compound_statement(ast)?;
+        let result = self.block(ast)?;
 
         // Expect '.'
         self.eat(TokenType::Dot)?;
 
         Ok(result)
+    }
+
+    /// Evaluate a block:
+    /// block -> compound_statement
+    fn block(&self, ast: &mut Ast) -> Result<AstIndex, SyntaxError> {
+        let compound_statement = self.compound_statement(ast)?;
+        let node = BlockNode::new(Vec::new(), compound_statement);
+        Ok(ast.add_node(node))
     }
 
     /// Evaluate a compound statement:
@@ -1017,14 +1025,46 @@ mod tests {
     }
 
     #[test]
+    fn parser_block_parses_compound_statement() {
+        // Input: BEGIN a := 1 END
+        let tokens = vec![begin!(), identifier!("a"), assign!(), integer!(1), end!()];
+        let (parser, mut ast) = setup_from(tokens);
+
+        let block_index = parser.block(&mut ast).unwrap();
+        let block_node = ast.get_node(block_index);
+        assert_eq!(block_node.get_parent(), None);
+
+        let block_children = block_node.get_children();
+        let stmt_index = block_children[block_children.len() - 1];
+        let stmt_node = ast.get_node(stmt_index);
+        assert_eq!(stmt_node.get_parent(), Some(block_index));
+
+        let statements = stmt_node.get_children();
+        assert_eq!(statements.len(), 1);
+
+        let statement = ast.get_node(statements[0]);
+        assert_eq!(statement.get_parent(), Some(stmt_index));
+
+        verify_node(&ast,
+                    statement.get_children()[0],
+                    Some(statements[0]),
+                    TokenValue::Identifier("a".to_string()));
+    }
+
+    #[test]
     fn parser_program_parses_program() {
         // Input: BEGIN a := 5 END.
         let tokens = vec![begin!(), identifier!("a"), assign!(), integer!(5), end!(), dot!()];
         let (parser, mut ast) = setup_from(tokens);
 
-        let cmpd_index = parser.program(&mut ast).unwrap();
+        let block_index = parser.program(&mut ast).unwrap();
+        let block_node = ast.get_node(block_index);
+        assert_eq!(block_node.get_parent(), None);
+
+        let block_children = block_node.get_children();
+        let cmpd_index = block_children[block_children.len() - 1];
         let cmpd_node = ast.get_node(cmpd_index);
-        assert_eq!(cmpd_node.get_parent(), None);
+        assert_eq!(cmpd_node.get_parent(), Some(block_index));
 
         let statements = cmpd_node.get_children();
         assert_eq!(statements.len(), 1);
