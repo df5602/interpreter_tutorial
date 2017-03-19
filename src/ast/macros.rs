@@ -54,3 +54,10 @@ macro_rules! assign_node {
         $ast.add_node(node)
     }}
 }
+
+macro_rules! block_node {
+    ($ast:expr, $declarations:expr, $cmpd_stmt:expr) => {{
+        let node = BlockNode::new($declarations, $cmpd_stmt);
+        $ast.add_node(node)
+    }}
+}
