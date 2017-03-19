@@ -217,7 +217,9 @@ impl PascalLexer {
                     if e == overflow_error {
                         overflow = true;
                     } else {
-                        panic!("Error parsing integer: {}", e.description())
+                        panic!("Error parsing integer: {} [number: {}]",
+                               e.description(),
+                               number)
                     }
                 }
             }
@@ -225,7 +227,11 @@ impl PascalLexer {
             let parsed_number = f64::from_str(&number);
             match parsed_number {
                 Ok(value) => token_value = Some(TokenValue::Real(value)),
-                Err(e) => panic!("Error parsing floating point number: {}", e.description()),
+                Err(e) => {
+                    panic!("Error parsing floating point number: {} [number: {}]",
+                           e.description(),
+                           number)
+                }
             }
         }
 
