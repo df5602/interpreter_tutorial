@@ -1,0 +1,142 @@
+use std::fmt;
+use std::collections::HashMap;
+
+use tokens::TokenValue;
+use errors::SyntaxError;
+use ast::{Ast, AstNode, AstIndex};
+use interpreter::{NodeVisitor, ReturnValue};
+
+/// Block node. A block consists of a list of declarations followed
+/// by a compound statement.
+#[derive(Debug)]
+pub struct BlockNode {
+    declarations: Vec<AstIndex>,
+    compound_statement: AstIndex,
+    parent: Option<AstIndex>,
+    position: (usize, usize),
+}
+
+impl fmt::Display for BlockNode {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self.parent {
+            Some(ref i) => {
+                write!(f,
+                       "Block(declarations: {:?}, compound statement: {}, parent: {})",
+                       self.declarations,
+                       self.compound_statement,
+                       i)
+            }
+            None => {
+                write!(f,
+                       "Block(declarations: {:?}, compound statement: {}, parent: None)",
+                       self.declarations,
+                       self.compound_statement)
+            }
+        }
+    }
+}
+
+impl AstNode for BlockNode {
+    fn get_parent(&self) -> Option<AstIndex> {
+        self.parent
+    }
+
+    fn set_parent(&mut self, parent: AstIndex) -> bool {
+        if self.parent != None {
+            return false;
+        }
+        self.parent = Some(parent);
+        true
+    }
+
+    fn get_children(&self) -> Vec<AstIndex> {
+        let mut children = self.declarations.clone();
+        children.push(self.compound_statement);
+        children
+    }
+
+    fn get_value(&self) -> Option<TokenValue> {
+        None
+    }
+
+    fn get_position(&self) -> (usize, usize) {
+        self.position
+    }
+
+    fn set_position(&mut self, position: (usize, usize)) {
+        self.position = position;
+    }
+}
+
+impl NodeVisitor for BlockNode {
+    fn visit(&self,
+             _ast: &Ast,
+             _sym_tbl: &mut HashMap<String, i64>)
+             -> Result<ReturnValue, SyntaxError> {
+        unimplemented!();
+    }
+}
+
+impl BlockNode {
+    /// Constructs a new block node.
+    ///
+    /// * `declarations`: a vector of indices into the AST representing all declarations,
+    /// * `compound_statement`: the indice into the AST of the compound statement,
+    pub fn new(declarations: Vec<AstIndex>, compound_statement: AstIndex) -> Self {
+        BlockNode {
+            declarations: declarations,
+            compound_statement: compound_statement,
+            parent: None,
+            position: (0, 0),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ast::{AstNode, AstIndex};
+
+    #[test]
+    fn block_node_get_parent_returns_none_when_node_has_no_parent() {
+        let node = BlockNode::new(vec![AstIndex(0), AstIndex(1)], AstIndex(2));
+        assert_eq!(node.get_parent(), None);
+    }
+
+    #[test]
+    fn block_node_set_parent_sets_parent_node() {
+        let mut node = BlockNode::new(vec![AstIndex(0), AstIndex(1)], AstIndex(2));
+        assert!(node.set_parent(AstIndex(3)));
+        assert_eq!(node.get_parent(), Some(AstIndex(3)));
+    }
+
+    #[test]
+    fn block_node_set_parent_fails_when_node_already_has_parent() {
+        let mut node = BlockNode::new(vec![AstIndex(0), AstIndex(1)], AstIndex(2));
+        assert!(node.set_parent(AstIndex(3)));
+        assert!(!node.set_parent(AstIndex(4)));
+    }
+
+    #[test]
+    fn block_node_get_children_returns_declarations_and_compound_statement() {
+        let node = BlockNode::new(vec![AstIndex(0), AstIndex(1)], AstIndex(2));
+        let children = node.get_children();
+        assert_eq!(children[0], AstIndex(0));
+        assert_eq!(children[1], AstIndex(1));
+        assert_eq!(children[2], AstIndex(2));
+        assert_eq!(children.len(), 3);
+    }
+
+    #[test]
+    fn block_node_get_value_returns_none() {
+        let node = BlockNode::new(vec![AstIndex(0), AstIndex(1)], AstIndex(2));
+        assert_eq!(node.get_value(), None);
+    }
+
+    #[test]
+    fn block_node_get_position_returns_position() {
+        let mut node = BlockNode::new(vec![AstIndex(0), AstIndex(1)], AstIndex(2));
+        node.set_position((2, 3));
+        assert_eq!(node.get_position(), (2, 3));
+    }
+}

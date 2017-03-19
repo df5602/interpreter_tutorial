@@ -57,6 +57,9 @@ pub use self::variable_node::VariableNode;
 mod assignment_stmt_node;
 pub use self::assignment_stmt_node::AssignmentStmtNode;
 
+mod block_node;
+pub use self::block_node::BlockNode;
+
 /// AST graph. Nodes are stored in a vector. All references to nodes
 /// go via the index into this vector.
 pub struct Ast<'a> {
