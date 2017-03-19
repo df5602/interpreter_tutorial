@@ -23,7 +23,7 @@ impl<L: Lexer> Parser<L> {
     }
 
     /// Consumes current token if it is of the expected type
-    fn eat(&self, token_type: TokenType) -> Result<(usize, usize), SyntaxError> {
+    fn eat(&self, token_type: TokenType) -> Result<Span, SyntaxError> {
         let mut current_token = self.current_token.borrow_mut();
         let span = current_token.as_ref()
             .unwrap()
@@ -38,12 +38,12 @@ impl<L: Lexer> Parser<L> {
                 match next_token {
                     Ok(token) => {
                         *current_token = Some(token);
-                        Ok((span.start, span.end))
+                        Ok(span)
                     }
                     Err(e) => Err(e),
                 }
             } else {
-                Ok((span.start, span.end))
+                Ok(span)
             }
         } else {
             Err(SyntaxError {
@@ -305,11 +305,11 @@ impl<L: Lexer> Parser<L> {
                     })
             }
         } else if current_token.token_type == TokenType::LParen {
-            let pos_lparen = self.eat(TokenType::LParen)?.0;
+            let pos_lparen = self.eat(TokenType::LParen)?.start;
 
             let result = self.expr(ast)?;
 
-            let pos_rparen = self.eat(TokenType::RParen)?.1;
+            let pos_rparen = self.eat(TokenType::RParen)?.end;
 
             ast.get_node_mut(result).set_span(Span::new(pos_lparen, pos_rparen));
 
