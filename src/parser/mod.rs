@@ -93,7 +93,7 @@ impl<L: Lexer> Parser<L> {
     }
 
     /// Evaluate a program:
-    /// program -> compound_statement DOT
+    /// program -> block DOT
     fn program(&self, ast: &mut Ast) -> Result<AstIndex, SyntaxError> {
         // Expect compound statement
         let result = self.block(ast)?;
@@ -376,6 +376,719 @@ mod tests {
     }
 
     #[test]
+    fn parser_load_first_token_should_load_first_token() {
+        // Input: 2+3
+        let tokens = vec![integer!(2), plus!(), integer!(3)];
+        let lexer = MockLexer::new(tokens);
+        let parser = Parser::new(lexer);
+        let _ = parser.load_first_token();
+        assert_eq!(TokenType::IntegerLiteral,
+                   parser.current_token
+                       .borrow()
+                       .clone()
+                       .unwrap()
+                       .token_type);
+        let val = parser.current_token
+            .borrow()
+            .clone()
+            .unwrap()
+            .value
+            .unwrap();
+        match val {
+            TokenValue::Integer(val) => assert_eq!(2, val),
+            _ => panic!(),
+        }
+    }
+
+    #[test]
+    fn parser_start_returns_error_if_parentheses_are_mismatched() {
+        // Input: (6+3))
+        let tokens = vec![lparen!(), integer!(6), plus!(), integer!(3), rparen!(), rparen!()];
+        let lexer = MockLexer::new(tokens);
+        let parser = Parser::new(lexer);
+        let mut ast = Ast::new();
+        let result = parser.parse(&mut ast);
+        assert!(result.is_err());
+    }
+
+    // program : block DOT
+    //      block DOT -> PASS: PROG.1
+    //      DOT -> FAIL: PROG.2
+    //      block block DOT -> FAIL: PROG.3
+    //      block -> FAIL: PROG.4
+    //      block DOT DOT -> FAIL: PROG.5
+
+    #[test]
+    // PROG.1
+    fn parser_program_parses_program() {
+        // Input: BEGIN a := 5 END.
+        let tokens = vec![begin!(), identifier!("a"), assign!(), integer!(5), end!(), dot!()];
+        let (parser, mut ast) = setup_from(tokens);
+
+        let block_index = parser.program(&mut ast).unwrap();
+        let block_node = ast.get_node(block_index);
+        assert_eq!(block_node.get_parent(), None);
+
+        let block_children = block_node.get_children();
+        let cmpd_index = block_children[block_children.len() - 1];
+        let cmpd_node = ast.get_node(cmpd_index);
+        assert_eq!(cmpd_node.get_parent(), Some(block_index));
+
+        let statements = cmpd_node.get_children();
+        assert_eq!(statements.len(), 1);
+
+        let stmt_node = ast.get_node(statements[0]);
+        assert_eq!(stmt_node.get_parent(), Some(cmpd_index));
+
+        let children = stmt_node.get_children();
+        verify_node(&ast,
+                    children[0],
+                    Some(statements[0]),
+                    TokenValue::Identifier("a".to_string()));
+    }
+
+    #[test]
+    // PROG.2
+    fn parser_program_returns_error_when_compound_statement_is_missing() {
+        // Input: .
+        let tokens = vec![dot!()];
+        let (parser, mut ast) = setup_from(tokens);
+
+        assert!(parser.program(&mut ast).is_err());
+    }
+
+    #[test]
+    // PROG.3
+    fn parser_program_returns_error_when_two_compound_statements_are_present() {
+        // Input: BEGIN a := 5 END BEGIN b := 6 END.
+        let tokens = vec![begin!(),
+                          identifier!("a"),
+                          assign!(),
+                          integer!(5),
+                          end!(),
+                          begin!(),
+                          identifier!("b"),
+                          assign!(),
+                          integer!(6),
+                          end!(),
+                          dot!()];
+        let (parser, mut ast) = setup_from(tokens);
+
+        assert!(parser.program(&mut ast).is_err());
+    }
+
+    #[test]
+    // PROG.4
+    fn parser_program_returns_error_when_dot_is_missing() {
+        // Input: BEGIN a := 5 END
+        let tokens = vec![begin!(), identifier!("a"), assign!(), integer!(5), end!()];
+        let (parser, mut ast) = setup_from(tokens);
+
+        assert!(parser.program(&mut ast).is_err());
+    }
+
+    #[test]
+    // PROG.5
+    fn parser_parse_returns_error_when_ends_with_two_dots() {
+        // Input: BEGIN a := 5 END..
+        let tokens =
+            vec![begin!(), identifier!("a"), assign!(), integer!(5), end!(), dot!(), dot!()];
+        let (parser, mut ast) = setup_from(tokens);
+
+        assert!(parser.parse(&mut ast).is_err());
+    }
+
+    // block : compound_statement
+    //      compound_statement -> PASS: BLK.1
+    //      <nothing> -> FAIL: BLK.2
+    //      compound_statement compound_statement -> FAIL: PROG.3
+
+    #[test]
+    // BLK.1
+    fn parser_block_parses_compound_statement() {
+        // Input: BEGIN a := 1 END
+        let tokens = vec![begin!(), identifier!("a"), assign!(), integer!(1), end!()];
+        let (parser, mut ast) = setup_from(tokens);
+
+        let block_index = parser.block(&mut ast).unwrap();
+        let block_node = ast.get_node(block_index);
+        assert_eq!(block_node.get_parent(), None);
+
+        let block_children = block_node.get_children();
+        let stmt_index = block_children[block_children.len() - 1];
+        let stmt_node = ast.get_node(stmt_index);
+        assert_eq!(stmt_node.get_parent(), Some(block_index));
+
+        let statements = stmt_node.get_children();
+        assert_eq!(statements.len(), 1);
+
+        let statement = ast.get_node(statements[0]);
+        assert_eq!(statement.get_parent(), Some(stmt_index));
+
+        verify_node(&ast,
+                    statement.get_children()[0],
+                    Some(statements[0]),
+                    TokenValue::Identifier("a".to_string()));
+    }
+
+    #[test]
+    // BLK.2
+    fn parser_block_returns_error_when_empty_input() {
+        // Input:
+        let tokens = vec![];
+        let (parser, mut ast) = setup_from(tokens);
+
+        assert!(parser.block(&mut ast).is_err());
+    }
+
+    // compound_statement : BEGIN statement_list END
+    //      BEGIN statement_list END -> PASS: CMPD.1
+    //      statement_list END -> FAIL: CMPD.2
+    //      BEGIN BEGIN statement_list END -> FAIL: CMPD.3
+    //      BEGIN END -> PASS: CMPD.4
+    //      BEGIN statement statement END -> FAIL: CMPD.5
+    //      BEGIN statement_list -> FAIL: CMPD.6
+    //      BEGIN statement_list END END -> FAIL: CMPD.7
+
+    #[test]
+    // CMPD.1
+    fn parser_compound_statement_parses_compound_statement() {
+        // Input: BEGIN a := 5 END
+        let tokens = vec![begin!(), identifier!("a"), assign!(), integer!(5), end!()];
+        let (parser, mut ast) = setup_from(tokens);
+
+        let cmpd_index = parser.compound_statement(&mut ast).unwrap();
+        let cmpd_node = ast.get_node(cmpd_index);
+        assert_eq!(cmpd_node.get_parent(), None);
+
+        let statements = cmpd_node.get_children();
+        assert_eq!(statements.len(), 1);
+
+        let stmt_node = ast.get_node(statements[0]);
+        assert_eq!(stmt_node.get_parent(), Some(cmpd_index));
+
+        let children = stmt_node.get_children();
+        verify_node(&ast,
+                    children[0],
+                    Some(statements[0]),
+                    TokenValue::Identifier("a".to_string()));
+    }
+
+    #[test]
+    // CMPD.2
+    fn parser_compound_statement_returns_error_when_begin_is_missing() {
+        // Input: a := 5 END
+        let tokens = vec![identifier!("a"), assign!(), integer!(5), end!()];
+        let (parser, mut ast) = setup_from(tokens);
+
+        assert!(parser.compound_statement(&mut ast).is_err());
+    }
+
+    #[test]
+    // CMPD.3
+    fn parser_compound_statement_returns_error_when_begin_is_repeated_without_matching_end() {
+        // Input: BEGIN BEGIN a := 5 END
+        let tokens = vec![begin!(), begin!(), identifier!("a"), assign!(), integer!(5), end!()];
+        let (parser, mut ast) = setup_from(tokens);
+
+        assert!(parser.compound_statement(&mut ast).is_err());
+    }
+
+    #[test]
+    // CMPD.4
+    fn parser_compound_statement_parses_empty_statement_list() {
+        // Input: BEGIN END
+        let tokens = vec![begin!(), end!()];
+        let (parser, mut ast) = setup_from(tokens);
+
+        let cmpd_index = parser.compound_statement(&mut ast).unwrap();
+        let cmpd_node = ast.get_node(cmpd_index);
+        let statements = cmpd_node.get_children();
+        assert!(statements.is_empty());
+    }
+
+    #[test]
+    // CMPD.5
+    fn parser_compound_statement_returns_error_when_statements_arent_separated_with_semicolons() {
+        // Input: BEGIN a := 5 b := 6 END
+        let tokens = vec![begin!(),
+                          identifier!("a"),
+                          assign!(),
+                          integer!(5),
+                          identifier!("b"),
+                          assign!(),
+                          integer!(6),
+                          end!()];
+        let (parser, mut ast) = setup_from(tokens);
+
+        assert!(parser.compound_statement(&mut ast).is_err());
+    }
+
+    #[test]
+    // CMPD.6
+    fn parser_compound_statement_returns_error_when_end_is_missing() {
+        // Input: BEGIN a := 5
+        let tokens = vec![begin!(), identifier!("a"), assign!(), integer!(5)];
+        let (parser, mut ast) = setup_from(tokens);
+
+        assert!(parser.compound_statement(&mut ast).is_err());
+    }
+
+    #[test]
+    // CMPD.7
+    fn parser_compound_statement_returns_error_when_end_occurs_twice() {
+        // Input: BEGIN a := 5 END END.
+        let tokens =
+            vec![begin!(), identifier!("a"), assign!(), integer!(5), end!(), end!(), dot!()];
+        let (parser, mut ast) = setup_from(tokens);
+
+        assert!(parser.program(&mut ast).is_err());
+    }
+
+    #[test]
+    fn parser_compound_statement_parses_nested_compound_statement() {
+        // Input: BEGIN BEGIN a := 5 END END
+        let tokens =
+            vec![begin!(), begin!(), identifier!("a"), assign!(), integer!(5), end!(), end!()];
+        let (parser, mut ast) = setup_from(tokens);
+
+        let outer_index = parser.compound_statement(&mut ast).unwrap();
+        let outer_node = ast.get_node(outer_index);
+        assert_eq!(outer_node.get_parent(), None);
+
+        let inner_index = outer_node.get_children()[0];
+        let inner_node = ast.get_node(inner_index);
+        assert_eq!(inner_node.get_parent(), Some(outer_index));
+
+        let stmt_index = inner_node.get_children()[0];
+        let stmt_node = ast.get_node(stmt_index);
+        assert_eq!(stmt_node.get_parent(), Some(inner_index));
+
+        let var_index = stmt_node.get_children()[0];
+        verify_node(&ast,
+                    var_index,
+                    Some(stmt_index),
+                    TokenValue::Identifier("a".to_string()));
+    }
+
+    // statement_list : statement (SEMICOLON statement)*
+    //      statement -> PASS: STMT-LIST.1
+    //      <nothing> -> PASS: STMT-LIST.2
+    //      statement statement -> FAIL: STMT-LIST.3
+    //      statement SEMICOLON statement -> PASS: STMT-LIST.4
+    //      statement SEMICOLON statement SEMICOLON statement -> PASS: STMT-LIST.5
+    //      statement SEMICOLON -> PASS: STMT-LIST.6
+    //      statement SEMICOLON statement statement -> FAIL: STMT-LIST.7
+
+    #[test]
+    // STMT-LIST.1
+    fn parser_statement_list_returns_assignment_statement_if_statement_is_assignment() {
+        // Input: a := 5
+        let tokens = vec![identifier!("a"), assign!(), integer!(5)];
+        let (parser, mut ast) = setup_from(tokens);
+
+        let statement_list = parser.statement_list(&mut ast).unwrap();
+        assert_eq!(statement_list.len(), 1);
+
+        let stmt_index = statement_list[0];
+        let stmt_node = ast.get_node(stmt_index);
+        assert_eq!(stmt_node.get_parent(), None);
+
+        let children = stmt_node.get_children();
+        verify_node(&ast,
+                    children[0],
+                    Some(stmt_index),
+                    TokenValue::Identifier("a".to_string()));
+        verify_node(&ast, children[1], Some(stmt_index), TokenValue::Integer(5));
+    }
+
+    #[test]
+    // STMT-LIST.2
+    fn parser_statement_list_parses_empty_input() {
+        // Input:
+        let tokens = vec![];
+        let (parser, mut ast) = setup_from(tokens);
+
+        let statement_list = parser.statement_list(&mut ast).unwrap();
+        assert!(statement_list.is_empty());
+    }
+
+    #[test]
+    // STMT-LIST.3
+    fn parser_statement_list_returns_error_when_multiple_statements_not_separated_by_semicolon() {
+        // Input: a := 5 b := 6
+        let tokens = vec![identifier!("a"),
+                          assign!(),
+                          integer!(5),
+                          identifier!("b"),
+                          assign!(),
+                          integer!(6)];
+        let (parser, mut ast) = setup_from(tokens);
+
+        assert!(parser.compound_statement(&mut ast).is_err());
+    }
+
+    #[test]
+    // STMT-LIST.4
+    fn parser_statement_list_returns_two_statements_when_statements_are_separated_by_semicolon() {
+        // Input: a := 5; b := 6
+        let tokens = vec![identifier!("a"),
+                          assign!(),
+                          integer!(5),
+                          semicolon!(),
+                          identifier!("b"),
+                          assign!(),
+                          integer!(6)];
+        let (parser, mut ast) = setup_from(tokens);
+
+        let statement_list = parser.statement_list(&mut ast).unwrap();
+        assert_eq!(statement_list.len(), 2);
+
+        let mut stmt_index = statement_list[0];
+        let mut stmt_node = ast.get_node(stmt_index);
+        assert_eq!(stmt_node.get_parent(), None);
+
+        let mut children = stmt_node.get_children();
+        verify_node(&ast,
+                    children[0],
+                    Some(stmt_index),
+                    TokenValue::Identifier("a".to_string()));
+        verify_node(&ast, children[1], Some(stmt_index), TokenValue::Integer(5));
+
+        stmt_index = statement_list[1];
+        stmt_node = ast.get_node(stmt_index);
+        assert_eq!(stmt_node.get_parent(), None);
+
+        children = stmt_node.get_children();
+        verify_node(&ast,
+                    children[0],
+                    Some(stmt_index),
+                    TokenValue::Identifier("b".to_string()));
+        verify_node(&ast, children[1], Some(stmt_index), TokenValue::Integer(6));
+    }
+
+    #[test]
+    // STMT-LIST.5
+    fn parser_statement_list_returns_three_statements_when_given_three_statements() {
+        // Input: a := 5; b := 6; c := 7
+        let tokens = vec![identifier!("a"),
+                          assign!(),
+                          integer!(5),
+                          semicolon!(),
+                          identifier!("b"),
+                          assign!(),
+                          integer!(6),
+                          semicolon!(),
+                          identifier!("c"),
+                          assign!(),
+                          integer!(7)];
+        let (parser, mut ast) = setup_from(tokens);
+
+        let statements = parser.statement_list(&mut ast).unwrap();
+        assert_eq!(statements.len(), 3);
+    }
+
+    #[test]
+    // STMT-LIST.6
+    fn parser_statement_list_can_end_with_semicolon() {
+        // Input: b := 6;
+        let tokens = vec![identifier!("b"), assign!(), integer!(6), semicolon!()];
+        let (parser, mut ast) = setup_from(tokens);
+
+        let statement_list = parser.statement_list(&mut ast).unwrap();
+        assert_eq!(statement_list.len(), 1);
+
+        let stmt_index = statement_list[0];
+        let stmt_node = ast.get_node(stmt_index);
+        assert_eq!(stmt_node.get_parent(), None);
+
+        let children = stmt_node.get_children();
+        verify_node(&ast,
+                    children[0],
+                    Some(stmt_index),
+                    TokenValue::Identifier("b".to_string()));
+        verify_node(&ast, children[1], Some(stmt_index), TokenValue::Integer(6));
+    }
+
+    #[test]
+    // STMT-LIST.7
+    fn parser_statement_list_returns_error_when_statements_not_separated_by_semicolon() {
+        // Input: a := 5; b := 6 c := 7
+        let tokens = vec![identifier!("a"),
+                          assign!(),
+                          integer!(5),
+                          semicolon!(),
+                          identifier!("b"),
+                          assign!(),
+                          integer!(6),
+                          identifier!("c"),
+                          assign!(),
+                          integer!(7)];
+        let (parser, mut ast) = setup_from(tokens);
+
+        assert!(parser.compound_statement(&mut ast).is_err());
+    }
+
+    #[test]
+    fn parser_statement_list_returns_only_first_stmt_when_stmts_are_not_separated_by_semicolon() {
+        // Input: a := 5 b := 6
+        let tokens = vec![identifier!("a"),
+                          assign!(),
+                          integer!(5),
+                          identifier!("b"),
+                          assign!(),
+                          integer!(6)];
+        let (parser, mut ast) = setup_from(tokens);
+
+        let statement_list = parser.statement_list(&mut ast).unwrap();
+        assert_eq!(statement_list.len(), 1);
+
+        let stmt_index = statement_list[0];
+        let stmt_node = ast.get_node(stmt_index);
+        assert_eq!(stmt_node.get_parent(), None);
+
+        let children = stmt_node.get_children();
+        verify_node(&ast,
+                    children[0],
+                    Some(stmt_index),
+                    TokenValue::Identifier("a".to_string()));
+        verify_node(&ast, children[1], Some(stmt_index), TokenValue::Integer(5));
+    }
+
+    #[test]
+    fn parser_statement_list_can_begin_with_semicolon() {
+        // Input: ;b := 6
+        let tokens = vec![semicolon!(), identifier!("b"), assign!(), integer!(6)];
+        let (parser, mut ast) = setup_from(tokens);
+
+        let statement_list = parser.statement_list(&mut ast).unwrap();
+        assert_eq!(statement_list.len(), 1);
+
+        let stmt_index = statement_list[0];
+        let stmt_node = ast.get_node(stmt_index);
+        assert_eq!(stmt_node.get_parent(), None);
+
+        let children = stmt_node.get_children();
+        verify_node(&ast,
+                    children[0],
+                    Some(stmt_index),
+                    TokenValue::Identifier("b".to_string()));
+        verify_node(&ast, children[1], Some(stmt_index), TokenValue::Integer(6));
+    }
+
+    // statement : (compound_statement | assignment_statement)?
+    //      <nothing> -> PASS: STMT.1
+    //      compound_statement -> PASS: STMT.2
+    //      assignment_statement -> PASS: STMT.3
+    //      compound_statement assignment_statement -> FAIL: STMT.4
+
+    #[test]
+    // STMT.1
+    fn parser_statement_returns_none_if_no_statement_is_present() {
+        // Input:
+        let tokens = vec![];
+        let (parser, mut ast) = setup_from(tokens);
+
+        let result = parser.statement(&mut ast).unwrap();
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    // STMT.2
+    fn parser_statement_returns_compound_statement_if_statement_is_compound_statement() {
+        // Input: BEGIN END
+        let tokens = vec![begin!(), end!()];
+        let (parser, mut ast) = setup_from(tokens);
+
+        let statement_index = parser.statement(&mut ast).unwrap().unwrap();
+        let statement_node = ast.get_node(statement_index);
+        let children = statement_node.get_children();
+        assert!(children.is_empty());
+    }
+
+    #[test]
+    // STMT.3
+    fn parser_statement_returns_assignment_statement_if_statement_is_assignment_statement() {
+        // Input: a := 5
+        let tokens = vec![identifier!("a"), assign!(), integer!(5)];
+        let (parser, mut ast) = setup_from(tokens);
+
+        let stmt_index = parser.statement(&mut ast).unwrap().unwrap();
+        let stmt_node = ast.get_node(stmt_index);
+        assert_eq!(stmt_node.get_parent(), None);
+
+        let children = stmt_node.get_children();
+        verify_node(&ast,
+                    children[0],
+                    Some(stmt_index),
+                    TokenValue::Identifier("a".to_string()));
+        verify_node(&ast, children[1], Some(stmt_index), TokenValue::Integer(5));
+    }
+
+    #[test]
+    // STMT.4
+    fn parser_statement_returns_error_when_both_statement_types_are_not_separated_by_semicolon() {
+        // Input: BEGIN END a := 5.
+        let tokens = vec![begin!(), end!(), identifier!("a"), assign!(), integer!(5), dot!()];
+        let (parser, mut ast) = setup_from(tokens);
+
+        assert!(parser.program(&mut ast).is_err());
+    }
+
+    // assignment_statement : variable ASSIGN expr
+    //      variable ASSIGN expr -> PASS: ASSIGN.1
+    //      ASSIGN expr -> FAIL: ASSIGN.2
+    //      variable variable ASSIGN expr -> FAIL: ASSIGN.3
+    //      variable expr -> FAIL: ASSIGN.4
+    //      variable ASSIGN ASSIGN expr -> FAIL: ASSIGN.5
+    //      variable ASSIGN -> FAIL: ASSIGN.6
+    //      variable ASSIGN expr expr -> FAIL: ASSIGN.7
+
+    #[test]
+    // ASSIGN.1
+    fn parser_assignment_statement_parses_assignment_statement() {
+        // Input: a := 5
+        let tokens = vec![identifier!("a"), assign!(), integer!(5)];
+        let (parser, mut ast) = setup_from(tokens);
+
+        let assign_index = parser.assignment_statement(&mut ast).unwrap();
+        let assign_node = ast.get_node(assign_index);
+        assert_eq!(assign_node.get_parent(), None);
+
+        let children = assign_node.get_children();
+        verify_node(&ast,
+                    children[0],
+                    Some(assign_index),
+                    TokenValue::Identifier("a".to_string()));
+        verify_node(&ast,
+                    children[1],
+                    Some(assign_index),
+                    TokenValue::Integer(5));
+    }
+
+    #[test]
+    // ASSIGN.2
+    fn parser_assignment_statement_returns_error_when_missing_variable() {
+        // Input: := 5
+        let tokens = vec![assign!(), integer!(5)];
+        let (parser, mut ast) = setup_from(tokens);
+
+        assert!(parser.assignment_statement(&mut ast).is_err());
+    }
+
+    #[test]
+    // ASSIGN.3
+    fn parser_assignment_statement_returns_error_when_two_variables_on_lhs() {
+        // Input: a b := 5
+        let tokens = vec![identifier!("a"), identifier!("b"), assign!(), integer!(5)];
+        let (parser, mut ast) = setup_from(tokens);
+
+        assert!(parser.assignment_statement(&mut ast).is_err());
+    }
+
+    #[test]
+    // ASSIGN.4
+    fn parser_assignment_statement_returns_error_when_missing_assignment_operator() {
+        // Input: a 5
+        let tokens = vec![identifier!("a"), integer!(5)];
+        let (parser, mut ast) = setup_from(tokens);
+
+        assert!(parser.assignment_statement(&mut ast).is_err());
+    }
+
+    #[test]
+    // ASSIGN.5
+    fn parser_assignment_statement_returns_error_when_having_two_assignment_operators() {
+        // Input: a := := 5
+        let tokens = vec![identifier!("a"), assign!(), assign!(), integer!(5)];
+        let (parser, mut ast) = setup_from(tokens);
+
+        assert!(parser.assignment_statement(&mut ast).is_err());
+    }
+
+    #[test]
+    // ASSIGN.6
+    fn parser_assignment_statement_doesnt_parse_assignment_without_expression_on_the_right() {
+        // Input: a :=
+        let tokens = vec![identifier!("a"), assign!()];
+        let (parser, mut ast) = setup_from(tokens);
+
+        assert!(parser.assignment_statement(&mut ast).is_err());
+    }
+
+    #[test]
+    // ASSIGN.7
+    fn parser_assignment_statement_returns_error_when_two_expressions_on_rhs() {
+        // Input: BEGIN a := 5 7 END
+        let tokens = vec![begin!(), identifier!("a"), assign!(), integer!(5), integer!(7), end!()];
+        let (parser, mut ast) = setup_from(tokens);
+
+        assert!(parser.compound_statement(&mut ast).is_err());
+    }
+
+    #[test]
+    fn parser_assignment_statement_parses_assignment_statement_with_expression() {
+        // Input: a := 5 + 7
+        let tokens = vec![identifier!("a"), assign!(), integer!(5), plus!(), integer!(7)];
+        let (parser, mut ast) = setup_from(tokens);
+
+        let assign_index = parser.assignment_statement(&mut ast).unwrap();
+        let assign_node = ast.get_node(assign_index);
+        assert_eq!(assign_node.get_parent(), None);
+
+        let children = assign_node.get_children();
+        verify_node(&ast,
+                    children[0],
+                    Some(assign_index),
+                    TokenValue::Identifier("a".to_string()));
+        verify_node(&ast,
+                    children[1],
+                    Some(assign_index),
+                    TokenValue::Operator(OperatorType::Plus));
+    }
+
+    #[test]
+    fn parser_assignment_statement_doesnt_parse_assignment_without_variable_on_the_left() {
+        // Input: 1 := 5
+        let tokens = vec![integer!(1), assign!(), integer!(5)];
+        let (parser, mut ast) = setup_from(tokens);
+
+        assert!(parser.assignment_statement(&mut ast).is_err());
+    }
+
+    #[test]
+    fn parser_assignment_statement_doesnt_parse_assignment_without_assign_token_in_the_middle() {
+        // Input: a + 5
+        let tokens = vec![identifier!("a"), plus!(), integer!(5)];
+        let (parser, mut ast) = setup_from(tokens);
+
+        assert!(parser.assignment_statement(&mut ast).is_err());
+    }
+
+    #[test]
+    fn parser_variable_creates_variable_node_when_token_is_identifier() {
+        // Input: a
+        let tokens = vec![identifier!("a")];
+        let (parser, mut ast) = setup_from(tokens);
+
+        let var_index = parser.variable(&mut ast).unwrap();
+        verify_node(&ast,
+                    var_index,
+                    None,
+                    TokenValue::Identifier("a".to_string()));
+    }
+
+    #[test]
+    fn parser_variable_returns_error_when_token_is_no_identifier() {
+        // Input: 5
+        let tokens = vec![integer!(5)];
+        let (parser, mut ast) = setup_from(tokens);
+
+        let result = parser.variable(&mut ast);
+        assert!(result.is_err());
+    }
+
+    #[test]
     // expr -> INTEGER OPERATOR INTEGER
     fn parser_expr_should_create_operator_node_when_expression_is_addition() {
         // Input: 3+4
@@ -440,31 +1153,6 @@ mod tests {
 
         let result = parser.expr(&mut ast);
         assert!(result.is_err());
-    }
-
-    #[test]
-    fn parser_load_first_token_should_load_first_token() {
-        // Input: 2+3
-        let tokens = vec![integer!(2), plus!(), integer!(3)];
-        let lexer = MockLexer::new(tokens);
-        let parser = Parser::new(lexer);
-        let _ = parser.load_first_token();
-        assert_eq!(TokenType::IntegerLiteral,
-                   parser.current_token
-                       .borrow()
-                       .clone()
-                       .unwrap()
-                       .token_type);
-        let val = parser.current_token
-            .borrow()
-            .clone()
-            .unwrap()
-            .value
-            .unwrap();
-        match val {
-            TokenValue::Integer(val) => assert_eq!(2, val),
-            _ => panic!(),
-        }
     }
 
     #[test]
@@ -681,439 +1369,5 @@ mod tests {
                     var_index,
                     None,
                     TokenValue::Identifier("a".to_string()));
-    }
-
-    #[test]
-    fn parser_start_returns_error_if_parentheses_are_mismatched() {
-        // Input: (6+3))
-        let tokens = vec![lparen!(), integer!(6), plus!(), integer!(3), rparen!(), rparen!()];
-        let lexer = MockLexer::new(tokens);
-        let parser = Parser::new(lexer);
-        let mut ast = Ast::new();
-        let result = parser.parse(&mut ast);
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn parser_variable_creates_variable_node_when_token_is_identifier() {
-        // Input: a
-        let tokens = vec![identifier!("a")];
-        let (parser, mut ast) = setup_from(tokens);
-
-        let var_index = parser.variable(&mut ast).unwrap();
-        verify_node(&ast,
-                    var_index,
-                    None,
-                    TokenValue::Identifier("a".to_string()));
-    }
-
-    #[test]
-    fn parser_variable_returns_error_when_token_is_no_identifier() {
-        // Input: 5
-        let tokens = vec![integer!(5)];
-        let (parser, mut ast) = setup_from(tokens);
-
-        let result = parser.variable(&mut ast);
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn parser_assignment_statement_parses_assignment_statement() {
-        // Input: a := 5
-        let tokens = vec![identifier!("a"), assign!(), integer!(5)];
-        let (parser, mut ast) = setup_from(tokens);
-
-        let assign_index = parser.assignment_statement(&mut ast).unwrap();
-        let assign_node = ast.get_node(assign_index);
-        assert_eq!(assign_node.get_parent(), None);
-
-        let children = assign_node.get_children();
-        verify_node(&ast,
-                    children[0],
-                    Some(assign_index),
-                    TokenValue::Identifier("a".to_string()));
-        verify_node(&ast,
-                    children[1],
-                    Some(assign_index),
-                    TokenValue::Integer(5));
-    }
-
-    #[test]
-    fn parser_assignment_statement_parses_assignment_statement_with_expression() {
-        // Input: a := 5 + 7
-        let tokens = vec![identifier!("a"), assign!(), integer!(5), plus!(), integer!(7)];
-        let (parser, mut ast) = setup_from(tokens);
-
-        let assign_index = parser.assignment_statement(&mut ast).unwrap();
-        let assign_node = ast.get_node(assign_index);
-        assert_eq!(assign_node.get_parent(), None);
-
-        let children = assign_node.get_children();
-        verify_node(&ast,
-                    children[0],
-                    Some(assign_index),
-                    TokenValue::Identifier("a".to_string()));
-        verify_node(&ast,
-                    children[1],
-                    Some(assign_index),
-                    TokenValue::Operator(OperatorType::Plus));
-    }
-
-    #[test]
-    fn parser_assignment_statement_doesnt_parse_assignment_without_variable_on_the_left() {
-        // Input: 1 := 5
-        let tokens = vec![integer!(1), assign!(), integer!(5)];
-        let (parser, mut ast) = setup_from(tokens);
-
-        assert!(parser.assignment_statement(&mut ast).is_err());
-    }
-
-    #[test]
-    fn parser_assignment_statement_doesnt_parse_assignment_without_assign_token_in_the_middle() {
-        // Input: a + 5
-        let tokens = vec![identifier!("a"), plus!(), integer!(5)];
-        let (parser, mut ast) = setup_from(tokens);
-
-        assert!(parser.assignment_statement(&mut ast).is_err());
-    }
-
-    #[test]
-    fn parser_assignment_statement_doesnt_parse_assignment_without_expression_on_the_right() {
-        // Input: a := BEGIN
-        let tokens = vec![identifier!("a"), assign!(), begin!()];
-        let (parser, mut ast) = setup_from(tokens);
-
-        assert!(parser.assignment_statement(&mut ast).is_err());
-    }
-
-    #[test]
-    fn parser_statement_returns_assignment_statement_if_statement_is_assignment_statement() {
-        // Input: a := 5
-        let tokens = vec![identifier!("a"), assign!(), integer!(5)];
-        let (parser, mut ast) = setup_from(tokens);
-
-        let stmt_index = parser.statement(&mut ast).unwrap().unwrap();
-        let stmt_node = ast.get_node(stmt_index);
-        assert_eq!(stmt_node.get_parent(), None);
-
-        let children = stmt_node.get_children();
-        verify_node(&ast,
-                    children[0],
-                    Some(stmt_index),
-                    TokenValue::Identifier("a".to_string()));
-        verify_node(&ast, children[1], Some(stmt_index), TokenValue::Integer(5));
-    }
-
-    #[test]
-    fn parser_statement_returns_none_if_no_statement_is_present() {
-        // Input: END
-        let tokens = vec![end!()];
-        let (parser, mut ast) = setup_from(tokens);
-
-        let result = parser.statement(&mut ast).unwrap();
-        assert_eq!(result, None);
-    }
-
-    #[test]
-    fn parser_statement_list_returns_assignment_statement_if_statement_is_assignment() {
-        // Input: a := 5
-        let tokens = vec![identifier!("a"), assign!(), integer!(5)];
-        let (parser, mut ast) = setup_from(tokens);
-
-        let statement_list = parser.statement_list(&mut ast).unwrap();
-        assert_eq!(statement_list.len(), 1);
-
-        let stmt_index = statement_list[0];
-        let stmt_node = ast.get_node(stmt_index);
-        assert_eq!(stmt_node.get_parent(), None);
-
-        let children = stmt_node.get_children();
-        verify_node(&ast,
-                    children[0],
-                    Some(stmt_index),
-                    TokenValue::Identifier("a".to_string()));
-        verify_node(&ast, children[1], Some(stmt_index), TokenValue::Integer(5));
-    }
-
-    #[test]
-    fn parser_statement_list_returns_two_statements_when_statements_are_separated_by_semicolon() {
-        // Input: a := 5; b := 6
-        let tokens = vec![identifier!("a"),
-                          assign!(),
-                          integer!(5),
-                          semicolon!(),
-                          identifier!("b"),
-                          assign!(),
-                          integer!(6)];
-        let (parser, mut ast) = setup_from(tokens);
-
-        let statement_list = parser.statement_list(&mut ast).unwrap();
-        assert_eq!(statement_list.len(), 2);
-
-        let mut stmt_index = statement_list[0];
-        let mut stmt_node = ast.get_node(stmt_index);
-        assert_eq!(stmt_node.get_parent(), None);
-
-        let mut children = stmt_node.get_children();
-        verify_node(&ast,
-                    children[0],
-                    Some(stmt_index),
-                    TokenValue::Identifier("a".to_string()));
-        verify_node(&ast, children[1], Some(stmt_index), TokenValue::Integer(5));
-
-        stmt_index = statement_list[1];
-        stmt_node = ast.get_node(stmt_index);
-        assert_eq!(stmt_node.get_parent(), None);
-
-        children = stmt_node.get_children();
-        verify_node(&ast,
-                    children[0],
-                    Some(stmt_index),
-                    TokenValue::Identifier("b".to_string()));
-        verify_node(&ast, children[1], Some(stmt_index), TokenValue::Integer(6));
-    }
-
-    #[test]
-    fn parser_statement_list_returns_only_first_stmt_when_stmts_are_not_separated_by_semicolon() {
-        // Input: a := 5 b := 6
-        let tokens = vec![identifier!("a"),
-                          assign!(),
-                          integer!(5),
-                          identifier!("b"),
-                          assign!(),
-                          integer!(6)];
-        let (parser, mut ast) = setup_from(tokens);
-
-        let statement_list = parser.statement_list(&mut ast).unwrap();
-        assert_eq!(statement_list.len(), 1);
-
-        let stmt_index = statement_list[0];
-        let stmt_node = ast.get_node(stmt_index);
-        assert_eq!(stmt_node.get_parent(), None);
-
-        let children = stmt_node.get_children();
-        verify_node(&ast,
-                    children[0],
-                    Some(stmt_index),
-                    TokenValue::Identifier("a".to_string()));
-        verify_node(&ast, children[1], Some(stmt_index), TokenValue::Integer(5));
-    }
-
-    #[test]
-    fn parser_statement_list_can_begin_with_semicolon() {
-        // Input: ;b := 6
-        let tokens = vec![semicolon!(), identifier!("b"), assign!(), integer!(6)];
-        let (parser, mut ast) = setup_from(tokens);
-
-        let statement_list = parser.statement_list(&mut ast).unwrap();
-        assert_eq!(statement_list.len(), 1);
-
-        let stmt_index = statement_list[0];
-        let stmt_node = ast.get_node(stmt_index);
-        assert_eq!(stmt_node.get_parent(), None);
-
-        let children = stmt_node.get_children();
-        verify_node(&ast,
-                    children[0],
-                    Some(stmt_index),
-                    TokenValue::Identifier("b".to_string()));
-        verify_node(&ast, children[1], Some(stmt_index), TokenValue::Integer(6));
-    }
-
-    #[test]
-    fn parser_statement_list_can_end_with_semicolon() {
-        // Input: b := 6;
-        let tokens = vec![identifier!("b"), assign!(), integer!(6), semicolon!()];
-        let (parser, mut ast) = setup_from(tokens);
-
-        let statement_list = parser.statement_list(&mut ast).unwrap();
-        assert_eq!(statement_list.len(), 1);
-
-        let stmt_index = statement_list[0];
-        let stmt_node = ast.get_node(stmt_index);
-        assert_eq!(stmt_node.get_parent(), None);
-
-        let children = stmt_node.get_children();
-        verify_node(&ast,
-                    children[0],
-                    Some(stmt_index),
-                    TokenValue::Identifier("b".to_string()));
-        verify_node(&ast, children[1], Some(stmt_index), TokenValue::Integer(6));
-    }
-
-    #[test]
-    fn parser_compound_statement_parses_compound_statement() {
-        // Input: BEGIN a := 5 END
-        let tokens = vec![begin!(), identifier!("a"), assign!(), integer!(5), end!()];
-        let (parser, mut ast) = setup_from(tokens);
-
-        let cmpd_index = parser.compound_statement(&mut ast).unwrap();
-        let cmpd_node = ast.get_node(cmpd_index);
-        assert_eq!(cmpd_node.get_parent(), None);
-
-        let statements = cmpd_node.get_children();
-        assert_eq!(statements.len(), 1);
-
-        let stmt_node = ast.get_node(statements[0]);
-        assert_eq!(stmt_node.get_parent(), Some(cmpd_index));
-
-        let children = stmt_node.get_children();
-        verify_node(&ast,
-                    children[0],
-                    Some(statements[0]),
-                    TokenValue::Identifier("a".to_string()));
-    }
-
-    #[test]
-    fn parser_compound_statement_returns_error_when_begin_is_missing() {
-        // Input: a := 5 END
-        let tokens = vec![identifier!("a"), assign!(), integer!(5), end!()];
-        let (parser, mut ast) = setup_from(tokens);
-
-        assert!(parser.compound_statement(&mut ast).is_err());
-    }
-
-    #[test]
-    fn parser_compound_statement_returns_error_when_end_is_missing() {
-        // Input: BEGIN a := 5
-        let tokens = vec![begin!(), identifier!("a"), assign!(), integer!(5)];
-        let (parser, mut ast) = setup_from(tokens);
-
-        assert!(parser.compound_statement(&mut ast).is_err());
-    }
-
-    #[test]
-    fn parser_compound_statement_returns_error_when_statements_arent_separated_with_semicolons() {
-        // Input: BEGIN a := 5 b := 6 END
-        let tokens = vec![begin!(),
-                          identifier!("a"),
-                          assign!(),
-                          integer!(5),
-                          identifier!("b"),
-                          assign!(),
-                          integer!(6),
-                          end!()];
-        let (parser, mut ast) = setup_from(tokens);
-
-        assert!(parser.compound_statement(&mut ast).is_err());
-    }
-
-    #[test]
-    fn parser_compound_statement_parses_nested_compound_statement() {
-        // Input: BEGIN BEGIN a := 5 END END
-        let tokens =
-            vec![begin!(), begin!(), identifier!("a"), assign!(), integer!(5), end!(), end!()];
-        let (parser, mut ast) = setup_from(tokens);
-
-        let outer_index = parser.compound_statement(&mut ast).unwrap();
-        let outer_node = ast.get_node(outer_index);
-        assert_eq!(outer_node.get_parent(), None);
-
-        let inner_index = outer_node.get_children()[0];
-        let inner_node = ast.get_node(inner_index);
-        assert_eq!(inner_node.get_parent(), Some(outer_index));
-
-        let stmt_index = inner_node.get_children()[0];
-        let stmt_node = ast.get_node(stmt_index);
-        assert_eq!(stmt_node.get_parent(), Some(inner_index));
-
-        let var_index = stmt_node.get_children()[0];
-        verify_node(&ast,
-                    var_index,
-                    Some(stmt_index),
-                    TokenValue::Identifier("a".to_string()));
-    }
-
-    #[test]
-    fn parser_block_parses_compound_statement() {
-        // Input: BEGIN a := 1 END
-        let tokens = vec![begin!(), identifier!("a"), assign!(), integer!(1), end!()];
-        let (parser, mut ast) = setup_from(tokens);
-
-        let block_index = parser.block(&mut ast).unwrap();
-        let block_node = ast.get_node(block_index);
-        assert_eq!(block_node.get_parent(), None);
-
-        let block_children = block_node.get_children();
-        let stmt_index = block_children[block_children.len() - 1];
-        let stmt_node = ast.get_node(stmt_index);
-        assert_eq!(stmt_node.get_parent(), Some(block_index));
-
-        let statements = stmt_node.get_children();
-        assert_eq!(statements.len(), 1);
-
-        let statement = ast.get_node(statements[0]);
-        assert_eq!(statement.get_parent(), Some(stmt_index));
-
-        verify_node(&ast,
-                    statement.get_children()[0],
-                    Some(statements[0]),
-                    TokenValue::Identifier("a".to_string()));
-    }
-
-    #[test]
-    fn parser_program_parses_program() {
-        // Input: BEGIN a := 5 END.
-        let tokens = vec![begin!(), identifier!("a"), assign!(), integer!(5), end!(), dot!()];
-        let (parser, mut ast) = setup_from(tokens);
-
-        let block_index = parser.program(&mut ast).unwrap();
-        let block_node = ast.get_node(block_index);
-        assert_eq!(block_node.get_parent(), None);
-
-        let block_children = block_node.get_children();
-        let cmpd_index = block_children[block_children.len() - 1];
-        let cmpd_node = ast.get_node(cmpd_index);
-        assert_eq!(cmpd_node.get_parent(), Some(block_index));
-
-        let statements = cmpd_node.get_children();
-        assert_eq!(statements.len(), 1);
-
-        let stmt_node = ast.get_node(statements[0]);
-        assert_eq!(stmt_node.get_parent(), Some(cmpd_index));
-
-        let children = stmt_node.get_children();
-        verify_node(&ast,
-                    children[0],
-                    Some(statements[0]),
-                    TokenValue::Identifier("a".to_string()));
-    }
-
-    #[test]
-    fn parser_program_returns_error_when_compound_statement_is_missing() {
-        // Input: .
-        let tokens = vec![dot!()];
-        let (parser, mut ast) = setup_from(tokens);
-
-        assert!(parser.program(&mut ast).is_err());
-    }
-
-    #[test]
-    fn parser_program_returns_error_when_dot_is_missing() {
-        // Input: BEGIN a := 5 END
-        let tokens = vec![begin!(), identifier!("a"), assign!(), integer!(5), end!()];
-        let (parser, mut ast) = setup_from(tokens);
-
-        assert!(parser.program(&mut ast).is_err());
-    }
-
-    #[test]
-    fn parser_program_returns_error_when_two_compound_statements_are_present() {
-        // Input: BEGIN a := 5 END; BEGIN b := 6 END.
-        let tokens = vec![begin!(),
-                          identifier!("a"),
-                          assign!(),
-                          integer!(5),
-                          end!(),
-                          semicolon!(),
-                          begin!(),
-                          identifier!("b"),
-                          assign!(),
-                          integer!(6),
-                          end!(),
-                          dot!()];
-        let (parser, mut ast) = setup_from(tokens);
-
-        assert!(parser.program(&mut ast).is_err());
     }
 }
