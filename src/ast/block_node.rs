@@ -76,8 +76,7 @@ impl NodeVisitor for BlockNode {
         if !self.declarations.is_empty() {
             unimplemented!();
         }
-        ast.get_node(self.compound_statement).visit(ast, sym_tbl)?;
-        Ok(ReturnValue::Void)
+        ast.get_node(self.compound_statement).visit(ast, sym_tbl)
     }
 }
 

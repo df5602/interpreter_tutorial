@@ -71,10 +71,10 @@ impl AstNode for ProgramNode {
 
 impl NodeVisitor for ProgramNode {
     fn visit(&self,
-             _ast: &Ast,
-             _sym_tbl: &mut HashMap<String, i64>)
+             ast: &Ast,
+             sym_tbl: &mut HashMap<String, i64>)
              -> Result<ReturnValue, SyntaxError> {
-        unimplemented!();
+        ast.get_node(self.block).visit(ast, sym_tbl)
     }
 }
 
@@ -98,7 +98,9 @@ impl ProgramNode {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ast::{AstNode, AstIndex};
+    use tokens::{Token, TokenType, OperatorType};
+    use ast::{AstNode, AstIndex, VariableNode, BlockNode, CompoundStmtNode, BinaryOperatorNode,
+              IntegerNode, AssignmentStmtNode};
 
     #[test]
     fn program_node_get_parent_returns_none_when_node_has_no_parent() {
@@ -141,5 +143,46 @@ mod tests {
         let mut node = ProgramNode::new("Test".to_string(), AstIndex(0), AstIndex(1));
         node.set_span(Span::new(2, 3));
         assert_eq!(node.get_span(), Span::new(2, 3));
+    }
+
+    #[test]
+    fn program_node_visit_returns_void() {
+        let mut ast = Ast::new();
+
+        let index = program_node!(ast,
+                                  "Test",
+                                  var_node!(ast, "Test"),
+                                  block_node!(ast,
+                                              vec![],
+                                              cmpd_stmt_node!(ast,
+                                                              vec![binop_node!(ast,
+                                                                 int_node!(ast, 2),
+                                                                 int_node!(ast, 4),
+                                                                 OperatorType::Plus)])));
+
+        let mut sym_tbl = HashMap::new();
+        assert_eq!(ast.get_node(index).visit(&ast, &mut sym_tbl).unwrap(),
+                   ReturnValue::Void);
+    }
+
+    #[test]
+    fn program_node_visit_visits_block() {
+        let mut ast = Ast::new();
+
+        let index =
+            program_node!(ast,
+                          "Test",
+                          var_node!(ast, "Test"),
+                          block_node!(ast,
+                                      vec![],
+                                      cmpd_stmt_node!(ast,
+                                                      vec![assign_node!(ast,
+                                                                        var_node!(ast, "a"),
+                                                                        int_node!(ast, 2))])));
+
+        let mut sym_tbl = HashMap::new();
+        assert_eq!(sym_tbl.get(&"a".to_string()), None);
+        assert!(ast.get_node(index).visit(&ast, &mut sym_tbl).is_ok());
+        assert_eq!(sym_tbl.get(&"a".to_string()), Some(&2));
     }
 }

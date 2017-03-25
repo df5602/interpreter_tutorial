@@ -61,3 +61,10 @@ macro_rules! block_node {
         $ast.add_node(node)
     }}
 }
+
+macro_rules! program_node {
+    ($ast:expr, $name:expr, $variable:expr, $block:expr) => {{
+        let node = ProgramNode::new($name.to_string(), $variable, $block);
+        $ast.add_node(node)
+    }}
+}
