@@ -60,6 +60,9 @@ pub use self::assignment_stmt_node::AssignmentStmtNode;
 mod block_node;
 pub use self::block_node::BlockNode;
 
+mod program_node;
+pub use self::program_node::ProgramNode;
+
 /// AST graph. Nodes are stored in a vector. All references to nodes
 /// go via the index into this vector.
 pub struct Ast<'a> {
