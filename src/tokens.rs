@@ -164,6 +164,18 @@ impl TokenValue {
             _ => panic!("Internal Error (Identifier value has wrong type)"),
         }
     }
+
+    /// Returns a copy of the inner value, if `self` is of variant `TokenValue::Type`.
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if `self` is not of variant `TokenValue::Type`.
+    pub fn extract_type_specifier(&self) -> Type {
+        match *self {
+            TokenValue::Type(ref type_specifier) => type_specifier.clone(),
+            _ => panic!("Internal Error (Type specifier has wrong type)"),
+        }
+    }
 }
 
 /// Describes the span of a Token (position in input stream)

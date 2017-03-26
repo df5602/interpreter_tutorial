@@ -60,8 +60,16 @@ macro_rules! int_div {
                            TokenValue::Operator(OperatorType::IntegerDivision)))
     }
 
-macro_rules! integer {
+macro_rules! integer_lit {
         ($value:expr) => ((TokenType::IntegerLiteral, TokenValue::Integer($value)))
+    }
+
+macro_rules! integer {
+        () => ((TokenType::TypeSpecifier, TokenValue::Type(Type::Integer)))
+    }
+
+macro_rules! real {
+        () => ((TokenType::TypeSpecifier, TokenValue::Type(Type::Real)))
     }
 
 macro_rules! identifier {
@@ -107,7 +115,7 @@ mod tests {
 
     #[test]
     fn mocklexer_returns_first_token_when_calling_get_next_token_for_the_first_time() {
-        let tokens = vec![integer!(42)];
+        let tokens = vec![integer_lit!(42)];
         let mocklexer = MockLexer::new(tokens);
         let token = mocklexer.get_next_token().unwrap();
         assert_eq!(token.token_type, TokenType::IntegerLiteral);
@@ -119,7 +127,7 @@ mod tests {
 
     #[test]
     fn mocklexer_returns_second_token_when_calling_get_next_token_for_the_second_time() {
-        let tokens = vec![integer!(42), plus!()];
+        let tokens = vec![integer_lit!(42), plus!()];
         let mocklexer = MockLexer::new(tokens);
         let _tmp = mocklexer.get_next_token().unwrap();
         let token = mocklexer.get_next_token().unwrap();
@@ -141,7 +149,7 @@ mod tests {
 
     #[test]
     fn mocklexer_returns_eof_when_no_more_tokens_are_available() {
-        let tokens = vec![integer!(42)];
+        let tokens = vec![integer_lit!(42)];
         let mocklexer = MockLexer::new(tokens);
         let _tmp = mocklexer.get_next_token().unwrap();
         let token = mocklexer.get_next_token().unwrap();
