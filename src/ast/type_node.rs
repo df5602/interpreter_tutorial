@@ -59,7 +59,7 @@ impl NodeVisitor for TypeNode {
              _ast: &Ast,
              _sym_tbl: &mut HashMap<String, i64>)
              -> Result<ReturnValue, SyntaxError> {
-        unimplemented!();
+        Ok(ReturnValue::Void)
     }
 }
 
@@ -156,5 +156,16 @@ mod tests {
                                                      Span::new(3, 5)));
         type_node.set_span(Span::new(2, 5));
         assert_eq!(type_node.get_span(), Span::new(2, 5));
+    }
+
+    #[test]
+    fn type_node_visit_returns_void() {
+        let mut ast = Ast::new();
+
+        let type_node = type_node!(ast, Type::Integer);
+
+        let mut sym_tbl = HashMap::new();
+        assert_eq!(ast.get_node(type_node).visit(&ast, &mut sym_tbl).unwrap(),
+                   ReturnValue::Void);
     }
 }
