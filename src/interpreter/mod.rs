@@ -112,8 +112,11 @@ mod tests {
 
     #[test]
     fn interpreter_can_evaluate_nested_expressions() {
-        // Input: BEGIN a := 7+3*(10 div (12 div (3+1)-1)) END.
-        let tokens = vec![begin!(),
+        // Input: PROGRAM Test; BEGIN a := 7+3*(10 div (12 div (3+1)-1)) END.
+        let tokens = vec![program!(),
+                          identifier!("Test"),
+                          semicolon!(),
+                          begin!(),
                           identifier!("a"),
                           assign!(),
                           integer!(7),
@@ -143,8 +146,11 @@ mod tests {
 
     #[test]
     fn interpreter_should_add_values_when_expression_is_addition() {
-        // Input: BEGIN a := 3+4 END.
-        let tokens = vec![begin!(),
+        // Input: PROGRAM Test; BEGIN a := 3+4 END.
+        let tokens = vec![program!(),
+                          identifier!("Test"),
+                          semicolon!(),
+                          begin!(),
                           identifier!("a"),
                           assign!(),
                           integer!(3),
@@ -158,8 +164,11 @@ mod tests {
 
     #[test]
     fn interpreter_should_evaluate_chained_additions_and_subtractions_from_left_to_right() {
-        // Input: BEGIN a := 1-2+3 END.
-        let tokens = vec![begin!(),
+        // Input: PROGRAM Test; BEGIN a := 1-2+3 END.
+        let tokens = vec![program!(),
+                          identifier!("Test"),
+                          semicolon!(),
+                          begin!(),
                           identifier!("a"),
                           assign!(),
                           integer!(1),
@@ -175,8 +184,11 @@ mod tests {
 
     #[test]
     fn interpreter_should_give_precedence_to_multiplication_and_division() {
-        // Input: BEGIN a := 14+2*3-6 div 2 END.
-        let tokens = vec![begin!(),
+        // Input: PROGRAM Test; BEGIN a := 14+2*3-6 div 2 END.
+        let tokens = vec![program!(),
+                          identifier!("Test"),
+                          semicolon!(),
+                          begin!(),
                           identifier!("a"),
                           assign!(),
                           integer!(14),
@@ -196,8 +208,11 @@ mod tests {
 
     #[test]
     fn interpreter_should_interpret_chained_additions() {
-        // Input: BEGIN a := 1+3+5 END.
-        let tokens = vec![begin!(),
+        // Input: PROGRAM Test; BEGIN a := 1+3+5 END.
+        let tokens = vec![program!(),
+                          identifier!("Test"),
+                          semicolon!(),
+                          begin!(),
                           identifier!("a"),
                           assign!(),
                           integer!(1),
@@ -213,16 +228,27 @@ mod tests {
 
     #[test]
     fn interpreter_should_return_integer_value_if_input_consists_of_only_integer() {
-        // Input: BEGIN a := 42 END.
-        let tokens = vec![begin!(), identifier!("a"), assign!(), integer!(42), end!(), dot!()];
+        // Input: PROGRAM Test; BEGIN a := 42 END.
+        let tokens = vec![program!(),
+                          identifier!("Test"),
+                          semicolon!(),
+                          begin!(),
+                          identifier!("a"),
+                          assign!(),
+                          integer!(42),
+                          end!(),
+                          dot!()];
         let ast = parse_from(tokens);
         interpret_and_check_values(&ast, vec!["a"], vec![42]);
     }
 
     #[test]
     fn interpreter_should_return_negative_number_when_result_of_subtraction_is_negative() {
-        // Input: BEGIN a := 3-4 END.
-        let tokens = vec![begin!(),
+        // Input: PROGRAM Test; BEGIN a := 3-4 END.
+        let tokens = vec![program!(),
+                          identifier!("Test"),
+                          semicolon!(),
+                          begin!(),
                           identifier!("a"),
                           assign!(),
                           integer!(3),
@@ -236,8 +262,11 @@ mod tests {
 
     #[test]
     fn interpreter_should_subtract_values_when_expression_is_subtraction() {
-        // Input: BEGIN a := 4-3 END.
-        let tokens = vec![begin!(),
+        // Input: PROGRAM Test; BEGIN a := 4-3 END.
+        let tokens = vec![program!(),
+                          identifier!("Test"),
+                          semicolon!(),
+                          begin!(),
                           identifier!("a"),
                           assign!(),
                           integer!(4),
@@ -251,8 +280,11 @@ mod tests {
 
     #[test]
     fn interpreter_returns_integer_if_input_consists_of_integer_in_parentheses() {
-        // Input: BEGIN a := (6) END.
-        let tokens = vec![begin!(),
+        // Input: PROGRAM Test; BEGIN a := (6) END.
+        let tokens = vec![program!(),
+                          identifier!("Test"),
+                          semicolon!(),
+                          begin!(),
                           identifier!("a"),
                           assign!(),
                           lparen!(),
@@ -266,8 +298,11 @@ mod tests {
 
     #[test]
     fn interpreter_returns_result_of_expr_if_input_consists_of_expr_in_parentheses() {
-        // Input: BEGIN a := (6+3) END.
-        let tokens = vec![begin!(),
+        // Input: PROGRAM Test; BEGIN a := (6+3) END.
+        let tokens = vec![program!(),
+                          identifier!("Test"),
+                          semicolon!(),
+                          begin!(),
                           identifier!("a"),
                           assign!(),
                           lparen!(),
@@ -283,8 +318,11 @@ mod tests {
 
     #[test]
     fn interpreter_should_evaluate_chained_multiplications_and_divisions_from_left_to_right() {
-        // Input: BEGIN a := 6 div 2*3 END.
-        let tokens = vec![begin!(),
+        // Input: PROGRAM Test; BEGIN a := 6 div 2*3 END.
+        let tokens = vec![program!(),
+                          identifier!("Test"),
+                          semicolon!(),
+                          begin!(),
                           identifier!("a"),
                           assign!(),
                           integer!(6),
@@ -300,8 +338,11 @@ mod tests {
 
     #[test]
     fn interpreter_should_interpret_chained_multiplications() {
-        // Input: BEGIN a := 1*3*5 END.
-        let tokens = vec![begin!(),
+        // Input: PROGRAM Test; BEGIN a := 1*3*5 END.
+        let tokens = vec![program!(),
+                          identifier!("Test"),
+                          semicolon!(),
+                          begin!(),
                           identifier!("a"),
                           assign!(),
                           integer!(1),
@@ -317,8 +358,11 @@ mod tests {
 
     #[test]
     fn interpreter_should_multiply_values_when_expression_is_multiplication() {
-        // Input: BEGIN a := 3*4 END.
-        let tokens = vec![begin!(),
+        // Input: PROGRAM Test; BEGIN a := 3*4 END.
+        let tokens = vec![program!(),
+                          identifier!("Test"),
+                          semicolon!(),
+                          begin!(),
                           identifier!("a"),
                           assign!(),
                           integer!(3),
@@ -332,8 +376,11 @@ mod tests {
 
     #[test]
     fn interpreter_should_return_error_when_division_by_zero() {
-        // Input: BEGIN a := 1 div 0 END.
-        let tokens = vec![begin!(),
+        // Input: PROGRAM Test; BEGIN a := 1 div 0 END.
+        let tokens = vec![program!(),
+                          identifier!("Test"),
+                          semicolon!(),
+                          begin!(),
                           identifier!("a"),
                           assign!(),
                           integer!(1),
@@ -348,8 +395,11 @@ mod tests {
 
     #[test]
     fn interpreter_should_divide_values_when_expression_is_division() {
-        // Input: BEGIN a := 6 div 2 END.
-        let tokens = vec![begin!(),
+        // Input: PROGRAM Test; BEGIN a := 6 div 2 END.
+        let tokens = vec![program!(),
+                          identifier!("Test"),
+                          semicolon!(),
+                          begin!(),
                           identifier!("a"),
                           assign!(),
                           integer!(6),
@@ -363,17 +413,28 @@ mod tests {
 
     #[test]
     fn interpreter_should_negate_integer_when_expression_is_unary_minus() {
-        // Input: BEGIN a := -2 END.
-        let tokens =
-            vec![begin!(), identifier!("a"), assign!(), minus!(), integer!(2), end!(), dot!()];
+        // Input: PROGRAM Test; BEGIN a := -2 END.
+        let tokens = vec![program!(),
+                          identifier!("Test"),
+                          semicolon!(),
+                          begin!(),
+                          identifier!("a"),
+                          assign!(),
+                          minus!(),
+                          integer!(2),
+                          end!(),
+                          dot!()];
         let ast = parse_from(tokens);
         interpret_and_check_values(&ast, vec!["a"], vec![-2]);
     }
 
     #[test]
     fn interpreter_should_negate_expression_when_expression_is_prefixed_with_unary_minus() {
-        // Input: BEGIN a := -(2+3) END.
-        let tokens = vec![begin!(),
+        // Input: PROGRAM Test; BEGIN a := -(2+3) END.
+        let tokens = vec![program!(),
+                          identifier!("Test"),
+                          semicolon!(),
+                          begin!(),
                           identifier!("a"),
                           assign!(),
                           minus!(),
@@ -390,17 +451,28 @@ mod tests {
 
     #[test]
     fn interpreter_should_return_integer_when_expression_is_unary_plus() {
-        // Input: BEGIN a := +2 END.
-        let tokens =
-            vec![begin!(), identifier!("a"), assign!(), plus!(), integer!(2), end!(), dot!()];
+        // Input: PROGRAM Test; BEGIN a := +2 END.
+        let tokens = vec![program!(),
+                          identifier!("Test"),
+                          semicolon!(),
+                          begin!(),
+                          identifier!("a"),
+                          assign!(),
+                          plus!(),
+                          integer!(2),
+                          end!(),
+                          dot!()];
         let ast = parse_from(tokens);
         interpret_and_check_values(&ast, vec!["a"], vec![2]);
     }
 
     #[test]
     fn interpreter_should_evaluate_chained_unary_operators() {
-        // Input: BEGIN a := 5 - - - + - 3 END.
-        let tokens = vec![begin!(),
+        // Input: PROGRAM Test; BEGIN a := 5 - - - + - 3 END.
+        let tokens = vec![program!(),
+                          identifier!("Test"),
+                          semicolon!(),
+                          begin!(),
                           identifier!("a"),
                           assign!(),
                           integer!(5),
@@ -418,8 +490,11 @@ mod tests {
 
     #[test]
     fn interpreter_assigns_multiple_variables() {
-        // Input: BEGIN a := 2; b := 5 END.
-        let tokens = vec![begin!(),
+        // Input: PROGRAM Test; BEGIN a := 2; b := 5 END.
+        let tokens = vec![program!(),
+                          identifier!("Test"),
+                          semicolon!(),
+                          begin!(),
                           identifier!("a"),
                           assign!(),
                           integer!(2),
@@ -435,8 +510,11 @@ mod tests {
 
     #[test]
     fn interpreter_handles_nested_compound_statements() {
-        // Input: BEGIN a := 2; BEGIN b := 5 END; END.
-        let tokens = vec![begin!(),
+        // Input: PROGRAM Test; BEGIN a := 2; BEGIN b := 5 END; END.
+        let tokens = vec![program!(),
+                          identifier!("Test"),
+                          semicolon!(),
+                          begin!(),
                           identifier!("a"),
                           assign!(),
                           integer!(2),
@@ -455,8 +533,11 @@ mod tests {
 
     #[test]
     fn interpreter_can_assign_value_of_variable_to_other_variable() {
-        // Input: BEGIN a := 2; b := a END.
-        let tokens = vec![begin!(),
+        // Input: PROGRAM Test; BEGIN a := 2; b := a END.
+        let tokens = vec![program!(),
+                          identifier!("Test"),
+                          semicolon!(),
+                          begin!(),
                           identifier!("a"),
                           assign!(),
                           integer!(2),
@@ -472,8 +553,11 @@ mod tests {
 
     #[test]
     fn interpreter_can_assign_value_of_expression_with_variable_to_other_variable() {
-        // Input: BEGIN a := 2; b := 1 + a END.
-        let tokens = vec![begin!(),
+        // Input: PROGRAM Test; BEGIN a := 2; b := 1 + a END.
+        let tokens = vec![program!(),
+                          identifier!("Test"),
+                          semicolon!(),
+                          begin!(),
                           identifier!("a"),
                           assign!(),
                           integer!(2),
@@ -491,8 +575,16 @@ mod tests {
 
     #[test]
     fn interpreter_returns_error_when_assigning_unknown_variable_to_other_variable() {
-        // Input: BEGIN a := b END.
-        let tokens = vec![begin!(), identifier!("a"), assign!(), identifier!("b"), end!(), dot!()];
+        // Input: PROGRAM Test; BEGIN a := b END.
+        let tokens = vec![program!(),
+                          identifier!("Test"),
+                          semicolon!(),
+                          begin!(),
+                          identifier!("a"),
+                          assign!(),
+                          identifier!("b"),
+                          end!(),
+                          dot!()];
         let ast = parse_from(tokens);
         let interpreter = Interpreter::new(&ast);
         assert!(interpreter.interpret().is_err());

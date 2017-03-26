@@ -3,7 +3,7 @@
 use std::cell::RefCell;
 use tokens::{Token, TokenType, OperatorType, Span};
 use ast::{Ast, AstIndex, BinaryOperatorNode, UnaryOperatorNode, IntegerNode, VariableNode,
-          AssignmentStmtNode, CompoundStmtNode, BlockNode};
+          AssignmentStmtNode, CompoundStmtNode, BlockNode, ProgramNode};
 use errors::SyntaxError;
 use lexer::Lexer;
 
@@ -93,15 +93,30 @@ impl<L: Lexer> Parser<L> {
     }
 
     /// Evaluate a program:
-    /// program -> block DOT
+    /// program -> PROGRAM variable SEMICOLON block DOT
     fn program(&self, ast: &mut Ast) -> Result<AstIndex, SyntaxError> {
-        // Expect compound statement
-        let result = self.block(ast)?;
+        // Expect PROGRAM token
+        self.eat(TokenType::Program)?;
+
+        // Expect variable
+        let variable_node = self.variable(ast)?;
+        let program_name = ast.get_node(variable_node)
+            .get_value()
+            .unwrap()
+            .extract_identifier_value();
+
+        // Expect semicolon
+        self.eat(TokenType::Semicolon)?;
+
+        // Expect block
+        let block_node = self.block(ast)?;
 
         // Expect '.'
         self.eat(TokenType::Dot)?;
 
-        Ok(result)
+        // Construct node
+        let program_node = ProgramNode::new(program_name, variable_node, block_node);
+        Ok(ast.add_node(program_node))
     }
 
     /// Evaluate a block:
@@ -411,23 +426,41 @@ mod tests {
         assert!(result.is_err());
     }
 
-    // program : block DOT
-    //      block DOT -> PASS: PROG.1
-    //      DOT -> FAIL: PROG.2
-    //      block block DOT -> FAIL: PROG.3
-    //      block -> FAIL: PROG.4
-    //      block DOT DOT -> FAIL: PROG.5
+    // program : PROGRAM variable SEMICOLON block DOT
+    //      PROGRAM variable SEMICOLON block DOT -> PASS: PROG.1
+    //      variable SEMICOLON block DOT -> FAIL: PROG.2
+    //      PROGRAM PROGRAM variable SEMICOLON block DOT -> FAIL: PROG.3
+    //      PROGRAM SEMICOLON block DOT -> FAIL: PROG.4
+    //      PROGRAM variable variable SEMICOLON block DOT -> FAIL: PROG.5
+    //      PROGRAM variable block DOT -> FAIL: PROG.6
+    //      PROGRAM variable SEMICOLON SEMICOLON block DOT -> FAIL: PROG.7
+    //      PROGRAM variable SEMICOLON DOT -> FAIL: PROG.8
+    //      PROGRAM variable SEMICOLON block block DOT -> FAIL: PROG.9
+    //      PROGRAM variable SEMICOLON block -> FAIL: PROG.10
+    //      PROGRAM variable SEMICOLON block DOT DOT -> FAIL: PROG.11
 
     #[test]
     // PROG.1
     fn parser_program_parses_program() {
-        // Input: BEGIN a := 5 END.
-        let tokens = vec![begin!(), identifier!("a"), assign!(), integer!(5), end!(), dot!()];
+        // Input: PROGRAM Test; BEGIN a := 5 END.
+        let tokens = vec![program!(),
+                          identifier!("Test"),
+                          semicolon!(),
+                          begin!(),
+                          identifier!("a"),
+                          assign!(),
+                          integer!(5),
+                          end!(),
+                          dot!()];
         let (parser, mut ast) = setup_from(tokens);
 
-        let block_index = parser.program(&mut ast).unwrap();
+        let program_index = parser.program(&mut ast).unwrap();
+        let program_node = ast.get_node(program_index);
+        assert_eq!(program_node.get_parent(), None);
+
+        let block_index = program_node.get_children()[1];
         let block_node = ast.get_node(block_index);
-        assert_eq!(block_node.get_parent(), None);
+        assert_eq!(block_node.get_parent(), Some(program_index));
 
         let block_children = block_node.get_children();
         let cmpd_index = block_children[block_children.len() - 1];
@@ -449,9 +482,16 @@ mod tests {
 
     #[test]
     // PROG.2
-    fn parser_program_returns_error_when_compound_statement_is_missing() {
-        // Input: .
-        let tokens = vec![dot!()];
+    fn parser_program_returns_error_when_program_keyword_is_missing() {
+        // Input: Test; BEGIN a := 5 END.
+        let tokens = vec![identifier!("Test"),
+                          semicolon!(),
+                          begin!(),
+                          identifier!("a"),
+                          assign!(),
+                          integer!(5),
+                          end!(),
+                          dot!()];
         let (parser, mut ast) = setup_from(tokens);
 
         assert!(parser.program(&mut ast).is_err());
@@ -459,9 +499,113 @@ mod tests {
 
     #[test]
     // PROG.3
+    fn parser_program_returns_error_when_program_keyword_occurs_twice() {
+        // Input: PROGRAM PROGRAM Test; BEGIN a := 5 END.
+        let tokens = vec![program!(),
+                          program!(),
+                          identifier!("Test"),
+                          semicolon!(),
+                          begin!(),
+                          identifier!("a"),
+                          assign!(),
+                          integer!(5),
+                          end!(),
+                          dot!()];
+        let (parser, mut ast) = setup_from(tokens);
+
+        assert!(parser.program(&mut ast).is_err());
+    }
+
+    #[test]
+    // PROG.4
+    fn parser_program_returns_error_when_program_name_is_missing() {
+        // Input: PROGRAM; BEGIN a := 5 END.
+        let tokens = vec![program!(),
+                          semicolon!(),
+                          begin!(),
+                          identifier!("a"),
+                          assign!(),
+                          integer!(5),
+                          end!(),
+                          dot!()];
+        let (parser, mut ast) = setup_from(tokens);
+
+        assert!(parser.program(&mut ast).is_err());
+    }
+
+    #[test]
+    // PROG.5
+    fn parser_program_returns_error_when_program_has_two_names() {
+        // Input: PROGRAM Test1 Test2; BEGIN a := 5 END.
+        let tokens = vec![program!(),
+                          identifier!("Test1"),
+                          identifier!("Test2"),
+                          semicolon!(),
+                          begin!(),
+                          identifier!("a"),
+                          assign!(),
+                          integer!(5),
+                          end!(),
+                          dot!()];
+        let (parser, mut ast) = setup_from(tokens);
+
+        assert!(parser.program(&mut ast).is_err());
+    }
+
+    #[test]
+    // PROG.6
+    fn parser_program_returns_error_when_semicolon_after_program_name_is_missing() {
+        // Input: PROGRAM Test BEGIN a := 5 END.
+        let tokens = vec![program!(),
+                          identifier!("Test"),
+                          begin!(),
+                          identifier!("a"),
+                          assign!(),
+                          integer!(5),
+                          end!(),
+                          dot!()];
+        let (parser, mut ast) = setup_from(tokens);
+
+        assert!(parser.program(&mut ast).is_err());
+    }
+
+    #[test]
+    // PROG.7
+    fn parser_program_returns_error_when_two_semicolons_after_program_name() {
+        // Input: PROGRAM Test;; BEGIN a := 5 END.
+        let tokens = vec![program!(),
+                          identifier!("Test"),
+                          semicolon!(),
+                          semicolon!(),
+                          begin!(),
+                          identifier!("a"),
+                          assign!(),
+                          integer!(5),
+                          end!(),
+                          dot!()];
+        let (parser, mut ast) = setup_from(tokens);
+
+        assert!(parser.program(&mut ast).is_err());
+    }
+
+    #[test]
+    // PROG.8
+    fn parser_program_returns_error_when_compound_statement_is_missing() {
+        // Input: PROGRAM Test; .
+        let tokens = vec![program!(), identifier!("Test"), semicolon!(), dot!()];
+        let (parser, mut ast) = setup_from(tokens);
+
+        assert!(parser.program(&mut ast).is_err());
+    }
+
+    #[test]
+    // PROG.9
     fn parser_program_returns_error_when_two_compound_statements_are_present() {
-        // Input: BEGIN a := 5 END BEGIN b := 6 END.
-        let tokens = vec![begin!(),
+        // Input: PROGRAM Test; BEGIN a := 5 END BEGIN b := 6 END.
+        let tokens = vec![program!(),
+                          identifier!("Test"),
+                          semicolon!(),
+                          begin!(),
                           identifier!("a"),
                           assign!(),
                           integer!(5),
@@ -478,24 +622,68 @@ mod tests {
     }
 
     #[test]
-    // PROG.4
+    // PROG.10
     fn parser_program_returns_error_when_dot_is_missing() {
-        // Input: BEGIN a := 5 END
-        let tokens = vec![begin!(), identifier!("a"), assign!(), integer!(5), end!()];
+        // Input: PROGRAM Test; BEGIN a := 5 END
+        let tokens = vec![program!(),
+                          identifier!("Test"),
+                          semicolon!(),
+                          begin!(),
+                          identifier!("a"),
+                          assign!(),
+                          integer!(5),
+                          end!()];
         let (parser, mut ast) = setup_from(tokens);
 
         assert!(parser.program(&mut ast).is_err());
     }
 
     #[test]
-    // PROG.5
+    // PROG.11
     fn parser_parse_returns_error_when_ends_with_two_dots() {
-        // Input: BEGIN a := 5 END..
-        let tokens =
-            vec![begin!(), identifier!("a"), assign!(), integer!(5), end!(), dot!(), dot!()];
+        // Input: PROGRAM Test; BEGIN a := 5 END..
+        let tokens = vec![program!(),
+                          identifier!("Test"),
+                          semicolon!(),
+                          begin!(),
+                          identifier!("a"),
+                          assign!(),
+                          integer!(5),
+                          end!(),
+                          dot!(),
+                          dot!()];
+        let lexer = MockLexer::new(tokens);
+        let parser = Parser::new(lexer);
+        let mut ast = Ast::new();
+        assert!(parser.parse(&mut ast).is_err());
+    }
+
+    #[test]
+    fn parser_program_parses_program_name() {
+        // Input: PROGRAM Test; BEGIN a := 5 END.
+        let tokens = vec![program!(),
+                          identifier!("Test"),
+                          semicolon!(),
+                          begin!(),
+                          identifier!("a"),
+                          assign!(),
+                          integer!(5),
+                          end!(),
+                          dot!()];
         let (parser, mut ast) = setup_from(tokens);
 
-        assert!(parser.parse(&mut ast).is_err());
+        let program_index = parser.program(&mut ast).unwrap();
+        let program_node = ast.get_node(program_index);
+        assert_eq!(program_node.get_parent(), None);
+
+        let variable_index = program_node.get_children()[0];
+        let variable_node = ast.get_node(variable_index);
+        assert_eq!(variable_node.get_parent(), Some(program_index));
+
+        assert_eq!(program_node.get_value().unwrap().extract_identifier_value(),
+                   "Test".to_lowercase().to_string());
+        assert_eq!(variable_node.get_value().unwrap().extract_identifier_value(),
+                   "Test".to_lowercase().to_string());
     }
 
     // block : compound_statement

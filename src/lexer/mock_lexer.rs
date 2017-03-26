@@ -65,7 +65,7 @@ macro_rules! integer {
     }
 
 macro_rules! identifier {
-        ($value:expr) => ((TokenType::Identifier, TokenValue::Identifier($value.to_string())))
+        ($value:expr) => ((TokenType::Identifier, TokenValue::Identifier($value.to_lowercase().to_string())))
     }
 
 macro_rules! lparen {
@@ -82,6 +82,10 @@ macro_rules! begin {
 
 macro_rules! end {
         () => ((TokenType::End, TokenValue::Empty))
+    }
+
+macro_rules! program {
+        () => ((TokenType::Program, TokenValue::Empty))
     }
 
 macro_rules! assign {
