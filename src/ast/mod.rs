@@ -63,6 +63,9 @@ pub use self::block_node::BlockNode;
 mod type_node;
 pub use self::type_node::TypeNode;
 
+mod variable_decl_node;
+pub use self::variable_decl_node::VariableDeclNode;
+
 mod program_node;
 pub use self::program_node::ProgramNode;
 

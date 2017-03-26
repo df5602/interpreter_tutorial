@@ -135,7 +135,7 @@ mod tests {
     }
 
     #[test]
-    fn assignment_statement_node_get_children_returns_operand() {
+    fn assignment_statement_node_get_children_returns_variable_and_expression() {
         let node = AssignmentStmtNode::new(AstIndex(0),
                                            AstIndex(1),
                                            Token::new(TokenType::Assign, None, Span::new(0, 2)));
