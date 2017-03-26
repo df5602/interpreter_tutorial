@@ -60,6 +60,9 @@ pub use self::assignment_stmt_node::AssignmentStmtNode;
 mod block_node;
 pub use self::block_node::BlockNode;
 
+mod type_node;
+pub use self::type_node::TypeNode;
+
 mod program_node;
 pub use self::program_node::ProgramNode;
 
