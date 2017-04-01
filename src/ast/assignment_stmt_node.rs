@@ -1,10 +1,10 @@
 use std::fmt;
-use std::collections::HashMap;
 
-use tokens::{Token, TokenValue, Span};
+use tokens::{Token, TokenValue, Span, Type};
+use symbol_table::SymbolTable;
 use errors::SyntaxError;
 use ast::{Ast, AstNode, AstIndex};
-use interpreter::{NodeVisitor, ReturnValue};
+use interpreter::{NodeVisitor, Value};
 
 /// Assignment statement. It consists of the following form:
 /// VARIABLE := EXPRESSION
@@ -68,19 +68,16 @@ impl AstNode for AssignmentStmtNode {
 }
 
 impl NodeVisitor for AssignmentStmtNode {
-    fn visit(&self,
-             ast: &Ast,
-             sym_tbl: &mut HashMap<String, i64>)
-             -> Result<ReturnValue, SyntaxError> {
+    fn visit(&self, ast: &Ast, sym_tbl: &mut SymbolTable) -> Result<Value, SyntaxError> {
         let name = ast.get_node(self.variable)
             .get_value()
             .unwrap()
             .extract_identifier_value();
-        let expression = ast.get_node(self.expression)
-            .visit(ast, sym_tbl)?
-            .extract_integer_value();
-        sym_tbl.insert(name, expression);
-        Ok(ReturnValue::Void)
+        let expression = ast.get_node(self.expression).visit(ast, sym_tbl)?;
+        // TODO: handle use of undeclared variable
+        sym_tbl.insert(name.clone(), Type::Integer); // TODO: correct type
+        sym_tbl.update(name, expression);
+        Ok(Value::Void)
     }
 }
 
@@ -99,12 +96,10 @@ impl AssignmentStmtNode {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
-
     use super::*;
     use tokens::{Token, TokenType, TokenValue, Span};
     use ast::{Ast, AstNode, AstIndex, VariableNode, IntegerNode, CompoundStmtNode};
-    use interpreter::ReturnValue;
+    use interpreter::Value;
 
     #[test]
     fn assignment_statement_node_get_parent_returns_none_when_node_has_no_parent() {
@@ -166,30 +161,32 @@ mod tests {
     #[test]
     fn assignment_statement_node_visit_adds_entry_to_symbol_table() {
         let mut ast = Ast::new();
-        let mut sym_tbl = HashMap::new();
+        let mut sym_tbl = SymbolTable::new();
 
         let index = assign_node!(ast, var_node!(ast, "a"), int_node!(ast, 42));
 
-        assert_eq!(sym_tbl.get(&"a".to_string()), None);
+        assert_eq!(sym_tbl.value(&"a".to_string()), None);
         assert_eq!(ast.get_node(index).visit(&ast, &mut sym_tbl).unwrap(),
-                   ReturnValue::Void);
-        assert_eq!(sym_tbl.get(&"a".to_string()), Some(&42));
+                   Value::Void);
+        assert_eq!(sym_tbl.value(&"a".to_string()), Some(Value::Integer(42)));
     }
 
     #[test]
     fn assignment_statement_node_visit_updates_entry_in_symbol_table_if_exists() {
         let mut ast = Ast::new();
-        let mut sym_tbl = HashMap::new();
+        let mut sym_tbl = SymbolTable::new();
 
         let index_stmt =
             cmpd_stmt_node!(ast,
                             vec![assign_node!(ast, var_node!(ast, "a"), int_node!(ast, 42)),
                                  assign_node!(ast, var_node!(ast, "a"), int_node!(ast, 24))]);
 
-        assert_eq!(sym_tbl.get(&"a".to_string()), None);
+        assert_eq!(sym_tbl.value(&"a".to_string()), None);
 
-        assert!(ast.get_node(index_stmt).visit(&ast, &mut sym_tbl).is_ok());
+        assert!(ast.get_node(index_stmt)
+                    .visit(&ast, &mut sym_tbl)
+                    .is_ok());
 
-        assert_eq!(sym_tbl.get(&"a".to_string()), Some(&24));
+        assert_eq!(sym_tbl.value(&"a".to_string()), Some(Value::Integer(24)));
     }
 }

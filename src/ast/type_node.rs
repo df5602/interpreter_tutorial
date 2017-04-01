@@ -1,10 +1,10 @@
 use std::fmt;
-use std::collections::HashMap;
 
 use ast::{Ast, AstIndex, AstNode};
 use tokens::{Token, TokenValue, Span, Type};
+use symbol_table::SymbolTable;
 use errors::SyntaxError;
-use interpreter::{NodeVisitor, ReturnValue};
+use interpreter::{NodeVisitor, Value};
 
 /// Represents an type specifier.
 #[derive(Debug)]
@@ -55,11 +55,8 @@ impl AstNode for TypeNode {
 }
 
 impl NodeVisitor for TypeNode {
-    fn visit(&self,
-             _ast: &Ast,
-             _sym_tbl: &mut HashMap<String, i64>)
-             -> Result<ReturnValue, SyntaxError> {
-        Ok(ReturnValue::Void)
+    fn visit(&self, _ast: &Ast, _sym_tbl: &mut SymbolTable) -> Result<Value, SyntaxError> {
+        Ok(Value::Void)
     }
 }
 
@@ -164,8 +161,10 @@ mod tests {
 
         let type_node = type_node!(ast, Type::Integer);
 
-        let mut sym_tbl = HashMap::new();
-        assert_eq!(ast.get_node(type_node).visit(&ast, &mut sym_tbl).unwrap(),
-                   ReturnValue::Void);
+        let mut sym_tbl = SymbolTable::new();
+        assert_eq!(ast.get_node(type_node)
+                       .visit(&ast, &mut sym_tbl)
+                       .unwrap(),
+                   Value::Void);
     }
 }

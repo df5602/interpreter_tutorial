@@ -21,6 +21,7 @@ extern crate afl;
 extern crate test;
 
 mod tokens;
+mod symbol_table;
 mod ast;
 mod errors;
 #[macro_use]

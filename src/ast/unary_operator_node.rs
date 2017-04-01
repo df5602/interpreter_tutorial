@@ -1,10 +1,10 @@
 use std::fmt;
-use std::collections::HashMap;
 
 use tokens::{Token, OperatorType, TokenValue, Span};
+use symbol_table::SymbolTable;
 use ast::{Ast, AstNode, AstIndex};
 use errors::SyntaxError;
-use interpreter::{NodeVisitor, ReturnValue};
+use interpreter::{NodeVisitor, Value};
 
 /// Unary operator node.
 /// Unary operators are '+' and '-' in front of expressions.
@@ -68,19 +68,16 @@ impl AstNode for UnaryOperatorNode {
 }
 
 impl NodeVisitor for UnaryOperatorNode {
-    fn visit(&self,
-             ast: &Ast,
-             sym_tbl: &mut HashMap<String, i64>)
-             -> Result<ReturnValue, SyntaxError> {
+    fn visit(&self, ast: &Ast, sym_tbl: &mut SymbolTable) -> Result<Value, SyntaxError> {
         let operand = ast.get_node(self.operand)
             .visit(ast, sym_tbl)?
             .extract_integer_value();
 
         match self.operator {
-            OperatorType::Plus => Ok(ReturnValue::Integer(operand)),
+            OperatorType::Plus => Ok(Value::Integer(operand)),
             OperatorType::Minus => {
                 match operand.checked_neg() {
-                    Some(value) => Ok(ReturnValue::Integer(value)),
+                    Some(value) => Ok(Value::Integer(value)),
                     None => {
                         let rhs = match ast.get_node(self.operand).get_value() {
                             Some(value) => {
@@ -119,7 +116,6 @@ impl UnaryOperatorNode {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
     use std::i64;
 
     use super::*;
@@ -202,7 +198,7 @@ mod tests {
     fn unary_operator_node_visit_returns_operand_when_op_is_addition() {
         let mut ast = Ast::new();
         let index_op = unop_node!(ast, int_node!(ast, 2), OperatorType::Plus);
-        let mut sym_tbl = HashMap::new();
+        let mut sym_tbl = SymbolTable::new();
         assert_eq!(ast.get_node(index_op)
                        .visit(&ast, &mut sym_tbl)
                        .unwrap()
@@ -214,7 +210,7 @@ mod tests {
     fn unary_operator_node_visit_returns_negative_operand_when_op_is_subtraction() {
         let mut ast = Ast::new();
         let index_op = unop_node!(ast, int_node!(ast, 4), OperatorType::Minus);
-        let mut sym_tbl = HashMap::new();
+        let mut sym_tbl = SymbolTable::new();
         assert_eq!(ast.get_node(index_op)
                        .visit(&ast, &mut sym_tbl)
                        .unwrap()
@@ -226,7 +222,9 @@ mod tests {
     fn unary_operator_node_visit_returns_error_when_subtraction_overflows() {
         let mut ast = Ast::new();
         let index_op = unop_node!(ast, int_node!(ast, i64::MIN), OperatorType::Minus);
-        let mut sym_tbl = HashMap::new();
-        assert!(ast.get_node(index_op).visit(&ast, &mut sym_tbl).is_err());
+        let mut sym_tbl = SymbolTable::new();
+        assert!(ast.get_node(index_op)
+                    .visit(&ast, &mut sym_tbl)
+                    .is_err());
     }
 }

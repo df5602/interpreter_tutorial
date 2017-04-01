@@ -1,10 +1,10 @@
 use std::fmt;
-use std::collections::HashMap;
 
 use ast::{Ast, AstNode, AstIndex};
+use symbol_table::SymbolTable;
 use tokens::{Token, TokenValue, OperatorType, Span};
 use errors::SyntaxError;
-use interpreter::{NodeVisitor, ReturnValue};
+use interpreter::{NodeVisitor, Value};
 
 /// Binary Operator node.
 /// Binary operators are '+', '-', '*' and '/'.
@@ -71,10 +71,7 @@ impl AstNode for BinaryOperatorNode {
 }
 
 impl NodeVisitor for BinaryOperatorNode {
-    fn visit(&self,
-             ast: &Ast,
-             sym_tbl: &mut HashMap<String, i64>)
-             -> Result<ReturnValue, SyntaxError> {
+    fn visit(&self, ast: &Ast, sym_tbl: &mut SymbolTable) -> Result<Value, SyntaxError> {
         let lhs = ast.get_node(self.left)
             .visit(ast, sym_tbl)?
             .extract_integer_value();
@@ -100,7 +97,7 @@ impl NodeVisitor for BinaryOperatorNode {
         };
 
         match result {
-            Some(value) => Ok(ReturnValue::Integer(value)),
+            Some(value) => Ok(Value::Integer(value)),
             None => {
                 let left = match ast.get_node(self.left).get_value() {
                     Some(value) => {
@@ -147,7 +144,6 @@ impl BinaryOperatorNode {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
     use std::i64;
 
     use super::*;
@@ -240,7 +236,7 @@ mod tests {
                                    int_node!(ast, 2),
                                    int_node!(ast, 4),
                                    OperatorType::Plus);
-        let mut sym_tbl = HashMap::new();
+        let mut sym_tbl = SymbolTable::new();
         assert_eq!(ast.get_node(index_op)
                        .visit(&ast, &mut sym_tbl)
                        .unwrap()
@@ -255,8 +251,10 @@ mod tests {
                                    int_node!(ast, i64::MAX),
                                    int_node!(ast, 1),
                                    OperatorType::Plus);
-        let mut sym_tbl = HashMap::new();
-        assert!(ast.get_node(index_op).visit(&ast, &mut sym_tbl).is_err());
+        let mut sym_tbl = SymbolTable::new();
+        assert!(ast.get_node(index_op)
+                    .visit(&ast, &mut sym_tbl)
+                    .is_err());
     }
 
     #[test]
@@ -266,7 +264,7 @@ mod tests {
                                    int_node!(ast, 4),
                                    int_node!(ast, 2),
                                    OperatorType::Minus);
-        let mut sym_tbl = HashMap::new();
+        let mut sym_tbl = SymbolTable::new();
         assert_eq!(ast.get_node(index_op)
                        .visit(&ast, &mut sym_tbl)
                        .unwrap()
@@ -281,8 +279,10 @@ mod tests {
                                    int_node!(ast, -2),
                                    int_node!(ast, i64::MAX),
                                    OperatorType::Minus);
-        let mut sym_tbl = HashMap::new();
-        assert!(ast.get_node(index_op).visit(&ast, &mut sym_tbl).is_err());
+        let mut sym_tbl = SymbolTable::new();
+        assert!(ast.get_node(index_op)
+                    .visit(&ast, &mut sym_tbl)
+                    .is_err());
     }
 
     #[test]
@@ -292,7 +292,7 @@ mod tests {
                                    int_node!(ast, 4),
                                    int_node!(ast, 2),
                                    OperatorType::Times);
-        let mut sym_tbl = HashMap::new();
+        let mut sym_tbl = SymbolTable::new();
         assert_eq!(ast.get_node(index_op)
                        .visit(&ast, &mut sym_tbl)
                        .unwrap()
@@ -307,8 +307,10 @@ mod tests {
                                    int_node!(ast, 2),
                                    int_node!(ast, i64::MAX),
                                    OperatorType::Times);
-        let mut sym_tbl = HashMap::new();
-        assert!(ast.get_node(index_op).visit(&ast, &mut sym_tbl).is_err());
+        let mut sym_tbl = SymbolTable::new();
+        assert!(ast.get_node(index_op)
+                    .visit(&ast, &mut sym_tbl)
+                    .is_err());
     }
 
     #[test]
@@ -318,7 +320,7 @@ mod tests {
                                    int_node!(ast, 4),
                                    int_node!(ast, 2),
                                    OperatorType::IntegerDivision);
-        let mut sym_tbl = HashMap::new();
+        let mut sym_tbl = SymbolTable::new();
         assert_eq!(ast.get_node(index_op)
                        .visit(&ast, &mut sym_tbl)
                        .unwrap()
@@ -333,8 +335,10 @@ mod tests {
                                    int_node!(ast, i64::MIN),
                                    int_node!(ast, -1),
                                    OperatorType::IntegerDivision);
-        let mut sym_tbl = HashMap::new();
-        assert!(ast.get_node(index_op).visit(&ast, &mut sym_tbl).is_err());
+        let mut sym_tbl = SymbolTable::new();
+        assert!(ast.get_node(index_op)
+                    .visit(&ast, &mut sym_tbl)
+                    .is_err());
     }
 
     #[test]
@@ -344,7 +348,9 @@ mod tests {
                                    int_node!(ast, 4),
                                    int_node!(ast, 0),
                                    OperatorType::IntegerDivision);
-        let mut sym_tbl = HashMap::new();
-        assert!(ast.get_node(index_op).visit(&ast, &mut sym_tbl).is_err());
+        let mut sym_tbl = SymbolTable::new();
+        assert!(ast.get_node(index_op)
+                    .visit(&ast, &mut sym_tbl)
+                    .is_err());
     }
 }

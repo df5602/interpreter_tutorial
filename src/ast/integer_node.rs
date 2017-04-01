@@ -1,10 +1,10 @@
 use std::fmt;
-use std::collections::HashMap;
 
 use ast::{Ast, AstIndex, AstNode};
 use tokens::{Token, TokenValue, Span};
+use symbol_table::SymbolTable;
 use errors::SyntaxError;
-use interpreter::{NodeVisitor, ReturnValue};
+use interpreter::{NodeVisitor, Value};
 
 /// Represents an integer literal.
 #[derive(Debug)]
@@ -55,11 +55,8 @@ impl AstNode for IntegerNode {
 }
 
 impl NodeVisitor for IntegerNode {
-    fn visit(&self,
-             _ast: &Ast,
-             _sym_tbl: &mut HashMap<String, i64>)
-             -> Result<ReturnValue, SyntaxError> {
-        Ok(ReturnValue::Integer(self.value as i64))
+    fn visit(&self, _ast: &Ast, _sym_tbl: &mut SymbolTable) -> Result<Value, SyntaxError> {
+        Ok(Value::Integer(self.value as i64))
     }
 }
 
@@ -77,8 +74,6 @@ impl IntegerNode {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
-
     use super::*;
     use ast::{Ast, AstNode, AstIndex};
     use tokens::{Token, TokenType, TokenValue, Span};
@@ -157,8 +152,11 @@ mod tests {
                                                    Some(TokenValue::Integer(42)),
                                                    Span::default()));
         let ast = Ast::new();
-        let mut sym_tbl = HashMap::new();
-        assert_eq!(int_node.visit(&ast, &mut sym_tbl).unwrap().extract_integer_value(),
+        let mut sym_tbl = SymbolTable::new();
+        assert_eq!(int_node
+                       .visit(&ast, &mut sym_tbl)
+                       .unwrap()
+                       .extract_integer_value(),
                    42);
     }
 }

@@ -1,30 +1,45 @@
 //! This module contains the interpreter.
-
-use std::collections::HashMap;
+use std::fmt;
 use std::cell::RefCell;
 
 use errors::SyntaxError;
+use symbol_table::SymbolTable;
 use ast::Ast;
 
-/// The `ReturnValue` type. Used as a generic return value.
-#[derive(Debug, PartialEq)]
-pub enum ReturnValue {
-    /// Return type void
+/// The `Value` type. Used as a generic value to use as return value or argument value.
+#[derive(Clone, Debug, PartialEq)]
+pub enum Value {
+    /// No value
     Void,
-    /// Return type integer
+    /// Not initialized
+    NotInitialized,
+    /// Integer
     Integer(i64),
+    /// Real
+    Real(f64),
 }
 
-impl ReturnValue {
-    /// Returns the inner value, if `self` is of variant `ReturnValue::Integer`.
+impl fmt::Display for Value {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            Value::Void => write!(f, "void"),
+            Value::NotInitialized => write!(f, "not initialized"),
+            Value::Integer(value) => write!(f, "{}", value),
+            Value::Real(value) => write!(f, "{}", value),
+        }
+    }
+}
+
+impl Value {
+    /// Returns the inner value, if `self` is of variant `Value::Integer`.
     ///
     /// # Panics
     ///
-    /// This function will panic if `self` is not of variant `ReturnValue::Integer`.
+    /// This function will panic if `self` is not of variant `Value::Integer`.
     pub fn extract_integer_value(self) -> i64 {
         match self {
-            ReturnValue::Integer(val) => val,
-            _ => panic!("Internal error (ReturnValue is no Integer)"),
+            Value::Integer(val) => val,
+            _ => panic!("Internal error (Value is no Integer)"),
         }
     }
 }
@@ -36,16 +51,13 @@ pub trait NodeVisitor {
     /// for the binary operator node).
     /// Takes a reference to an `Ast` in order to get access to the nodes in the AST.
     /// Takes a mutable reference to a symbol table to update or access symbols.
-    fn visit(&self,
-             ast: &Ast,
-             sym_tbl: &mut HashMap<String, i64>)
-             -> Result<ReturnValue, SyntaxError>;
+    fn visit(&self, ast: &Ast, sym_tbl: &mut SymbolTable) -> Result<Value, SyntaxError>;
 }
 
 /// The `Interpreter` type. Traverses the given AST.
 pub struct Interpreter<'a> {
     ast: &'a Ast<'a>,
-    symbol_table: RefCell<HashMap<String, i64>>,
+    symbol_table: RefCell<SymbolTable>,
 }
 
 impl<'a> Interpreter<'a> {
@@ -53,7 +65,7 @@ impl<'a> Interpreter<'a> {
     pub fn new(ast: &'a Ast<'a>) -> Self {
         Interpreter {
             ast: ast,
-            symbol_table: RefCell::new(HashMap::new()),
+            symbol_table: RefCell::new(SymbolTable::new()),
         }
     }
 
@@ -69,18 +81,13 @@ impl<'a> Interpreter<'a> {
 
     /// Lookup symbol in symbol table
     #[cfg(test)]
-    fn lookup(&self, name: &String) -> Option<i64> {
-        self.symbol_table
-            .borrow()
-            .get(name)
-            .map(|val| *val)
+    fn lookup(&self, name: &String) -> Option<Value> {
+        self.symbol_table.borrow().value(name)
     }
 
     /// Print symbol table
     pub fn print_symbols(&self) {
-        for (name, value) in &*self.symbol_table.borrow() {
-            println!("{} = {}", name, value);
-        }
+        self.symbol_table.borrow().print_symbols();
     }
 }
 
@@ -100,7 +107,7 @@ mod tests {
         ast
     }
 
-    fn interpret_and_check_values(ast: &Ast, identifiers: Vec<&str>, values: Vec<i64>) {
+    fn interpret_and_check_values(ast: &Ast, identifiers: Vec<&str>, values: Vec<Value>) {
         let interpreter = Interpreter::new(&ast);
         assert!(interpreter.interpret().is_ok());
         assert_eq!(identifiers.len(), values.len());
@@ -141,7 +148,7 @@ mod tests {
                           end!(),
                           dot!()];
         let ast = parse_from(tokens);
-        interpret_and_check_values(&ast, vec!["a"], vec![22]);
+        interpret_and_check_values(&ast, vec!["a"], vec![Value::Integer(22)]);
     }
 
     #[test]
@@ -159,7 +166,7 @@ mod tests {
                           end!(),
                           dot!()];
         let ast = parse_from(tokens);
-        interpret_and_check_values(&ast, vec!["a"], vec![7]);
+        interpret_and_check_values(&ast, vec!["a"], vec![Value::Integer(7)]);
     }
 
     #[test]
@@ -179,7 +186,7 @@ mod tests {
                           end!(),
                           dot!()];
         let ast = parse_from(tokens);
-        interpret_and_check_values(&ast, vec!["a"], vec![2]);
+        interpret_and_check_values(&ast, vec!["a"], vec![Value::Integer(2)]);
     }
 
     #[test]
@@ -203,7 +210,7 @@ mod tests {
                           end!(),
                           dot!()];
         let ast = parse_from(tokens);
-        interpret_and_check_values(&ast, vec!["a"], vec![17]);
+        interpret_and_check_values(&ast, vec!["a"], vec![Value::Integer(17)]);
     }
 
     #[test]
@@ -223,7 +230,7 @@ mod tests {
                           end!(),
                           dot!()];
         let ast = parse_from(tokens);
-        interpret_and_check_values(&ast, vec!["a"], vec![9]);
+        interpret_and_check_values(&ast, vec!["a"], vec![Value::Integer(9)]);
     }
 
     #[test]
@@ -239,7 +246,7 @@ mod tests {
                           end!(),
                           dot!()];
         let ast = parse_from(tokens);
-        interpret_and_check_values(&ast, vec!["a"], vec![42]);
+        interpret_and_check_values(&ast, vec!["a"], vec![Value::Integer(42)]);
     }
 
     #[test]
@@ -257,7 +264,7 @@ mod tests {
                           end!(),
                           dot!()];
         let ast = parse_from(tokens);
-        interpret_and_check_values(&ast, vec!["a"], vec![-1]);
+        interpret_and_check_values(&ast, vec!["a"], vec![Value::Integer(-1)]);
     }
 
     #[test]
@@ -275,7 +282,7 @@ mod tests {
                           end!(),
                           dot!()];
         let ast = parse_from(tokens);
-        interpret_and_check_values(&ast, vec!["a"], vec![1]);
+        interpret_and_check_values(&ast, vec!["a"], vec![Value::Integer(1)]);
     }
 
     #[test]
@@ -293,7 +300,7 @@ mod tests {
                           end!(),
                           dot!()];
         let ast = parse_from(tokens);
-        interpret_and_check_values(&ast, vec!["a"], vec![6]);
+        interpret_and_check_values(&ast, vec!["a"], vec![Value::Integer(6)]);
     }
 
     #[test]
@@ -313,7 +320,7 @@ mod tests {
                           end!(),
                           dot!()];
         let ast = parse_from(tokens);
-        interpret_and_check_values(&ast, vec!["a"], vec![9]);
+        interpret_and_check_values(&ast, vec!["a"], vec![Value::Integer(9)]);
     }
 
     #[test]
@@ -333,7 +340,7 @@ mod tests {
                           end!(),
                           dot!()];
         let ast = parse_from(tokens);
-        interpret_and_check_values(&ast, vec!["a"], vec![9]);
+        interpret_and_check_values(&ast, vec!["a"], vec![Value::Integer(9)]);
     }
 
     #[test]
@@ -353,7 +360,7 @@ mod tests {
                           end!(),
                           dot!()];
         let ast = parse_from(tokens);
-        interpret_and_check_values(&ast, vec!["a"], vec![15]);
+        interpret_and_check_values(&ast, vec!["a"], vec![Value::Integer(15)]);
     }
 
     #[test]
@@ -371,7 +378,7 @@ mod tests {
                           end!(),
                           dot!()];
         let ast = parse_from(tokens);
-        interpret_and_check_values(&ast, vec!["a"], vec![12]);
+        interpret_and_check_values(&ast, vec!["a"], vec![Value::Integer(12)]);
     }
 
     #[test]
@@ -408,7 +415,7 @@ mod tests {
                           end!(),
                           dot!()];
         let ast = parse_from(tokens);
-        interpret_and_check_values(&ast, vec!["a"], vec![3]);
+        interpret_and_check_values(&ast, vec!["a"], vec![Value::Integer(3)]);
     }
 
     #[test]
@@ -425,7 +432,7 @@ mod tests {
                           end!(),
                           dot!()];
         let ast = parse_from(tokens);
-        interpret_and_check_values(&ast, vec!["a"], vec![-2]);
+        interpret_and_check_values(&ast, vec!["a"], vec![Value::Integer(-2)]);
     }
 
     #[test]
@@ -446,7 +453,7 @@ mod tests {
                           end!(),
                           dot!()];
         let ast = parse_from(tokens);
-        interpret_and_check_values(&ast, vec!["a"], vec![-5]);
+        interpret_and_check_values(&ast, vec!["a"], vec![Value::Integer(-5)]);
     }
 
     #[test]
@@ -463,7 +470,7 @@ mod tests {
                           end!(),
                           dot!()];
         let ast = parse_from(tokens);
-        interpret_and_check_values(&ast, vec!["a"], vec![2]);
+        interpret_and_check_values(&ast, vec!["a"], vec![Value::Integer(2)]);
     }
 
     #[test]
@@ -485,7 +492,7 @@ mod tests {
                           end!(),
                           dot!()];
         let ast = parse_from(tokens);
-        interpret_and_check_values(&ast, vec!["a"], vec![8]);
+        interpret_and_check_values(&ast, vec!["a"], vec![Value::Integer(8)]);
     }
 
     #[test]
@@ -505,7 +512,9 @@ mod tests {
                           end!(),
                           dot!()];
         let ast = parse_from(tokens);
-        interpret_and_check_values(&ast, vec!["a", "b"], vec![2, 5]);
+        interpret_and_check_values(&ast,
+                                   vec!["a", "b"],
+                                   vec![Value::Integer(2), Value::Integer(5)]);
     }
 
     #[test]
@@ -528,7 +537,9 @@ mod tests {
                           end!(),
                           dot!()];
         let ast = parse_from(tokens);
-        interpret_and_check_values(&ast, vec!["a", "b"], vec![2, 5]);
+        interpret_and_check_values(&ast,
+                                   vec!["a", "b"],
+                                   vec![Value::Integer(2), Value::Integer(5)]);
     }
 
     #[test]
@@ -548,7 +559,9 @@ mod tests {
                           end!(),
                           dot!()];
         let ast = parse_from(tokens);
-        interpret_and_check_values(&ast, vec!["a", "b"], vec![2, 2]);
+        interpret_and_check_values(&ast,
+                                   vec!["a", "b"],
+                                   vec![Value::Integer(2), Value::Integer(2)]);
     }
 
     #[test]
@@ -570,7 +583,9 @@ mod tests {
                           end!(),
                           dot!()];
         let ast = parse_from(tokens);
-        interpret_and_check_values(&ast, vec!["a", "b"], vec![2, 3]);
+        interpret_and_check_values(&ast,
+                                   vec!["a", "b"],
+                                   vec![Value::Integer(2), Value::Integer(3)]);
     }
 
     #[test]

@@ -72,6 +72,13 @@ macro_rules! type_node {
     }}
 }
 
+macro_rules! var_decl_node {
+    ($ast:expr, $var_name:expr, $type_spec:expr) => {{
+        let node = VariableDeclNode::new($var_name, $type_spec);
+        $ast.add_node(node)
+    }}
+}
+
 macro_rules! program_node {
     ($ast:expr, $name:expr, $variable:expr, $block:expr) => {{
         let node = ProgramNode::new($name.to_string(), $variable, $block);

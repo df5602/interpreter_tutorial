@@ -1,10 +1,10 @@
 use std::fmt;
-use std::collections::HashMap;
 
 use tokens::{Token, TokenValue, Span};
+use symbol_table::SymbolTable;
 use errors::SyntaxError;
 use ast::{Ast, AstNode, AstIndex};
-use interpreter::{NodeVisitor, ReturnValue};
+use interpreter::{NodeVisitor, Value};
 
 /// Represents an identifier.
 #[derive(Debug)]
@@ -55,12 +55,9 @@ impl AstNode for VariableNode {
 }
 
 impl NodeVisitor for VariableNode {
-    fn visit(&self,
-             _ast: &Ast,
-             sym_tbl: &mut HashMap<String, i64>)
-             -> Result<ReturnValue, SyntaxError> {
-        match sym_tbl.get(&self.name) {
-            Some(value) => Ok(ReturnValue::Integer(*value)),
+    fn visit(&self, _ast: &Ast, sym_tbl: &mut SymbolTable) -> Result<Value, SyntaxError> {
+        match sym_tbl.value(&self.name) {
+            Some(value) => Ok(value),
             None => {
                 Err(SyntaxError {
                         msg: format!("No variable named `{}` in scope.", self.name),
@@ -85,12 +82,10 @@ impl VariableNode {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
-
     use super::*;
     use tokens::{Token, TokenType, TokenValue, Span};
     use ast::{Ast, AstNode, AstIndex, IntegerNode, AssignmentStmtNode};
-    use interpreter::ReturnValue;
+    use interpreter::Value;
 
     #[test]
     fn variable_node_get_parent_returns_none_when_node_has_no_parent() {
@@ -160,25 +155,31 @@ mod tests {
     #[test]
     fn variable_node_visit_returns_value_if_variable_exists() {
         let mut ast = Ast::new();
-        let mut sym_tbl = HashMap::new();
+        let mut sym_tbl = SymbolTable::new();
 
         let index_var_a = var_node!(ast, "a");
         let index_ass_1 = assign_node!(ast, index_var_a, int_node!(ast, 42));
 
-        assert!(ast.get_node(index_ass_1).visit(&ast, &mut sym_tbl).is_ok());
-        assert_eq!(sym_tbl.get(&"a".to_string()), Some(&42));
-        assert_eq!(ast.get_node(index_var_a).visit(&ast, &mut sym_tbl).unwrap(),
-                   ReturnValue::Integer(42));
+        assert!(ast.get_node(index_ass_1)
+                    .visit(&ast, &mut sym_tbl)
+                    .is_ok());
+        assert_eq!(sym_tbl.value(&"a".to_string()), Some(Value::Integer(42)));
+        assert_eq!(ast.get_node(index_var_a)
+                       .visit(&ast, &mut sym_tbl)
+                       .unwrap(),
+                   Value::Integer(42));
     }
 
     #[test]
     fn variable_node_visit_returns_error_if_variable_doesnt_exist() {
         let mut ast = Ast::new();
-        let mut sym_tbl = HashMap::new();
+        let mut sym_tbl = SymbolTable::new();
 
         let index_var_a = var_node!(ast, "a");
 
-        assert_eq!(sym_tbl.get(&"a".to_string()), None);
-        assert!(ast.get_node(index_var_a).visit(&ast, &mut sym_tbl).is_err());
+        assert_eq!(sym_tbl.value(&"a".to_string()), None);
+        assert!(ast.get_node(index_var_a)
+                    .visit(&ast, &mut sym_tbl)
+                    .is_err());
     }
 }

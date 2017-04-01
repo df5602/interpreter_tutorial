@@ -1,10 +1,10 @@
 use std::fmt;
-use std::collections::HashMap;
 
 use tokens::{TokenValue, Span};
+use symbol_table::SymbolTable;
 use errors::SyntaxError;
 use ast::{Ast, AstNode, AstIndex};
-use interpreter::{NodeVisitor, ReturnValue};
+use interpreter::{NodeVisitor, Value};
 
 /// Program node. A program declaration consists of a program name and a block:
 /// program : PROGRAM variable SEMICOLON block DOT
@@ -70,10 +70,7 @@ impl AstNode for ProgramNode {
 }
 
 impl NodeVisitor for ProgramNode {
-    fn visit(&self,
-             ast: &Ast,
-             sym_tbl: &mut HashMap<String, i64>)
-             -> Result<ReturnValue, SyntaxError> {
+    fn visit(&self, ast: &Ast, sym_tbl: &mut SymbolTable) -> Result<Value, SyntaxError> {
         ast.get_node(self.block).visit(ast, sym_tbl)
     }
 }
@@ -160,9 +157,9 @@ mod tests {
                                                                  int_node!(ast, 4),
                                                                  OperatorType::Plus)])));
 
-        let mut sym_tbl = HashMap::new();
+        let mut sym_tbl = SymbolTable::new();
         assert_eq!(ast.get_node(index).visit(&ast, &mut sym_tbl).unwrap(),
-                   ReturnValue::Void);
+                   Value::Void);
     }
 
     #[test]
@@ -180,9 +177,9 @@ mod tests {
                                                                         var_node!(ast, "a"),
                                                                         int_node!(ast, 2))])));
 
-        let mut sym_tbl = HashMap::new();
-        assert_eq!(sym_tbl.get(&"a".to_string()), None);
+        let mut sym_tbl = SymbolTable::new();
+        assert_eq!(sym_tbl.value(&"a".to_string()), None);
         assert!(ast.get_node(index).visit(&ast, &mut sym_tbl).is_ok());
-        assert_eq!(sym_tbl.get(&"a".to_string()), Some(&2));
+        assert_eq!(sym_tbl.value(&"a".to_string()), Some(Value::Integer(2)));
     }
 }

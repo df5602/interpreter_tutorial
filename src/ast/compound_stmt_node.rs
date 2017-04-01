@@ -1,10 +1,10 @@
 use std::fmt;
-use std::collections::HashMap;
 
 use tokens::{Token, TokenValue, Span};
+use symbol_table::SymbolTable;
 use errors::SyntaxError;
 use ast::{Ast, AstNode, AstIndex};
-use interpreter::{NodeVisitor, ReturnValue};
+use interpreter::{NodeVisitor, Value};
 
 /// Compound statement node. A compound statement consists of
 /// a 'BEGIN' keyword, followed by a list of statements and the
@@ -67,14 +67,11 @@ impl AstNode for CompoundStmtNode {
 }
 
 impl NodeVisitor for CompoundStmtNode {
-    fn visit(&self,
-             ast: &Ast,
-             sym_tbl: &mut HashMap<String, i64>)
-             -> Result<ReturnValue, SyntaxError> {
+    fn visit(&self, ast: &Ast, sym_tbl: &mut SymbolTable) -> Result<Value, SyntaxError> {
         for statement in &self.statement_list {
             ast.get_node(*statement).visit(ast, sym_tbl)?;
         }
-        Ok(ReturnValue::Void)
+        Ok(Value::Void)
     }
 }
 
@@ -97,12 +94,10 @@ impl CompoundStmtNode {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
-
     use super::*;
     use ast::{Ast, AstNode, AstIndex, IntegerNode, BinaryOperatorNode};
     use tokens::{Token, TokenType, TokenValue, OperatorType, Span};
-    use interpreter::ReturnValue;
+    use interpreter::Value;
 
     #[test]
     fn compound_statement_node_get_parent_returns_none_when_node_has_no_parent() {
@@ -167,8 +162,10 @@ mod tests {
                                                           int_node!(ast, 2),
                                                           int_node!(ast, 4),
                                                           OperatorType::Plus)]);
-        let mut sym_tbl = HashMap::new();
-        assert_eq!(ast.get_node(index_stmt).visit(&ast, &mut sym_tbl).unwrap(),
-                   ReturnValue::Void);
+        let mut sym_tbl = SymbolTable::new();
+        assert_eq!(ast.get_node(index_stmt)
+                       .visit(&ast, &mut sym_tbl)
+                       .unwrap(),
+                   Value::Void);
     }
 }

@@ -1,10 +1,10 @@
 use std::fmt;
-use std::collections::HashMap;
 
 use tokens::{TokenValue, Span};
+use symbol_table::SymbolTable;
 use errors::SyntaxError;
 use ast::{Ast, AstNode, AstIndex};
-use interpreter::{NodeVisitor, ReturnValue};
+use interpreter::{NodeVisitor, Value};
 
 /// Variable declaration. It consists of the following form:
 /// a : INTEGER;
@@ -67,11 +67,27 @@ impl AstNode for VariableDeclNode {
 }
 
 impl NodeVisitor for VariableDeclNode {
-    fn visit(&self,
-             _ast: &Ast,
-             _sym_tbl: &mut HashMap<String, i64>)
-             -> Result<ReturnValue, SyntaxError> {
-        unimplemented!();
+    fn visit(&self, ast: &Ast, sym_tbl: &mut SymbolTable) -> Result<Value, SyntaxError> {
+        // Retrieve variable name from variable node
+        let variable_node = ast.get_node(self.variable);
+        let name = variable_node
+            .get_value()
+            .unwrap()
+            .extract_identifier_value();
+
+        let type_node = ast.get_node(self.type_spec);
+        let type_spec = type_node.get_value().unwrap().extract_type_specifier();
+
+        // Only add variable to symbol table, if it doesn't exist yet.
+        match sym_tbl.insert(name, type_spec) {
+            Ok(_) => Ok(Value::Void),
+            Err(msg) => {
+                Err(SyntaxError {
+                        msg: msg,
+                        span: variable_node.get_span(),
+                    })
+            }
+        }
     }
 }
 
@@ -90,8 +106,8 @@ impl VariableDeclNode {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tokens::Span;
-    use ast::{AstNode, AstIndex};
+    use tokens::{Token, TokenType, Span, Type};
+    use ast::{AstNode, AstIndex, VariableNode, TypeNode};
 
     #[test]
     fn variable_decl_node_get_parent_returns_none_when_node_has_no_parent() {
@@ -133,5 +149,46 @@ mod tests {
         let mut node = VariableDeclNode::new(AstIndex(0), AstIndex(1));
         node.set_span(Span::new(4, 5));
         assert_eq!(node.get_span(), Span::new(4, 5));
+    }
+
+    #[test]
+    fn variable_decl_node_visit_adds_entry_to_symbol_table() {
+        let mut ast = Ast::new();
+        let mut sym_tbl = SymbolTable::new();
+
+        let index = var_decl_node!(ast, var_node!(ast, "a"), type_node!(ast, Type::Integer));
+
+        assert_eq!(sym_tbl.value(&"a".to_string()), None);
+        assert_eq!(ast.get_node(index).visit(&ast, &mut sym_tbl).unwrap(),
+                   Value::Void);
+        assert_eq!(sym_tbl.value(&"a".to_string()), Some(Value::NotInitialized));
+    }
+
+    #[test]
+    fn variable_decl_node_visit_returns_error_if_entry_already_exists() {
+        let mut ast = Ast::new();
+        let mut sym_tbl = SymbolTable::new();
+
+        let decl = var_decl_node!(ast, var_node!(ast, "a"), type_node!(ast, Type::Integer));
+
+        assert_eq!(sym_tbl.value(&"a".to_string()), None);
+        assert_eq!(ast.get_node(decl).visit(&ast, &mut sym_tbl).unwrap(),
+                   Value::Void);
+        assert_eq!(sym_tbl.value(&"a".to_string()), Some(Value::NotInitialized));
+
+        assert!(ast.get_node(decl).visit(&ast, &mut sym_tbl).is_err());
+    }
+
+    #[test]
+    fn variable_decl_node_visit_added_entry_has_correct_type() {
+        let mut ast = Ast::new();
+        let mut sym_tbl = SymbolTable::new();
+
+        let decl = var_decl_node!(ast, var_node!(ast, "a"), type_node!(ast, Type::Real));
+
+        assert_eq!(sym_tbl.value(&"a".to_string()), None);
+        assert_eq!(ast.get_node(decl).visit(&ast, &mut sym_tbl).unwrap(),
+                   Value::Void);
+        assert_eq!(sym_tbl.symbol_type(&"a".to_string()), Some(Type::Real));
     }
 }
