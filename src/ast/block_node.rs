@@ -164,7 +164,9 @@ mod tests {
         let mut ast = Ast::new();
 
         let index = block_node!(ast,
-                                vec![],
+                                vec![var_decl_node!(ast,
+                                                    var_node!(ast, "a"),
+                                                    type_node!(ast, Type::Integer))],
                                 cmpd_stmt_node!(ast,
                                                 vec![assign_node!(ast,
                                                                   var_node!(ast, "a"),

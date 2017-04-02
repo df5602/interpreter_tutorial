@@ -1,6 +1,6 @@
 use std::fmt;
 
-use tokens::{Token, TokenValue, Span, Type};
+use tokens::{Token, TokenValue, Span};
 use symbol_table::SymbolTable;
 use errors::SyntaxError;
 use ast::{Ast, AstNode, AstIndex};
@@ -74,10 +74,17 @@ impl NodeVisitor for AssignmentStmtNode {
             .unwrap()
             .extract_identifier_value();
         let expression = ast.get_node(self.expression).visit(ast, sym_tbl)?;
-        // TODO: handle use of undeclared variable
-        sym_tbl.insert(name.clone(), Type::Integer); // TODO: correct type
-        sym_tbl.update(name, expression);
-        Ok(Value::Void)
+
+        // Try to update value in symbol table, return error, if no entry exists
+        match sym_tbl.update(name, expression) {
+            Ok(_) => Ok(Value::Void),
+            Err(msg) => {
+                Err(SyntaxError {
+                        msg: msg,
+                        span: self.span.clone(),
+                    })
+            }
+        }
     }
 }
 
@@ -97,7 +104,7 @@ impl AssignmentStmtNode {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tokens::{Token, TokenType, TokenValue, Span};
+    use tokens::{Token, TokenType, TokenValue, Span, Type};
     use ast::{Ast, AstNode, AstIndex, VariableNode, IntegerNode, CompoundStmtNode};
     use interpreter::Value;
 
@@ -159,29 +166,31 @@ mod tests {
     }
 
     #[test]
-    fn assignment_statement_node_visit_adds_entry_to_symbol_table() {
+    fn assignment_statement_node_visit_updates_entry_in_symbol_table_1() {
         let mut ast = Ast::new();
         let mut sym_tbl = SymbolTable::new();
+        assert!(sym_tbl.insert("a".to_string(), Type::Integer).is_ok());
 
         let index = assign_node!(ast, var_node!(ast, "a"), int_node!(ast, 42));
 
-        assert_eq!(sym_tbl.value(&"a".to_string()), None);
+        assert_eq!(sym_tbl.value(&"a".to_string()), Some(Value::NotInitialized));
         assert_eq!(ast.get_node(index).visit(&ast, &mut sym_tbl).unwrap(),
                    Value::Void);
         assert_eq!(sym_tbl.value(&"a".to_string()), Some(Value::Integer(42)));
     }
 
     #[test]
-    fn assignment_statement_node_visit_updates_entry_in_symbol_table_if_exists() {
+    fn assignment_statement_node_visit_updates_entry_in_symbol_table_2() {
         let mut ast = Ast::new();
         let mut sym_tbl = SymbolTable::new();
+        assert!(sym_tbl.insert("a".to_string(), Type::Integer).is_ok());
 
         let index_stmt =
             cmpd_stmt_node!(ast,
                             vec![assign_node!(ast, var_node!(ast, "a"), int_node!(ast, 42)),
                                  assign_node!(ast, var_node!(ast, "a"), int_node!(ast, 24))]);
 
-        assert_eq!(sym_tbl.value(&"a".to_string()), None);
+        assert_eq!(sym_tbl.value(&"a".to_string()), Some(Value::NotInitialized));
 
         assert!(ast.get_node(index_stmt)
                     .visit(&ast, &mut sym_tbl)

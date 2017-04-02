@@ -83,7 +83,7 @@ impl VariableNode {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tokens::{Token, TokenType, TokenValue, Span};
+    use tokens::{Token, TokenType, TokenValue, Span, Type};
     use ast::{Ast, AstNode, AstIndex, IntegerNode, AssignmentStmtNode};
     use interpreter::Value;
 
@@ -156,6 +156,7 @@ mod tests {
     fn variable_node_visit_returns_value_if_variable_exists() {
         let mut ast = Ast::new();
         let mut sym_tbl = SymbolTable::new();
+        assert!(sym_tbl.insert("a".to_string(), Type::Integer).is_ok());
 
         let index_var_a = var_node!(ast, "a");
         let index_ass_1 = assign_node!(ast, index_var_a, int_node!(ast, 42));

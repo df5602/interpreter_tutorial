@@ -39,10 +39,13 @@ impl SymbolTable {
         }
     }
 
-    pub fn update(&mut self, name: String, value: Value) {
+    pub fn update(&mut self, name: String, value: Value) -> Result<(), String> {
         match self.table.entry(name) {
-            Entry::Occupied(mut entry) => entry.get_mut().value = value,
-            Entry::Vacant(_) => panic!("Internal error (SymbolTableEntry doesn't exist.)"),
+            Entry::Occupied(mut entry) => {
+                entry.get_mut().value = value;
+                Ok(())
+            }
+            Entry::Vacant(entry) => Err(format!("Use of undeclared variable `{}`.", entry.key())),
         }
     }
 

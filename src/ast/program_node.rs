@@ -95,9 +95,9 @@ impl ProgramNode {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tokens::{Token, TokenType, OperatorType};
+    use tokens::{Token, TokenType, OperatorType, Type};
     use ast::{AstNode, AstIndex, VariableNode, BlockNode, CompoundStmtNode, BinaryOperatorNode,
-              IntegerNode, AssignmentStmtNode};
+              IntegerNode, AssignmentStmtNode, VariableDeclNode, TypeNode};
 
     #[test]
     fn program_node_get_parent_returns_none_when_node_has_no_parent() {
@@ -171,7 +171,9 @@ mod tests {
                           "Test",
                           var_node!(ast, "Test"),
                           block_node!(ast,
-                                      vec![],
+                                      vec![var_decl_node!(ast,
+                                                          var_node!(ast, "a"),
+                                                          type_node!(ast, Type::Integer))],
                                       cmpd_stmt_node!(ast,
                                                       vec![assign_node!(ast,
                                                                         var_node!(ast, "a"),
