@@ -96,6 +96,10 @@ macro_rules! program {
         () => ((TokenType::Program, TokenValue::Empty))
     }
 
+macro_rules! var {
+        () => ((TokenType::Var, TokenValue::Empty))
+    }
+
 macro_rules! assign {
         () => ((TokenType::Assign, TokenValue::Empty))
     }
