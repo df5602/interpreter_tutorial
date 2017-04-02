@@ -114,10 +114,11 @@ impl<L: Lexer> Parser<L> {
     }
 
     /// Parse a block:
-    /// block -> compound_statement
+    /// block -> declarations compound_statement
     fn block(&self, ast: &mut Ast) -> Result<AstIndex, SyntaxError> {
+        let declarations = self.declarations(ast)?;
         let compound_statement = self.compound_statement(ast)?;
-        let node = BlockNode::new(Vec::new(), compound_statement);
+        let node = BlockNode::new(declarations, compound_statement);
         Ok(ast.add_node(node))
     }
 
@@ -780,13 +781,70 @@ mod tests {
                    "Test".to_lowercase().to_string());
     }
 
-    // block : compound_statement
-    //      compound_statement -> PASS: BLK.1
-    //      <nothing> -> FAIL: BLK.2
-    //      compound_statement compound_statement -> FAIL: PROG.3
+    // block : declarations compound_statement
+    //      declarations compound_statement -> PASS: BLK.1
+    //      compound_statement -> PASS: BLK.2
+    //      declarations declarations compound_statement -> FAIL: BLK.3
+    //      declarations -> FAIL: BLK.4
+    //      declarations compound_statement compound_statement -> FAIL: BLK.5
 
     #[test]
     // BLK.1
+    fn parser_block_parses_declarations_and_compound_statement() {
+        // Input: VAR a: Integer; BEGIN a := 1 END
+        let tokens = vec![var!(),
+                          identifier!("a"),
+                          colon!(),
+                          integer!(),
+                          semicolon!(),
+                          begin!(),
+                          identifier!("a"),
+                          assign!(),
+                          integer_lit!(1),
+                          end!()];
+        let (parser, mut ast) = setup_from(tokens);
+
+        let block_index = parser.block(&mut ast).unwrap();
+        let block_node = ast.get_node(block_index);
+        assert_eq!(block_node.get_parent(), None);
+
+        let block_children = block_node.get_children();
+        let decl_index = block_children[0];
+        let decl_node = ast.get_node(decl_index);
+        assert_eq!(decl_node.get_parent(), Some(block_index));
+
+        let decl_children = decl_node.get_children();
+        verify_node(&ast,
+                    decl_children[0],
+                    Some(decl_index),
+                    TokenValue::Identifier("a".to_string()));
+        verify_node(&ast,
+                    decl_children[1],
+                    Some(decl_index),
+                    TokenValue::Type(Type::Integer));
+
+        let stmt_index = block_children[1];
+        let stmt_node = ast.get_node(stmt_index);
+        assert_eq!(stmt_node.get_parent(), Some(block_index));
+
+        let statements = stmt_node.get_children();
+        assert_eq!(statements.len(), 1);
+
+        let statement = ast.get_node(statements[0]);
+        assert_eq!(statement.get_parent(), Some(stmt_index));
+
+        verify_node(&ast,
+                    statement.get_children()[0],
+                    Some(statements[0]),
+                    TokenValue::Identifier("a".to_string()));
+        verify_node(&ast,
+                    statement.get_children()[1],
+                    Some(statements[0]),
+                    TokenValue::Integer(1));
+    }
+
+    #[test]
+    // BLK.2
     fn parser_block_parses_compound_statement() {
         // Input: BEGIN a := 1 END
         let tokens = vec![begin!(), identifier!("a"), assign!(), integer_lit!(1), end!()];
@@ -814,26 +872,75 @@ mod tests {
     }
 
     #[test]
-    // BLK.2
-    fn parser_block_returns_error_when_empty_input() {
-        // Input:
-        let tokens = vec![];
+    // BLK.3
+    fn parser_block_returns_error_if_two_declaration_lists_are_present() {
+        // Input: VAR a: INTEGER; VAR b: REAL; BEGIN a := 1 END
+        let tokens = vec![var!(),
+                          identifier!("a"),
+                          colon!(),
+                          integer!(),
+                          semicolon!(),
+                          var!(),
+                          identifier!("b"),
+                          colon!(),
+                          real!(),
+                          semicolon!(),
+                          begin!(),
+                          identifier!("a"),
+                          assign!(),
+                          integer_lit!(1),
+                          end!()];
         let (parser, mut ast) = setup_from(tokens);
 
         assert!(parser.block(&mut ast).is_err());
+    }
+
+    #[test]
+    // BLK.4
+    fn parser_block_returns_error_if_compound_statement_is_missing() {
+        // Input: VAR a: INTEGER;
+        let tokens = vec![var!(), identifier!("a"), colon!(), integer!(), semicolon!()];
+        let (parser, mut ast) = setup_from(tokens);
+
+        assert!(parser.block(&mut ast).is_err());
+    }
+
+    #[test]
+    // BLK.5
+    fn parser_block_returns_error_if_two_compound_statements_are_present() {
+        // Input: PROGRAM Test; VAR a: INTEGER; BEGIN a := 1 END BEGIN END.
+        let tokens = vec![program!(),
+                          identifier!("Test"),
+                          semicolon!(),
+                          var!(),
+                          identifier!("a"),
+                          colon!(),
+                          integer!(),
+                          semicolon!(),
+                          begin!(),
+                          identifier!("a"),
+                          assign!(),
+                          integer_lit!(1),
+                          end!(),
+                          begin!(),
+                          end!(),
+                          dot!()];
+        let (parser, mut ast) = setup_from(tokens);
+
+        assert!(parser.program(&mut ast).is_err());
     }
 
     // declarations : (VAR (variable_declaration SEMI)+)?
     //      <empty> -> PASS: DECL.1
     //      VAR variable_declaration SEMI -> PASS: DECL.2
     //      VAR variable_declaration SEMI variable_declaration SEMI -> PASS: DECL.3
-    //      variable_declaration SEMI -> FAIL: not yet testable
+    //      variable_declaration SEMI -> FAIL: DECL.4
     //      VAR VAR variable_declaration SEMI - FAIL: DECL.5
     //      VAR -> FAIL: DECL.6
     //      VAR SEMI -> FAIL: DECL.7
     //      VAR variable_declaration variable_declaration SEMI -> FAIL: DECL.8
     //      VAR variable_declaration -> FAIL: DECL.9
-    //      VAR variable_declaration SEMI SEMI -> FAIL: not yet testable
+    //      VAR variable_declaration SEMI SEMI -> FAIL: DECL.10
 
     #[test]
     // DECL.1
@@ -906,6 +1013,16 @@ mod tests {
     }
 
     #[test]
+    // DECL.4
+    fn parser_declarations_returns_error_if_var_token_is_missing() {
+        // Input: a: INTEGER; BEGIN END
+        let tokens = vec![identifier!("a"), colon!(), integer!(), semicolon!(), begin!(), end!()];
+        let (parser, mut ast) = setup_from(tokens);
+
+        assert!(parser.block(&mut ast).is_err());
+    }
+
+    #[test]
     // DECL.5
     fn parser_declarations_returns_error_if_var_token_is_repeated() {
         // Input: VAR VAR a: INTEGER;
@@ -960,6 +1077,23 @@ mod tests {
         let (parser, mut ast) = setup_from(tokens);
 
         assert!(parser.declarations(&mut ast).is_err());
+    }
+
+    #[test]
+    // DECL.10
+    fn parser_declarations_returns_error_if_declarations_are_terminated_by_two_semicolons() {
+        // Input: VAR a: INTEGER;; BEGIN END
+        let tokens = vec![var!(),
+                          identifier!("a"),
+                          colon!(),
+                          integer!(),
+                          semicolon!(),
+                          semicolon!(),
+                          begin!(),
+                          end!()];
+        let (parser, mut ast) = setup_from(tokens);
+
+        assert!(parser.block(&mut ast).is_err());
     }
 
     // variable_declaration : variable (COMMA variable)* COLON type_spec
