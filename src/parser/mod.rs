@@ -3,7 +3,7 @@
 use std::cell::RefCell;
 use tokens::{Token, TokenType, OperatorType, Span};
 use ast::{Ast, AstIndex, BinaryOperatorNode, UnaryOperatorNode, IntegerNode, VariableNode,
-          AssignmentStmtNode, CompoundStmtNode, BlockNode, ProgramNode, TypeNode};
+          AssignmentStmtNode, CompoundStmtNode, BlockNode, ProgramNode, TypeNode, VariableDeclNode};
 use errors::SyntaxError;
 use lexer::Lexer;
 
@@ -25,10 +25,7 @@ impl<L: Lexer> Parser<L> {
     /// Consumes current token if it is of the expected type
     fn eat(&self, token_type: TokenType) -> Result<Span, SyntaxError> {
         let mut current_token = self.current_token.borrow_mut();
-        let span = current_token.as_ref()
-            .unwrap()
-            .span
-            .clone();
+        let span = current_token.as_ref().unwrap().span.clone();
 
         // If token has expected type...
         if current_token.as_ref().unwrap().token_type == token_type {
@@ -70,10 +67,7 @@ impl<L: Lexer> Parser<L> {
     /// Gets a clone of the current token
     /// Precondition: First token has been loaded
     fn get_current_token(&self) -> Token {
-        self.current_token
-            .borrow()
-            .clone()
-            .unwrap()
+        self.current_token.borrow().clone().unwrap()
     }
 
     /// Start parsing: load first token, parse input and checks that last token is an EOF
@@ -127,18 +121,72 @@ impl<L: Lexer> Parser<L> {
         Ok(ast.add_node(node))
     }
 
+    /// Parse a variable declaration:
+    /// variable_declaration -> variable (COMMA variable)* COLON type_spec
+    fn variable_declaration(&self, ast: &mut Ast) -> Result<Vec<AstIndex>, SyntaxError> {
+        let mut variables = Vec::new();
+
+        // Expect variable
+        variables.push(self.variable(ast)?);
+
+        // Parse further variables if present
+        loop {
+            if self.get_current_token().token_type == TokenType::Comma {
+                self.eat(TokenType::Comma)?;
+                variables.push(self.variable(ast)?);
+            } else {
+                break;
+            }
+        }
+
+        // Expect colon
+        self.eat(TokenType::Colon)?;
+
+        // Expect type specifier
+        let type_specs = self.type_spec(ast, variables.len())?;
+
+        // Construct variable declaration nodes
+        let mut nodes = Vec::new();
+
+        for (variable, type_spec) in variables.iter().zip(type_specs.iter()) {
+            let node = VariableDeclNode::new(*variable, *type_spec);
+            nodes.push(ast.add_node(node));
+        }
+        Ok(nodes)
+    }
+
     /// Parse a type specifier:
     /// type_spec -> INTEGER | REAL
-    fn type_spec(&self, ast: &mut Ast) -> Result<AstIndex, SyntaxError> {
+    ///
+    /// Creates one TypeNode for each variable declaration
+    fn type_spec(&self,
+                 ast: &mut Ast,
+                 number_of_nodes: usize)
+                 -> Result<Vec<AstIndex>, SyntaxError> {
+        // Expect Type Specifier
         let type_specifier = self.get_current_token();
         self.eat(TokenType::TypeSpecifier)?;
 
-        let type_value = type_specifier.value
+        // Extract type
+        let type_value = type_specifier
+            .value
             .as_ref()
             .unwrap()
             .extract_type_specifier();
+
+        // Create nodes
+        let mut nodes = Vec::new();
+        for _ in 0..number_of_nodes - 1 {
+            let type_value = type_value.clone();
+            let type_specifier = type_specifier.clone();
+
+            let node = TypeNode::new(type_value, type_specifier);
+            nodes.push(ast.add_node(node));
+        }
         let node = TypeNode::new(type_value, type_specifier);
-        Ok(ast.add_node(node))
+        nodes.push(ast.add_node(node));
+
+        Ok(nodes)
     }
 
     /// Parse a compound statement:
@@ -217,7 +265,8 @@ impl<L: Lexer> Parser<L> {
         self.eat(TokenType::Identifier)?;
 
         // Extract name
-        let name = variable.value
+        let name = variable
+            .value
             .as_ref()
             .unwrap()
             .extract_identifier_value();
@@ -246,10 +295,7 @@ impl<L: Lexer> Parser<L> {
             self.eat(TokenType::Operator)?;
 
             // Extract value
-            let op_type = op.value
-                .as_ref()
-                .unwrap()
-                .extract_operator_type();
+            let op_type = op.value.as_ref().unwrap().extract_operator_type();
 
             // Expect a term on the right hand side
             let rhs = self.term(ast)?;
@@ -277,19 +323,13 @@ impl<L: Lexer> Parser<L> {
             let op = self.get_current_token();
             if op.token_type == TokenType::Operator {
                 // Extract value
-                let op_type = op.value
-                    .as_ref()
-                    .unwrap()
-                    .extract_operator_type();
+                let op_type = op.value.as_ref().unwrap().extract_operator_type();
                 if op_type != OperatorType::Times && op_type != OperatorType::IntegerDivision {
                     return Ok(result);
                 }
             }
             self.eat(TokenType::Operator)?;
-            let op_type = op.value
-                .as_ref()
-                .unwrap()
-                .extract_operator_type();
+            let op_type = op.value.as_ref().unwrap().extract_operator_type();
 
             // Expect a factor on the right hand side
             let rhs = self.factor(ast)?;
@@ -313,7 +353,8 @@ impl<L: Lexer> Parser<L> {
         if current_token.token_type == TokenType::IntegerLiteral {
             self.eat(TokenType::IntegerLiteral)?;
 
-            let value = current_token.value
+            let value = current_token
+                .value
                 .as_ref()
                 .unwrap()
                 .extract_integer_value();
@@ -322,7 +363,8 @@ impl<L: Lexer> Parser<L> {
             Ok(ast.add_node(node))
         } else if current_token.token_type == TokenType::Operator {
             // Extract value
-            let op_type = current_token.value
+            let op_type = current_token
+                .value
                 .as_ref()
                 .unwrap()
                 .extract_operator_type();
@@ -348,7 +390,8 @@ impl<L: Lexer> Parser<L> {
 
             let pos_rparen = self.eat(TokenType::RParen)?.end;
 
-            ast.get_node_mut(result).set_span(Span::new(pos_lparen, pos_rparen));
+            ast.get_node_mut(result)
+                .set_span(Span::new(pos_lparen, pos_rparen));
 
             Ok(result)
         } else {
@@ -412,12 +455,14 @@ mod tests {
         let parser = Parser::new(lexer);
         let _ = parser.load_first_token();
         assert_eq!(TokenType::IntegerLiteral,
-                   parser.current_token
+                   parser
+                       .current_token
                        .borrow()
                        .clone()
                        .unwrap()
                        .token_type);
-        let val = parser.current_token
+        let val = parser
+            .current_token
             .borrow()
             .clone()
             .unwrap()
@@ -695,9 +740,15 @@ mod tests {
         let variable_node = ast.get_node(variable_index);
         assert_eq!(variable_node.get_parent(), Some(program_index));
 
-        assert_eq!(program_node.get_value().unwrap().extract_identifier_value(),
+        assert_eq!(program_node
+                       .get_value()
+                       .unwrap()
+                       .extract_identifier_value(),
                    "Test".to_lowercase().to_string());
-        assert_eq!(variable_node.get_value().unwrap().extract_identifier_value(),
+        assert_eq!(variable_node
+                       .get_value()
+                       .unwrap()
+                       .extract_identifier_value(),
                    "Test".to_lowercase().to_string());
     }
 
@@ -744,6 +795,182 @@ mod tests {
         assert!(parser.block(&mut ast).is_err());
     }
 
+    // variable_declaration : variable (COMMA variable)* COLON type_spec
+    //      variable COLON typespec -> PASS: VAR-DECL.1
+    //      variable COMMA variable COLON typespec -> PASS: VAR-DECL.2
+    //      variable COMMA variable COMMA variable COLON type_spec -> PASS: VAR-DECL.3
+    //      COLON typespec -> FAIL: VAR-DECL.4
+    //      variable variable COLON type_spec -> FAIL: VAR-DECL.5
+    //      variable COMMA COMMA variable COLON type_spec -> FAIL: VAR-DECL.6
+    //      variable COMMA COLON type_spec -> FAIL: VAR-DECL.7
+    //      variable COMMA variable variable COLON type_spec -> FAIL: VAR-DECL.8
+    //      variable type_spec -> FAIL: VAR-DECL.9
+    //      variable COLON COLON type_spec -> FAIL: VAR-DECL.10
+    //      variable COLON -> FAIL: VAR-DECL.11
+    //      variable COLON type_spec type_spec -> FAIL: not yet testable
+
+    #[test]
+    // VAR-DECL.1
+    fn parser_var_decl_parses_single_variable_declaration() {
+        // Input: a: INTEGER
+        let tokens = vec![identifier!("a"), colon!(), integer!()];
+        let (parser, mut ast) = setup_from(tokens);
+
+        let decl_index = parser.variable_declaration(&mut ast).unwrap()[0];
+        let decl_node = ast.get_node(decl_index);
+        verify_node(&ast,
+                    decl_node.get_children()[0],
+                    Some(decl_index),
+                    TokenValue::Identifier("a".to_string()));
+        verify_node(&ast,
+                    decl_node.get_children()[1],
+                    Some(decl_index),
+                    TokenValue::Type(Type::Integer));
+    }
+
+    #[test]
+    // VAR-DECL.2
+    fn parser_var_decl_parses_two_variable_declarations() {
+        // Input: a, b: REAL
+        let tokens = vec![identifier!("a"), comma!(), identifier!("b"), colon!(), real!()];
+        let (parser, mut ast) = setup_from(tokens);
+
+        let decls = parser.variable_declaration(&mut ast).unwrap();
+        assert_eq!(decls.len(), 2);
+        let decl_a = ast.get_node(decls[0]);
+        verify_node(&ast,
+                    decl_a.get_children()[0],
+                    Some(decls[0]),
+                    TokenValue::Identifier("a".to_string()));
+        verify_node(&ast,
+                    decl_a.get_children()[1],
+                    Some(decls[0]),
+                    TokenValue::Type(Type::Real));
+
+        let decl_b = ast.get_node(decls[1]);
+        verify_node(&ast,
+                    decl_b.get_children()[0],
+                    Some(decls[1]),
+                    TokenValue::Identifier("b".to_string()));
+        verify_node(&ast,
+                    decl_b.get_children()[1],
+                    Some(decls[1]),
+                    TokenValue::Type(Type::Real));
+    }
+
+    #[test]
+    // VAR-DECL.3
+    fn parser_var_decl_parses_three_variable_declarations() {
+        // Input: a, b, c: REAL
+        let tokens = vec![identifier!("a"),
+                          comma!(),
+                          identifier!("b"),
+                          comma!(),
+                          identifier!("c"),
+                          colon!(),
+                          real!()];
+        let (parser, mut ast) = setup_from(tokens);
+
+        let decls = parser.variable_declaration(&mut ast).unwrap();
+        assert_eq!(decls.len(), 3);
+
+        let decl_c = ast.get_node(decls[2]);
+        verify_node(&ast,
+                    decl_c.get_children()[0],
+                    Some(decls[2]),
+                    TokenValue::Identifier("c".to_string()));
+        verify_node(&ast,
+                    decl_c.get_children()[1],
+                    Some(decls[2]),
+                    TokenValue::Type(Type::Real));
+    }
+
+    #[test]
+    // VAR-DECL.4
+    fn parser_var_decl_returns_error_when_no_identifier_is_present() {
+        // Input: : INTEGER
+        let tokens = vec![colon!(), integer!()];
+        let (parser, mut ast) = setup_from(tokens);
+
+        assert!(parser.variable_declaration(&mut ast).is_err());
+    }
+
+    #[test]
+    // VAR-DECL.5
+    fn parser_var_decl_returns_error_when_two_identifiers_are_not_separated_by_comma() {
+        // Input: a b: INTEGER
+        let tokens = vec![identifier!("a"), identifier!("b"), colon!(), integer!()];
+        let (parser, mut ast) = setup_from(tokens);
+
+        assert!(parser.variable_declaration(&mut ast).is_err());
+    }
+
+    #[test]
+    // VAR-DECL.6
+    fn parser_var_decl_returns_error_when_two_identifiers_are_separated_by_two_commas() {
+        // Input: a,, b: INTEGER
+        let tokens =
+            vec![identifier!("a"), comma!(), comma!(), identifier!("b"), colon!(), integer!()];
+        let (parser, mut ast) = setup_from(tokens);
+
+        assert!(parser.variable_declaration(&mut ast).is_err());
+    }
+
+    #[test]
+    // VAR-DECL.7
+    fn parser_var_decl_returns_error_when_no_identifier_is_present_after_comma() {
+        // Input: a,: INTEGER
+        let tokens = vec![identifier!("a"), comma!(), colon!(), integer!()];
+        let (parser, mut ast) = setup_from(tokens);
+
+        assert!(parser.variable_declaration(&mut ast).is_err());
+    }
+
+    #[test]
+    // VAR-DECL.8
+    fn parser_var_decl_returns_err_when_second_and_third_identifier_are_not_separated_by_comma() {
+        // Input: a, b c: INTEGER
+        let tokens = vec![identifier!("a"),
+                          comma!(),
+                          identifier!("b"),
+                          identifier!("c"),
+                          colon!(),
+                          integer!()];
+        let (parser, mut ast) = setup_from(tokens);
+
+        assert!(parser.variable_declaration(&mut ast).is_err());
+    }
+
+    #[test]
+    // VAR-DECL.9
+    fn parser_var_decl_returns_error_when_type_specifier_is_not_after_colon() {
+        // Input: a REAL
+        let tokens = vec![identifier!("a"), real!()];
+        let (parser, mut ast) = setup_from(tokens);
+
+        assert!(parser.variable_declaration(&mut ast).is_err());
+    }
+
+    #[test]
+    // VAR-DECL.10
+    fn parser_var_decl_returns_error_when_type_specifier_is_separated_by_two_colons() {
+        // Input: a:: REAL
+        let tokens = vec![identifier!("a"), colon!(), colon!(), real!()];
+        let (parser, mut ast) = setup_from(tokens);
+
+        assert!(parser.variable_declaration(&mut ast).is_err());
+    }
+
+    #[test]
+    // VAR-DECL.11
+    fn parser_var_decl_returns_error_when_no_type_specifier_is_present() {
+        // Input: a:
+        let tokens = vec![identifier!("a"), colon!()];
+        let (parser, mut ast) = setup_from(tokens);
+
+        assert!(parser.variable_declaration(&mut ast).is_err());
+    }
+
     // type_spec : INTEGER | REAL
     //      INTEGER -> PASS: TYPE.1
     //      <nothing> -> FAIL: TYPE.2
@@ -759,8 +986,8 @@ mod tests {
         let tokens = vec![integer!()];
         let (parser, mut ast) = setup_from(tokens);
 
-        let type_index = parser.type_spec(&mut ast).unwrap();
-        verify_node(&ast, type_index, None, TokenValue::Type(Type::Integer));
+        let type_index = parser.type_spec(&mut ast, 1).unwrap();
+        verify_node(&ast, type_index[0], None, TokenValue::Type(Type::Integer));
     }
 
     #[test]
@@ -770,7 +997,7 @@ mod tests {
         let tokens = vec![];
         let (parser, mut ast) = setup_from(tokens);
 
-        assert!(parser.type_spec(&mut ast).is_err());
+        assert!(parser.type_spec(&mut ast, 1).is_err());
     }
 
     #[test]
@@ -780,8 +1007,8 @@ mod tests {
         let tokens = vec![real!()];
         let (parser, mut ast) = setup_from(tokens);
 
-        let type_index = parser.type_spec(&mut ast).unwrap();
-        verify_node(&ast, type_index, None, TokenValue::Type(Type::Real));
+        let type_index = parser.type_spec(&mut ast, 1).unwrap();
+        verify_node(&ast, type_index[0], None, TokenValue::Type(Type::Real));
     }
 
     // compound_statement : BEGIN statement_list END

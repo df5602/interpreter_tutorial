@@ -104,8 +104,16 @@ macro_rules! semicolon {
         () => ((TokenType::Semicolon, TokenValue::Empty))
     }
 
+macro_rules! colon {
+        () => ((TokenType::Colon, TokenValue::Empty))
+    }
+
 macro_rules! dot {
         () => ((TokenType::Dot, TokenValue::Empty))
+    }
+
+macro_rules! comma {
+        () => ((TokenType::Comma, TokenValue::Empty))
     }
 
 #[cfg(test)]
