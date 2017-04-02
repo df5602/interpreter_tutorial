@@ -70,8 +70,8 @@ impl AstNode for BlockNode {
 
 impl NodeVisitor for BlockNode {
     fn visit(&self, ast: &Ast, sym_tbl: &mut SymbolTable) -> Result<Value, SyntaxError> {
-        if !self.declarations.is_empty() {
-            unimplemented!();
+        for declaration in &self.declarations {
+            ast.get_node(*declaration).visit(ast, sym_tbl)?;
         }
         ast.get_node(self.compound_statement).visit(ast, sym_tbl)
     }
@@ -95,9 +95,9 @@ impl BlockNode {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tokens::{Token, TokenType, OperatorType};
+    use tokens::{Token, TokenType, OperatorType, Type};
     use ast::{AstNode, AstIndex, CompoundStmtNode, BinaryOperatorNode, IntegerNode,
-              AssignmentStmtNode, VariableNode};
+              AssignmentStmtNode, VariableNode, VariableDeclNode, TypeNode};
 
     #[test]
     fn block_node_get_parent_returns_none_when_node_has_no_parent() {
@@ -174,5 +174,55 @@ mod tests {
         assert_eq!(sym_tbl.value(&"a".to_string()), None);
         assert!(ast.get_node(index).visit(&ast, &mut sym_tbl).is_ok());
         assert_eq!(sym_tbl.value(&"a".to_string()), Some(Value::Integer(2)));
+    }
+
+    #[test]
+    fn block_node_visit_visits_declarations() {
+        let mut ast = Ast::new();
+
+        let index = block_node!(ast,
+                                vec![var_decl_node!(ast,
+                                                    var_node!(ast, "a"),
+                                                    type_node!(ast, Type::Integer)),
+                                     var_decl_node!(ast,
+                                                    var_node!(ast, "b"),
+                                                    type_node!(ast, Type::Integer)),
+                                     var_decl_node!(ast,
+                                                    var_node!(ast, "c"),
+                                                    type_node!(ast, Type::Real))],
+                                cmpd_stmt_node!(ast, vec![]));
+
+        let mut sym_tbl = SymbolTable::new();
+        assert_eq!(sym_tbl.value(&"a".to_string()), None);
+        assert_eq!(sym_tbl.value(&"b".to_string()), None);
+        assert_eq!(sym_tbl.value(&"c".to_string()), None);
+
+        assert!(ast.get_node(index).visit(&ast, &mut sym_tbl).is_ok());
+        assert_eq!(sym_tbl.value(&"a".to_string()), Some(Value::NotInitialized));
+        assert_eq!(sym_tbl.value(&"b".to_string()), Some(Value::NotInitialized));
+        assert_eq!(sym_tbl.value(&"c".to_string()), Some(Value::NotInitialized));
+    }
+
+    #[test]
+    fn block_node_visit_returns_error_when_visited_declaration_returns_error() {
+        let mut ast = Ast::new();
+
+        let index = block_node!(ast,
+                                vec![var_decl_node!(ast,
+                                                    var_node!(ast, "a"),
+                                                    type_node!(ast, Type::Integer)),
+                                     var_decl_node!(ast,
+                                                    var_node!(ast, "b"),
+                                                    type_node!(ast, Type::Integer)),
+                                     var_decl_node!(ast,
+                                                    var_node!(ast, "b"),
+                                                    type_node!(ast, Type::Real))],
+                                cmpd_stmt_node!(ast, vec![]));
+
+        let mut sym_tbl = SymbolTable::new();
+        assert_eq!(sym_tbl.value(&"a".to_string()), None);
+        assert_eq!(sym_tbl.value(&"b".to_string()), None);
+
+        assert!(ast.get_node(index).visit(&ast, &mut sym_tbl).is_err());
     }
 }
