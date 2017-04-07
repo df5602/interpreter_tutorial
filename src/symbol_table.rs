@@ -49,14 +49,14 @@ impl SymbolTable {
         }
     }
 
-    pub fn value(&self, name: &String) -> Option<Value> {
+    pub fn value(&self, name: &str) -> Option<Value> {
         match self.table.get(name) {
             Some(entry) => Some(entry.value.clone()),
             None => None,
         }
     }
 
-    pub fn symbol_type(&self, name: &String) -> Option<Type> {
+    pub fn symbol_type(&self, name: &str) -> Option<Type> {
         match self.table.get(name) {
             Some(entry) => Some(entry.var_type.clone()),
             None => None,

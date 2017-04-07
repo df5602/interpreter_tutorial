@@ -50,7 +50,7 @@ pub fn print_error(input: &str, e: &SyntaxError) {
         while !input.is_char_boundary(last_char) {
             last_char -= 1;
         }
-        if &input[last_char..last_bad] != "\n" && &input[last_char..last_bad] != "\r" {
+        if input[last_char..last_bad] != *"\n" && input[last_char..last_bad] != *"\r" {
             break;
         } else {
             if last_char == 0 {
