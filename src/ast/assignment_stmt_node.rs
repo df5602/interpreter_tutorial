@@ -105,7 +105,7 @@ impl AssignmentStmtNode {
 mod tests {
     use super::*;
     use tokens::{Token, TokenType, TokenValue, Span, Type};
-    use ast::{Ast, AstNode, AstIndex, VariableNode, IntegerNode, CompoundStmtNode};
+    use ast::{Ast, AstNode, AstIndex, VariableNode, NumberNode, CompoundStmtNode};
     use interpreter::Value;
 
     #[test]

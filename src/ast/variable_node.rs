@@ -84,7 +84,7 @@ impl VariableNode {
 mod tests {
     use super::*;
     use tokens::{Token, TokenType, TokenValue, Span, Type};
-    use ast::{Ast, AstNode, AstIndex, IntegerNode, AssignmentStmtNode};
+    use ast::{Ast, AstNode, AstIndex, NumberNode, AssignmentStmtNode};
     use interpreter::Value;
 
     #[test]

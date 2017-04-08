@@ -42,6 +42,18 @@ impl Value {
             _ => panic!("Internal error (Value is no Integer)"),
         }
     }
+
+    /// Returns the inner value, if `self` is of variant `Value::Real`.
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if `self` is not of variant `Value::Real`.
+    pub fn extract_real_value(self) -> f64 {
+        match self {
+            Value::Real(val) => val,
+            _ => panic!("Internal error (Value is no Real)"),
+        }
+    }
 }
 
 /// Node visitor trait. Each node in the Abstract Syntax Tree (AST)

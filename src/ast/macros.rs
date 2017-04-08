@@ -1,9 +1,9 @@
 macro_rules! int_node {
     ($ast:expr, $value:expr) => {{
-        let node = IntegerNode::new($value, 
-                                    Token::new(TokenType::IntegerLiteral, 
-                                               Some(TokenValue::Integer($value)), 
-                                               Span::default()));
+        let node = NumberNode::new(Value::Integer($value), 
+                                   Token::new(TokenType::IntegerLiteral, 
+                                              Some(TokenValue::Integer($value)), 
+                                              Span::default()));
         $ast.add_node(node)
     }}
 }

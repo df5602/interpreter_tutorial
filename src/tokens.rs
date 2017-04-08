@@ -141,6 +141,18 @@ impl TokenValue {
         }
     }
 
+    /// Returns the inner value, if `self` is of variant `TokenValue::Real`.
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if `self` is not of variant `TokenValue::Real`.
+    pub fn extract_real_value(&self) -> f64 {
+        match *self {
+            TokenValue::Real(value) => value,
+            _ => panic!("Internal Error (Real value has wrong type)"),
+        }
+    }
+
     /// Returns a copy of the inner value, if `self` is of variant `TokenValue::Operator`.
     ///
     /// # Panics

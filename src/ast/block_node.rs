@@ -96,7 +96,7 @@ impl BlockNode {
 mod tests {
     use super::*;
     use tokens::{Token, TokenType, OperatorType, Type};
-    use ast::{AstNode, AstIndex, CompoundStmtNode, BinaryOperatorNode, IntegerNode,
+    use ast::{AstNode, AstIndex, CompoundStmtNode, BinaryOperatorNode, NumberNode,
               AssignmentStmtNode, VariableNode, VariableDeclNode, TypeNode};
 
     #[test]

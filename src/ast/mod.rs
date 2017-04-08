@@ -39,8 +39,8 @@ impl fmt::Display for AstIndex {
 #[macro_use]
 mod macros;
 
-mod integer_node;
-pub use self::integer_node::IntegerNode;
+mod number_node;
+pub use self::number_node::NumberNode;
 
 mod binary_operator_node;
 pub use self::binary_operator_node::BinaryOperatorNode;
@@ -177,7 +177,9 @@ impl<'a> Ast<'a> {
             if !(*self.nodes[child.0]).set_parent(index) {
                 panic!("Internal Error (cannot add multiple parents to AST node)");
             }
-            if let Some(i) = self.non_connected_nodes.iter().position(|&n| n == child) {
+            if let Some(i) = self.non_connected_nodes
+                   .iter()
+                   .position(|&n| n == child) {
                 self.non_connected_nodes.remove(i);
             }
             // Get span of child
@@ -215,6 +217,7 @@ impl<'a> Ast<'a> {
 mod tests {
     use super::*;
     use tokens::*;
+    use interpreter::Value;
 
     #[test]
     fn ast_newly_created_graph_should_have_no_root() {

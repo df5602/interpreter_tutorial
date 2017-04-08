@@ -147,7 +147,7 @@ mod tests {
     use std::i64;
 
     use super::*;
-    use ast::{Ast, AstNode, AstIndex, IntegerNode};
+    use ast::{Ast, AstNode, AstIndex, NumberNode};
     use tokens::{Token, TokenType, TokenValue, OperatorType, Span};
 
     #[test]

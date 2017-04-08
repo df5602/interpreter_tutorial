@@ -95,7 +95,7 @@ impl CompoundStmtNode {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ast::{Ast, AstNode, AstIndex, IntegerNode, BinaryOperatorNode};
+    use ast::{Ast, AstNode, AstIndex, NumberNode, BinaryOperatorNode};
     use tokens::{Token, TokenType, TokenValue, OperatorType, Span};
     use interpreter::Value;
 

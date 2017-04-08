@@ -120,7 +120,7 @@ mod tests {
 
     use super::*;
     use tokens::{Token, TokenType, OperatorType, TokenValue, Span};
-    use ast::{Ast, AstNode, AstIndex, IntegerNode};
+    use ast::{Ast, AstNode, AstIndex, NumberNode};
 
     #[test]
     fn unary_operator_node_get_parent_returns_none_when_node_has_no_parent() {

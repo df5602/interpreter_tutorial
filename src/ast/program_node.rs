@@ -97,7 +97,7 @@ mod tests {
     use super::*;
     use tokens::{Token, TokenType, OperatorType, Type};
     use ast::{AstNode, AstIndex, VariableNode, BlockNode, CompoundStmtNode, BinaryOperatorNode,
-              IntegerNode, AssignmentStmtNode, VariableDeclNode, TypeNode};
+              NumberNode, AssignmentStmtNode, VariableDeclNode, TypeNode};
 
     #[test]
     fn program_node_get_parent_returns_none_when_node_has_no_parent() {

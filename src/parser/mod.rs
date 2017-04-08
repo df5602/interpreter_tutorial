@@ -2,8 +2,8 @@
 
 use std::cell::RefCell;
 use tokens::{Token, TokenType, OperatorType, Span};
-use ast::{Ast, AstIndex, BinaryOperatorNode, UnaryOperatorNode, IntegerNode, VariableNode,
-          AssignmentStmtNode, CompoundStmtNode, BlockNode, ProgramNode, TypeNode, VariableDeclNode};
+use ast::*;
+use interpreter::Value;
 use errors::SyntaxError;
 use lexer::Lexer;
 
@@ -371,12 +371,13 @@ impl<L: Lexer> Parser<L> {
 
     /// Parse a factor:
     /// factor -> ( PLUS | MINUS) factor
-    ///           | INTEGER
+    ///           | INTEGER_LITERAL
+    ///           | REAL_LITERAL
     ///           | LPAREN expr RPAREN
     ///           | variable
     fn factor(&self, ast: &mut Ast) -> Result<AstIndex, SyntaxError> {
 
-        // First token should be an INTEGER, PLUS, MINUS, LPAREN or IDENTIFIER
+        // First token should be an INTEGER_LITERAL, REAL_LITERAL, PLUS, MINUS, LPAREN or IDENTIFIER
         let current_token = self.get_current_token();
 
         if current_token.token_type == TokenType::IntegerLiteral {
@@ -387,7 +388,18 @@ impl<L: Lexer> Parser<L> {
                 .as_ref()
                 .unwrap()
                 .extract_integer_value();
-            let node = IntegerNode::new(value, current_token);
+            let node = NumberNode::new(Value::Integer(value), current_token);
+
+            Ok(ast.add_node(node))
+        } else if current_token.token_type == TokenType::RealLiteral {
+            self.eat(TokenType::RealLiteral)?;
+
+            let value = current_token
+                .value
+                .as_ref()
+                .unwrap()
+                .extract_real_value();
+            let node = NumberNode::new(Value::Real(value), current_token);
 
             Ok(ast.add_node(node))
         } else if current_token.token_type == TokenType::Operator {
@@ -506,8 +518,12 @@ mod tests {
     #[test]
     fn parser_start_returns_error_if_parentheses_are_mismatched() {
         // Input: (6+3))
-        let tokens =
-            vec![lparen!(), integer_lit!(6), plus!(), integer_lit!(3), rparen!(), rparen!()];
+        let tokens = vec![lparen!(),
+                          integer_lit!(6),
+                          plus!(),
+                          integer_lit!(3),
+                          rparen!(),
+                          rparen!()];
         let lexer = MockLexer::new(tokens);
         let parser = Parser::new(lexer);
         let mut ast = Ast::new();
@@ -847,7 +863,11 @@ mod tests {
     // BLK.2
     fn parser_block_parses_compound_statement() {
         // Input: BEGIN a := 1 END
-        let tokens = vec![begin!(), identifier!("a"), assign!(), integer_lit!(1), end!()];
+        let tokens = vec![begin!(),
+                          identifier!("a"),
+                          assign!(),
+                          integer_lit!(1),
+                          end!()];
         let (parser, mut ast) = setup_from(tokens);
 
         let block_index = parser.block(&mut ast).unwrap();
@@ -1016,7 +1036,12 @@ mod tests {
     // DECL.4
     fn parser_declarations_returns_error_if_var_token_is_missing() {
         // Input: a: INTEGER; BEGIN END
-        let tokens = vec![identifier!("a"), colon!(), integer!(), semicolon!(), begin!(), end!()];
+        let tokens = vec![identifier!("a"),
+                          colon!(),
+                          integer!(),
+                          semicolon!(),
+                          begin!(),
+                          end!()];
         let (parser, mut ast) = setup_from(tokens);
 
         assert!(parser.block(&mut ast).is_err());
@@ -1026,7 +1051,12 @@ mod tests {
     // DECL.5
     fn parser_declarations_returns_error_if_var_token_is_repeated() {
         // Input: VAR VAR a: INTEGER;
-        let tokens = vec![var!(), var!(), identifier!("a"), colon!(), integer!(), semicolon!()];
+        let tokens = vec![var!(),
+                          var!(),
+                          identifier!("a"),
+                          colon!(),
+                          integer!(),
+                          semicolon!()];
         let (parser, mut ast) = setup_from(tokens);
 
         assert!(parser.declarations(&mut ast).is_err());
@@ -1133,7 +1163,11 @@ mod tests {
     // VAR-DECL.2
     fn parser_var_decl_parses_two_variable_declarations() {
         // Input: a, b: REAL
-        let tokens = vec![identifier!("a"), comma!(), identifier!("b"), colon!(), real!()];
+        let tokens = vec![identifier!("a"),
+                          comma!(),
+                          identifier!("b"),
+                          colon!(),
+                          real!()];
         let (parser, mut ast) = setup_from(tokens);
 
         let decls = parser.variable_declaration(&mut ast).unwrap();
@@ -1210,8 +1244,12 @@ mod tests {
     // VAR-DECL.6
     fn parser_var_decl_returns_error_when_two_identifiers_are_separated_by_two_commas() {
         // Input: a,, b: INTEGER
-        let tokens =
-            vec![identifier!("a"), comma!(), comma!(), identifier!("b"), colon!(), integer!()];
+        let tokens = vec![identifier!("a"),
+                          comma!(),
+                          comma!(),
+                          identifier!("b"),
+                          colon!(),
+                          integer!()];
         let (parser, mut ast) = setup_from(tokens);
 
         assert!(parser.variable_declaration(&mut ast).is_err());
@@ -1276,7 +1314,12 @@ mod tests {
     // VAR-DECL.12
     fn parser_var_decl_returns_error_when_two_type_specifiers_are_present() {
         // Input: VAR a: INTEGER REAL;
-        let tokens = vec![var!(), identifier!("a"), colon!(), integer!(), real!(), semicolon!()];
+        let tokens = vec![var!(),
+                          identifier!("a"),
+                          colon!(),
+                          integer!(),
+                          real!(),
+                          semicolon!()];
         let (parser, mut ast) = setup_from(tokens);
 
         assert!(parser.declarations(&mut ast).is_err());
@@ -1315,7 +1358,12 @@ mod tests {
     // TYPE.3
     fn parser_type_spec_returns_error_when_two_integer_type_specifiers_are_present() {
         // Input: VAR a: INTEGER INTEGER;
-        let tokens = vec![var!(), identifier!("a"), colon!(), integer!(), integer!(), semicolon!()];
+        let tokens = vec![var!(),
+                          identifier!("a"),
+                          colon!(),
+                          integer!(),
+                          integer!(),
+                          semicolon!()];
         let (parser, mut ast) = setup_from(tokens);
 
         assert!(parser.declarations(&mut ast).is_err());
@@ -1336,7 +1384,12 @@ mod tests {
     // TYPE.5
     fn parser_type_spec_returns_error_when_two_real_type_specifiers_are_present() {
         // Input: VAR a: REAL REAL;
-        let tokens = vec![var!(), identifier!("a"), colon!(), real!(), real!(), semicolon!()];
+        let tokens = vec![var!(),
+                          identifier!("a"),
+                          colon!(),
+                          real!(),
+                          real!(),
+                          semicolon!()];
         let (parser, mut ast) = setup_from(tokens);
 
         assert!(parser.declarations(&mut ast).is_err());
@@ -1346,7 +1399,12 @@ mod tests {
     // TYPE.6
     fn parser_type_spec_returns_error_when_two_different_type_specifiers_are_present() {
         // Input: VAR a: INTEGER REAL;
-        let tokens = vec![var!(), identifier!("a"), colon!(), integer!(), real!(), semicolon!()];
+        let tokens = vec![var!(),
+                          identifier!("a"),
+                          colon!(),
+                          integer!(),
+                          real!(),
+                          semicolon!()];
         let (parser, mut ast) = setup_from(tokens);
 
         assert!(parser.declarations(&mut ast).is_err());
@@ -1365,7 +1423,11 @@ mod tests {
     // CMPD.1
     fn parser_compound_statement_parses_compound_statement() {
         // Input: BEGIN a := 5 END
-        let tokens = vec![begin!(), identifier!("a"), assign!(), integer_lit!(5), end!()];
+        let tokens = vec![begin!(),
+                          identifier!("a"),
+                          assign!(),
+                          integer_lit!(5),
+                          end!()];
         let (parser, mut ast) = setup_from(tokens);
 
         let cmpd_index = parser.compound_statement(&mut ast).unwrap();
@@ -1399,7 +1461,12 @@ mod tests {
     // CMPD.3
     fn parser_compound_statement_returns_error_when_begin_is_repeated_without_matching_end() {
         // Input: BEGIN BEGIN a := 5 END
-        let tokens = vec![begin!(), begin!(), identifier!("a"), assign!(), integer_lit!(5), end!()];
+        let tokens = vec![begin!(),
+                          begin!(),
+                          identifier!("a"),
+                          assign!(),
+                          integer_lit!(5),
+                          end!()];
         let (parser, mut ast) = setup_from(tokens);
 
         assert!(parser.compound_statement(&mut ast).is_err());
@@ -1449,8 +1516,13 @@ mod tests {
     // CMPD.7
     fn parser_compound_statement_returns_error_when_end_occurs_twice() {
         // Input: BEGIN a := 5 END END.
-        let tokens =
-            vec![begin!(), identifier!("a"), assign!(), integer_lit!(5), end!(), end!(), dot!()];
+        let tokens = vec![begin!(),
+                          identifier!("a"),
+                          assign!(),
+                          integer_lit!(5),
+                          end!(),
+                          end!(),
+                          dot!()];
         let (parser, mut ast) = setup_from(tokens);
 
         assert!(parser.program(&mut ast).is_err());
@@ -1459,8 +1531,13 @@ mod tests {
     #[test]
     fn parser_compound_statement_parses_nested_compound_statement() {
         // Input: BEGIN BEGIN a := 5 END END
-        let tokens =
-            vec![begin!(), begin!(), identifier!("a"), assign!(), integer_lit!(5), end!(), end!()];
+        let tokens = vec![begin!(),
+                          begin!(),
+                          identifier!("a"),
+                          assign!(),
+                          integer_lit!(5),
+                          end!(),
+                          end!()];
         let (parser, mut ast) = setup_from(tokens);
 
         let outer_index = parser.compound_statement(&mut ast).unwrap();
@@ -1740,7 +1817,12 @@ mod tests {
     // STMT.4
     fn parser_statement_returns_error_when_both_statement_types_are_not_separated_by_semicolon() {
         // Input: BEGIN END a := 5.
-        let tokens = vec![begin!(), end!(), identifier!("a"), assign!(), integer_lit!(5), dot!()];
+        let tokens = vec![begin!(),
+                          end!(),
+                          identifier!("a"),
+                          assign!(),
+                          integer_lit!(5),
+                          dot!()];
         let (parser, mut ast) = setup_from(tokens);
 
         assert!(parser.program(&mut ast).is_err());
@@ -1791,7 +1873,10 @@ mod tests {
     // ASSIGN.3
     fn parser_assignment_statement_returns_error_when_two_variables_on_lhs() {
         // Input: a b := 5
-        let tokens = vec![identifier!("a"), identifier!("b"), assign!(), integer_lit!(5)];
+        let tokens = vec![identifier!("a"),
+                          identifier!("b"),
+                          assign!(),
+                          integer_lit!(5)];
         let (parser, mut ast) = setup_from(tokens);
 
         assert!(parser.assignment_statement(&mut ast).is_err());
@@ -1831,8 +1916,12 @@ mod tests {
     // ASSIGN.7
     fn parser_assignment_statement_returns_error_when_two_expressions_on_rhs() {
         // Input: BEGIN a := 5 7 END
-        let tokens =
-            vec![begin!(), identifier!("a"), assign!(), integer_lit!(5), integer_lit!(7), end!()];
+        let tokens = vec![begin!(),
+                          identifier!("a"),
+                          assign!(),
+                          integer_lit!(5),
+                          integer_lit!(7),
+                          end!()];
         let (parser, mut ast) = setup_from(tokens);
 
         assert!(parser.compound_statement(&mut ast).is_err());
@@ -1841,7 +1930,11 @@ mod tests {
     #[test]
     fn parser_assignment_statement_parses_assignment_statement_with_expression() {
         // Input: a := 5 + 7
-        let tokens = vec![identifier!("a"), assign!(), integer_lit!(5), plus!(), integer_lit!(7)];
+        let tokens = vec![identifier!("a"),
+                          assign!(),
+                          integer_lit!(5),
+                          plus!(),
+                          integer_lit!(7)];
         let (parser, mut ast) = setup_from(tokens);
 
         let assign_index = parser.assignment_statement(&mut ast).unwrap();
@@ -2062,9 +2155,23 @@ mod tests {
     }
 
     #[test]
+    fn parser_factor_should_return_real_node_if_input_consists_of_real_literal() {
+        // Input: 3.1415
+        let tokens = vec![real_lit!(3.1415)];
+        let (parser, mut ast) = setup_from(tokens);
+
+        let index = parser.factor(&mut ast).unwrap();
+        verify_node(&ast, index, None, TokenValue::Real(3.1415));
+    }
+
+    #[test]
     fn parser_factor_creates_graph_of_expr_if_input_consists_of_expr_in_parentheses() {
         // Input: (6+3)
-        let tokens = vec![lparen!(), integer_lit!(6), plus!(), integer_lit!(3), rparen!()];
+        let tokens = vec![lparen!(),
+                          integer_lit!(6),
+                          plus!(),
+                          integer_lit!(3),
+                          rparen!()];
         let (parser, mut ast) = setup_from(tokens);
 
         let op_index = parser.factor(&mut ast).unwrap();

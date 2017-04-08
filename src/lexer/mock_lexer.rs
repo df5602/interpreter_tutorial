@@ -64,6 +64,10 @@ macro_rules! integer_lit {
         ($value:expr) => ((TokenType::IntegerLiteral, TokenValue::Integer($value)))
     }
 
+macro_rules! real_lit {
+        ($value:expr) => ((TokenType::RealLiteral, TokenValue::Real($value)))
+    }
+
 macro_rules! integer {
         () => ((TokenType::TypeSpecifier, TokenValue::Type(Type::Integer)))
     }
