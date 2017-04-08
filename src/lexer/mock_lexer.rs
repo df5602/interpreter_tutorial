@@ -60,6 +60,11 @@ macro_rules! int_div {
                            TokenValue::Operator(OperatorType::IntegerDivision)))
     }
 
+macro_rules! float_div {
+        () => ((TokenType::Operator,
+                           TokenValue::Operator(OperatorType::FloatDivision)))
+    }
+
 macro_rules! integer_lit {
         ($value:expr) => ((TokenType::IntegerLiteral, TokenValue::Integer($value)))
     }

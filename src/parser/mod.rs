@@ -336,7 +336,7 @@ impl<L: Lexer> Parser<L> {
     }
 
     /// Parse a term:
-    /// term -> factor ((TIMES | DIVISION) factor)*
+    /// term -> factor ((TIMES | INTEGER_DIV | FLOAT_DIV) factor)*
     fn term(&self, ast: &mut Ast) -> Result<AstIndex, SyntaxError> {
 
         // Expect a factor on the left hand side
@@ -348,12 +348,13 @@ impl<L: Lexer> Parser<L> {
                 return Ok(result);
             }
 
-            // Otherwise, expect next token to be an operator TIMES or DIVISION
+            // Otherwise, expect next token to be an operator TIMES or INT/FLOAT DIVISION
             let op = self.get_current_token();
             if op.token_type == TokenType::Operator {
                 // Extract value
                 let op_type = op.value.as_ref().unwrap().extract_operator_type();
-                if op_type != OperatorType::Times && op_type != OperatorType::IntegerDivision {
+                if op_type != OperatorType::Times && op_type != OperatorType::IntegerDivision &&
+                   op_type != OperatorType::FloatDivision {
                     return Ok(result);
                 }
             }
@@ -2088,7 +2089,7 @@ mod tests {
     }
 
     #[test]
-    fn parser_term_should_create_operator_node_when_expression_is_division() {
+    fn parser_term_should_create_operator_node_when_expression_is_integer_division() {
         // Input: 4 div 2
         let tokens = vec![integer_lit!(4), int_div!(), integer_lit!(2)];
         let (parser, mut ast) = setup_from(tokens);
@@ -2102,6 +2103,23 @@ mod tests {
         let operands = ast.get_node(op_index).get_children();
         verify_node(&ast, operands[0], Some(op_index), TokenValue::Integer(4));
         verify_node(&ast, operands[1], Some(op_index), TokenValue::Integer(2));
+    }
+
+    #[test]
+    fn parser_term_should_create_operator_node_when_expression_is_float_division() {
+        // Input: 4 / 2.0
+        let tokens = vec![integer_lit!(4), float_div!(), real_lit!(2.0)];
+        let (parser, mut ast) = setup_from(tokens);
+
+        let op_index = parser.term(&mut ast).unwrap();
+        verify_node(&ast,
+                    op_index,
+                    None,
+                    TokenValue::Operator(OperatorType::FloatDivision));
+
+        let operands = ast.get_node(op_index).get_children();
+        verify_node(&ast, operands[0], Some(op_index), TokenValue::Integer(4));
+        verify_node(&ast, operands[1], Some(op_index), TokenValue::Real(2.0));
     }
 
     #[test]
