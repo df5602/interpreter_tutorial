@@ -85,7 +85,7 @@ impl NodeVisitor for NumberNode {
 impl NumberNode {
     /// Constructs a new number node.
     pub fn new(value: Value, token: Token) -> Self {
-        Self {
+        NumberNode {
             value: value,
             parent: None,
             span: token.span.clone(),

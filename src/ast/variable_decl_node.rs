@@ -94,7 +94,7 @@ impl NodeVisitor for VariableDeclNode {
 impl VariableDeclNode {
     /// Constructs a new variable declaration node.
     pub fn new(variable: AstIndex, type_spec: AstIndex) -> Self {
-        Self {
+        VariableDeclNode {
             variable: variable,
             type_spec: type_spec,
             parent: None,

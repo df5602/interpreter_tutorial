@@ -82,7 +82,7 @@ impl ProgramNode {
     /// * `variable`: the indice into the AST of the variable,
     /// * `block`: the indice into the AST of the block,
     pub fn new(name: String, variable: AstIndex, block: AstIndex) -> Self {
-        Self {
+        ProgramNode {
             name: name,
             variable: variable,
             block: block,

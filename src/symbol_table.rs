@@ -23,7 +23,7 @@ pub struct SymbolTable {
 
 impl SymbolTable {
     pub fn new() -> Self {
-        Self { table: HashMap::new() }
+        SymbolTable { table: HashMap::new() }
     }
 
     pub fn insert(&mut self, name: String, var_type: Type) -> Result<(), String> {

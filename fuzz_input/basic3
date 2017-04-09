@@ -1,3 +1,7 @@
+PROGRAM basic3;
+VAR
+    d, e: INTEGER;
+
 BEGIN
     BEGIN
 	 d := 1

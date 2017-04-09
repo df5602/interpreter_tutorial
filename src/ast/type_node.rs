@@ -63,7 +63,7 @@ impl NodeVisitor for TypeNode {
 impl TypeNode {
     /// Constructs a new type node.
     pub fn new(value: Type, token: Token) -> Self {
-        Self {
+        TypeNode {
             value: value,
             parent: None,
             span: token.span.clone(),
