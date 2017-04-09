@@ -83,7 +83,8 @@ impl NodeVisitor for BinaryOperatorNode {
             OperatorType::Plus => &lhs + &rhs,
             OperatorType::Minus => &lhs - &rhs,
             OperatorType::Times => &lhs * &rhs,
-            OperatorType::IntegerDivision => {
+            OperatorType::IntegerDivision |
+            OperatorType::FloatDivision => {
                 if rhs.is_zero() {
                     return Err(SyntaxError {
                                    msg: "Division by zero".to_string(),
@@ -91,13 +92,15 @@ impl NodeVisitor for BinaryOperatorNode {
                                });
                 } else {
                     match &lhs / &rhs {
-                        // Truncate, since we are performing an integer division
-                        Some(Value::Real(value)) => Some(Value::Real(value.floor())),
+                        Some(Value::Real(value)) if self.operator ==
+                                                    OperatorType::IntegerDivision => {
+                            // Truncate, since we are performing an integer division
+                            Some(Value::Real(value.floor()))
+                        }
                         value => value,
                     }
                 }
             }
-            OperatorType::FloatDivision => unimplemented!(),
         };
 
         match result {
@@ -277,7 +280,7 @@ mod tests {
     }
 
     #[test]
-    fn binary_operator_node_visit_returns_difference_of_integer_nodes_when_op_is_subtraction() {
+    fn binary_operator_node_visit_returns_real_difference_if_at_least_one_operand_is_real() {
         let mut ast = Ast::new();
         let index_op = binop_node!(ast,
                                    real_node!(ast, 4.76),
@@ -292,7 +295,7 @@ mod tests {
     }
 
     #[test]
-    fn binary_operator_node_visit_returns_real_difference_if_at_least_one_operand_is_real() {
+    fn binary_operator_node_visit_returns_difference_of_integer_nodes_when_op_is_subtraction() {
         let mut ast = Ast::new();
         let index_op = binop_node!(ast,
                                    int_node!(ast, 4),
@@ -363,7 +366,7 @@ mod tests {
     }
 
     #[test]
-    fn binary_operator_node_visit_returns_quotient_of_integer_nodes_when_op_is_division() {
+    fn binary_operator_node_visit_returns_quotient_of_integer_nodes_when_op_is_int_division() {
         let mut ast = Ast::new();
         let index_op = binop_node!(ast,
                                    int_node!(ast, 5),
@@ -375,6 +378,21 @@ mod tests {
                        .unwrap()
                        .extract_integer_value(),
                    2);
+    }
+
+    #[test]
+    fn binary_operator_node_visit_returns_quotient_of_nodes_when_op_is_float_division() {
+        let mut ast = Ast::new();
+        let index_op = binop_node!(ast,
+                                   real_node!(ast, 5.0),
+                                   int_node!(ast, 2),
+                                   OperatorType::FloatDivision);
+        let mut sym_tbl = SymbolTable::new();
+        assert_eq!(ast.get_node(index_op)
+                       .visit(&ast, &mut sym_tbl)
+                       .unwrap()
+                       .extract_real_value(),
+                   2.5);
     }
 
     #[test]
