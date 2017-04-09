@@ -69,15 +69,14 @@ impl AstNode for UnaryOperatorNode {
 
 impl NodeVisitor for UnaryOperatorNode {
     fn visit(&self, ast: &Ast, sym_tbl: &mut SymbolTable) -> Result<Value, SyntaxError> {
-        let operand = ast.get_node(self.operand)
-            .visit(ast, sym_tbl)?
-            .extract_integer_value();
+        let operand = ast.get_node(self.operand).visit(ast, sym_tbl)?;
 
         match self.operator {
-            OperatorType::Plus => Ok(Value::Integer(operand)),
+            OperatorType::Plus => Ok(operand),
             OperatorType::Minus => {
-                match operand.checked_neg() {
-                    Some(value) => Ok(Value::Integer(value)),
+                // Use std::ops::neg trait implemented for &Value
+                match -&operand {
+                    Some(value) => Ok(value),
                     None => {
                         let rhs = match ast.get_node(self.operand).get_value() {
                             Some(value) => {
@@ -195,7 +194,7 @@ mod tests {
     }
 
     #[test]
-    fn unary_operator_node_visit_returns_operand_when_op_is_addition() {
+    fn unary_operator_node_visit_returns_integer_operand_when_op_is_addition() {
         let mut ast = Ast::new();
         let index_op = unop_node!(ast, int_node!(ast, 2), OperatorType::Plus);
         let mut sym_tbl = SymbolTable::new();
@@ -207,7 +206,19 @@ mod tests {
     }
 
     #[test]
-    fn unary_operator_node_visit_returns_negative_operand_when_op_is_subtraction() {
+    fn unary_operator_node_visit_returns_real_operand_when_op_is_addition() {
+        let mut ast = Ast::new();
+        let index_op = unop_node!(ast, real_node!(ast, 2.5), OperatorType::Plus);
+        let mut sym_tbl = SymbolTable::new();
+        assert_eq!(ast.get_node(index_op)
+                       .visit(&ast, &mut sym_tbl)
+                       .unwrap()
+                       .extract_real_value(),
+                   2.5);
+    }
+
+    #[test]
+    fn unary_operator_node_visit_returns_negative_integer_operand_when_op_is_subtraction() {
         let mut ast = Ast::new();
         let index_op = unop_node!(ast, int_node!(ast, 4), OperatorType::Minus);
         let mut sym_tbl = SymbolTable::new();
@@ -216,6 +227,18 @@ mod tests {
                        .unwrap()
                        .extract_integer_value(),
                    -4);
+    }
+
+    #[test]
+    fn unary_operator_node_visit_returns_negative_real_operand_when_op_is_subtraction() {
+        let mut ast = Ast::new();
+        let index_op = unop_node!(ast, real_node!(ast, 4.25), OperatorType::Minus);
+        let mut sym_tbl = SymbolTable::new();
+        assert_eq!(ast.get_node(index_op)
+                       .visit(&ast, &mut sym_tbl)
+                       .unwrap()
+                       .extract_real_value(),
+                   -4.25);
     }
 
     #[test]

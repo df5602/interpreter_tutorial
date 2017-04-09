@@ -2,6 +2,9 @@
 use std::fmt;
 use std::cell::RefCell;
 
+use std::i64;
+use std::ops::{Add, Sub, Mul, Div, Neg};
+
 use errors::SyntaxError;
 use symbol_table::SymbolTable;
 use ast::Ast;
@@ -30,6 +33,82 @@ impl fmt::Display for Value {
     }
 }
 
+impl<'a> Add for &'a Value {
+    type Output = Option<Value>;
+
+    fn add(self, other: &Value) -> Option<Value> {
+        match (self, other) {
+            (&Value::Integer(lhs), &Value::Integer(rhs)) => {
+                lhs.checked_add(rhs).map(Value::Integer)
+            }
+            (&Value::Integer(lhs), &Value::Real(rhs)) => Some(Value::Real(lhs as f64 + rhs)),
+            (&Value::Real(lhs), &Value::Integer(rhs)) => Some(Value::Real(lhs + rhs as f64)),
+            (&Value::Real(lhs), &Value::Real(rhs)) => Some(Value::Real(lhs + rhs)),
+            _ => panic!("Internal Error (One operand of addition is not a number)"),
+        }
+    }
+}
+
+impl<'a> Sub for &'a Value {
+    type Output = Option<Value>;
+
+    fn sub(self, other: &Value) -> Option<Value> {
+        match (self, other) {
+            (&Value::Integer(lhs), &Value::Integer(rhs)) => {
+                lhs.checked_sub(rhs).map(Value::Integer)
+            }
+            (&Value::Integer(lhs), &Value::Real(rhs)) => Some(Value::Real(lhs as f64 - rhs)),
+            (&Value::Real(lhs), &Value::Integer(rhs)) => Some(Value::Real(lhs - rhs as f64)),
+            (&Value::Real(lhs), &Value::Real(rhs)) => Some(Value::Real(lhs - rhs)),
+            _ => panic!("Internal Error (One operand of subtraction is not a number)"),
+        }
+    }
+}
+
+impl<'a> Mul for &'a Value {
+    type Output = Option<Value>;
+
+    fn mul(self, other: &Value) -> Option<Value> {
+        match (self, other) {
+            (&Value::Integer(lhs), &Value::Integer(rhs)) => {
+                lhs.checked_mul(rhs).map(Value::Integer)
+            }
+            (&Value::Integer(lhs), &Value::Real(rhs)) => Some(Value::Real(lhs as f64 * rhs)),
+            (&Value::Real(lhs), &Value::Integer(rhs)) => Some(Value::Real(lhs * rhs as f64)),
+            (&Value::Real(lhs), &Value::Real(rhs)) => Some(Value::Real(lhs * rhs)),
+            _ => panic!("Internal Error (One operand of multiplication is not a number)"),
+        }
+    }
+}
+
+impl<'a> Div for &'a Value {
+    type Output = Option<Value>;
+
+    fn div(self, other: &Value) -> Option<Value> {
+        match (self, other) {
+            (&Value::Integer(lhs), &Value::Integer(rhs)) => {
+                lhs.checked_div(rhs).map(Value::Integer)
+            }
+            (&Value::Integer(lhs), &Value::Real(rhs)) => Some(Value::Real(lhs as f64 / rhs)),
+            (&Value::Real(lhs), &Value::Integer(rhs)) => Some(Value::Real(lhs / rhs as f64)),
+            (&Value::Real(lhs), &Value::Real(rhs)) => Some(Value::Real(lhs / rhs)),
+            _ => panic!("Internal Error (One operand of division is not a number)"),
+        }
+    }
+}
+
+impl<'a> Neg for &'a Value {
+    type Output = Option<Value>;
+
+    fn neg(self) -> Option<Value> {
+        match *self {
+            Value::Integer(operand) => operand.checked_neg().map(Value::Integer),
+            Value::Real(operand) => Some(Value::Real(-operand)),
+            _ => panic!("Internal Error (Operand of negation is not a number)"),
+        }
+    }
+}
+
 impl Value {
     /// Returns the inner value, if `self` is of variant `Value::Integer`.
     ///
@@ -52,6 +131,58 @@ impl Value {
         match self {
             Value::Real(val) => val,
             _ => panic!("Internal error (Value is no Real)"),
+        }
+    }
+
+    /// Converts `self` to a `Value::Integer`.
+    ///
+    /// `Value`s of variant `Value::Real` are checked for potential overflows if they were
+    /// converted to an i64 and the function returns `None` if that is the case.
+    /// `Value`s of variant `Value::Integer` are returned as is.
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if `self` is not one of the number variants.
+    pub fn into_integer(self) -> Option<Self> {
+        match self {
+            Value::Real(val) => {
+                // Caution: i64::MAX cannot be represented exactly in an f64, therefore
+                // the bounds check needs to compare with >=/<=!
+                // (i.e. i64::MAX as f64 > i64::MAX)
+                if val >= i64::MAX as f64 || val <= i64::MIN as f64 {
+                    None
+                } else {
+                    Some(Value::Integer(val as i64))
+                }
+            }
+            val @ Value::Integer(_) => Some(val),
+            _ => panic!("Internal error (Value is not a number)"),
+        }
+    }
+
+    /// Converts `self` to a `Value::Real`.
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if `self` is not one of the number variants.
+    pub fn into_real(self) -> Self {
+        match self {
+            Value::Integer(val) => Value::Real(val as f64),
+            val @ Value::Real(_) => val,
+            _ => panic!("Internal error (Value is not a number)"),
+        }
+    }
+
+    /// Checks whether the inner value is zero.
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if `self` is not of variants `Value::Integer` and `Value::Real`.
+    pub fn is_zero(&self) -> bool {
+        match *self {
+            Value::Integer(value) => value == 0,
+            Value::Real(value) => value == 0f64,
+            _ => panic!("Internal error (Value is no number)"),
         }
     }
 }

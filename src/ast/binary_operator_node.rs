@@ -70,34 +70,38 @@ impl AstNode for BinaryOperatorNode {
     }
 }
 
+#[allow(unknown_lints)]
+#[allow(op_ref)] // rust-clippy Issue #1662 ("false positive on op_ref lint")
 impl NodeVisitor for BinaryOperatorNode {
     fn visit(&self, ast: &Ast, sym_tbl: &mut SymbolTable) -> Result<Value, SyntaxError> {
-        let lhs = ast.get_node(self.left)
-            .visit(ast, sym_tbl)?
-            .extract_integer_value();
-        let rhs = ast.get_node(self.right)
-            .visit(ast, sym_tbl)?
-            .extract_integer_value();
+        let lhs = ast.get_node(self.left).visit(ast, sym_tbl)?;
+        let rhs = ast.get_node(self.right).visit(ast, sym_tbl)?;
 
+        // Use std::ops::{Add, Sub, Mul, Div} traits implemented for &Value to
+        // perform calculations
         let result = match self.operator {
-            OperatorType::Plus => lhs.checked_add(rhs),
-            OperatorType::Minus => lhs.checked_sub(rhs),
-            OperatorType::Times => lhs.checked_mul(rhs),
+            OperatorType::Plus => &lhs + &rhs,
+            OperatorType::Minus => &lhs - &rhs,
+            OperatorType::Times => &lhs * &rhs,
             OperatorType::IntegerDivision => {
-                if rhs == 0 {
+                if rhs.is_zero() {
                     return Err(SyntaxError {
                                    msg: "Division by zero".to_string(),
                                    span: self.span.clone(),
                                });
                 } else {
-                    lhs.checked_div(rhs)
+                    match &lhs / &rhs {
+                        // Truncate, since we are performing an integer division
+                        Some(Value::Real(value)) => Some(Value::Real(value.floor())),
+                        value => value,
+                    }
                 }
             }
             OperatorType::FloatDivision => unimplemented!(),
         };
 
         match result {
-            Some(value) => Ok(Value::Integer(value)),
+            Some(value) => Ok(value),
             None => {
                 let left = match ast.get_node(self.left).get_value() {
                     Some(value) => {
@@ -245,6 +249,21 @@ mod tests {
     }
 
     #[test]
+    fn binary_operator_node_visit_returns_real_sum_if_at_least_one_operand_is_a_real() {
+        let mut ast = Ast::new();
+        let index_op = binop_node!(ast,
+                                   int_node!(ast, 2),
+                                   real_node!(ast, 2.4),
+                                   OperatorType::Plus);
+        let mut sym_tbl = SymbolTable::new();
+        assert_eq!(ast.get_node(index_op)
+                       .visit(&ast, &mut sym_tbl)
+                       .unwrap()
+                       .extract_real_value(),
+                   4.4);
+    }
+
+    #[test]
     fn binary_operator_node_visit_returns_error_when_addition_overflows() {
         let mut ast = Ast::new();
         let index_op = binop_node!(ast,
@@ -259,6 +278,21 @@ mod tests {
 
     #[test]
     fn binary_operator_node_visit_returns_difference_of_integer_nodes_when_op_is_subtraction() {
+        let mut ast = Ast::new();
+        let index_op = binop_node!(ast,
+                                   real_node!(ast, 4.76),
+                                   int_node!(ast, 2),
+                                   OperatorType::Minus);
+        let mut sym_tbl = SymbolTable::new();
+        assert_eq!(ast.get_node(index_op)
+                       .visit(&ast, &mut sym_tbl)
+                       .unwrap()
+                       .extract_real_value(),
+                   2.76);
+    }
+
+    #[test]
+    fn binary_operator_node_visit_returns_real_difference_if_at_least_one_operand_is_real() {
         let mut ast = Ast::new();
         let index_op = binop_node!(ast,
                                    int_node!(ast, 4),
@@ -301,6 +335,21 @@ mod tests {
     }
 
     #[test]
+    fn binary_operator_node_visit_returns_real_product_if_at_least_one_operand_is_real() {
+        let mut ast = Ast::new();
+        let index_op = binop_node!(ast,
+                                   real_node!(ast, 1.5),
+                                   real_node!(ast, 2.5),
+                                   OperatorType::Times);
+        let mut sym_tbl = SymbolTable::new();
+        assert_eq!(ast.get_node(index_op)
+                       .visit(&ast, &mut sym_tbl)
+                       .unwrap()
+                       .extract_real_value(),
+                   3.75);
+    }
+
+    #[test]
     fn binary_operator_node_visit_returns_error_when_multiplication_overflows() {
         let mut ast = Ast::new();
         let index_op = binop_node!(ast,
@@ -317,7 +366,7 @@ mod tests {
     fn binary_operator_node_visit_returns_quotient_of_integer_nodes_when_op_is_division() {
         let mut ast = Ast::new();
         let index_op = binop_node!(ast,
-                                   int_node!(ast, 4),
+                                   int_node!(ast, 5),
                                    int_node!(ast, 2),
                                    OperatorType::IntegerDivision);
         let mut sym_tbl = SymbolTable::new();
@@ -326,6 +375,21 @@ mod tests {
                        .unwrap()
                        .extract_integer_value(),
                    2);
+    }
+
+    #[test]
+    fn binary_operator_node_visit_integer_div_gives_floored_quotient_if_one_operand_is_real() {
+        let mut ast = Ast::new();
+        let index_op = binop_node!(ast,
+                                   int_node!(ast, 5),
+                                   real_node!(ast, 2.0),
+                                   OperatorType::IntegerDivision);
+        let mut sym_tbl = SymbolTable::new();
+        assert_eq!(ast.get_node(index_op)
+                       .visit(&ast, &mut sym_tbl)
+                       .unwrap()
+                       .extract_real_value(),
+                   2.0);
     }
 
     #[test]

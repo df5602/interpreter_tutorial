@@ -78,11 +78,7 @@ impl AstNode for NumberNode {
 
 impl NodeVisitor for NumberNode {
     fn visit(&self, _ast: &Ast, _sym_tbl: &mut SymbolTable) -> Result<Value, SyntaxError> {
-        match self.value {
-            Value::Integer(val) => Ok(Value::Integer(val)),
-            Value::Real(val) => Ok(Value::Real(val)),
-            _ => panic!("Internal Error (Number node doesn't contain number)"),
-        }
+        Ok(self.value.clone())
     }
 }
 

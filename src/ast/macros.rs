@@ -8,6 +8,16 @@ macro_rules! int_node {
     }}
 }
 
+macro_rules! real_node {
+    ($ast:expr, $value:expr) => {{
+        let node = NumberNode::new(Value::Real($value), 
+                                   Token::new(TokenType::RealLiteral, 
+                                              Some(TokenValue::Real($value)), 
+                                              Span::default()));
+        $ast.add_node(node)
+    }}
+}
+
 macro_rules! binop_node {
     ($ast:expr, $left:expr, $right:expr, $op:expr) => {{
         let node = BinaryOperatorNode::new($left, $right, $op,

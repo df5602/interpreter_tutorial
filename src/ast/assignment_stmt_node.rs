@@ -1,6 +1,6 @@
 use std::fmt;
 
-use tokens::{Token, TokenValue, Span};
+use tokens::{Token, TokenValue, Span, Type};
 use symbol_table::SymbolTable;
 use errors::SyntaxError;
 use ast::{Ast, AstNode, AstIndex};
@@ -75,15 +75,40 @@ impl NodeVisitor for AssignmentStmtNode {
             .extract_identifier_value();
         let expression = ast.get_node(self.expression).visit(ast, sym_tbl)?;
 
-        // Try to update value in symbol table, return error, if no entry exists
-        match sym_tbl.update(name, expression) {
-            Ok(_) => Ok(Value::Void),
-            Err(msg) => {
-                Err(SyntaxError {
-                        msg: msg,
-                        span: self.span.clone(),
-                    })
+        // Convert expression to target type
+        let converted_value = match sym_tbl.symbol_type(&name) {
+            Some(ty) => {
+                match ty {
+                    // Convert to integer (can fail in case of overflow)
+                    Type::Integer => {
+                        if let Some(value) = expression.into_integer() {
+                            value
+                        } else {
+                            return Err(SyntaxError {
+                                           msg: "Conversion of real to integer would overflow!"
+                                               .to_string(),
+                                           span: self.span.clone(),
+                                       });
+                        }
+                    }
+                    // Convert to real
+                    Type::Real => expression.into_real(),
+                }
             }
+            // No entry in symbol table -> undeclared variable
+            None => {
+                return Err(SyntaxError {
+                               msg: format!("Use of undeclared variable `{}`.", name),
+                               span: self.span.clone(),
+                           })
+            }
+        };
+
+        // Update value in symbol table
+        if sym_tbl.update(name, converted_value) {
+            Ok(Value::Void)
+        } else {
+            unreachable!(); // Entry has to be present in symbol table since we checked it above
         }
     }
 }
@@ -103,6 +128,8 @@ impl AssignmentStmtNode {
 
 #[cfg(test)]
 mod tests {
+    use std::i64;
+
     use super::*;
     use tokens::{Token, TokenType, TokenValue, Span, Type};
     use ast::{Ast, AstNode, AstIndex, VariableNode, NumberNode, CompoundStmtNode};
@@ -197,5 +224,47 @@ mod tests {
                     .is_ok());
 
         assert_eq!(sym_tbl.value(&"a".to_string()), Some(Value::Integer(24)));
+    }
+
+    #[test]
+    fn assignment_statement_node_visit_converts_the_expression_to_target_type_integer() {
+        let mut ast = Ast::new();
+        let mut sym_tbl = SymbolTable::new();
+        assert!(sym_tbl.insert("a".to_string(), Type::Integer).is_ok());
+
+        let index = assign_node!(ast, var_node!(ast, "a"), real_node!(ast, 3.1415));
+
+        assert_eq!(sym_tbl.value(&"a".to_string()), Some(Value::NotInitialized));
+        assert_eq!(ast.get_node(index).visit(&ast, &mut sym_tbl).unwrap(),
+                   Value::Void);
+        assert_eq!(sym_tbl.value(&"a".to_string()), Some(Value::Integer(3)));
+    }
+
+    #[test]
+    fn assignment_statement_node_visit_casting_to_integer_with_overflow_returns_error() {
+        let mut ast = Ast::new();
+        let mut sym_tbl = SymbolTable::new();
+        assert!(sym_tbl.insert("a".to_string(), Type::Integer).is_ok());
+
+        let index = assign_node!(ast,
+                                 var_node!(ast, "a"),
+                                 real_node!(ast, (i64::MAX as f64 + 1000.0)));
+
+        assert_eq!(sym_tbl.value(&"a".to_string()), Some(Value::NotInitialized));
+        assert!(ast.get_node(index).visit(&ast, &mut sym_tbl).is_err());
+    }
+
+    #[test]
+    fn assignment_statement_node_visit_converts_the_expression_to_target_type_real() {
+        let mut ast = Ast::new();
+        let mut sym_tbl = SymbolTable::new();
+        assert!(sym_tbl.insert("a".to_string(), Type::Real).is_ok());
+
+        let index = assign_node!(ast, var_node!(ast, "a"), int_node!(ast, 42));
+
+        assert_eq!(sym_tbl.value(&"a".to_string()), Some(Value::NotInitialized));
+        assert_eq!(ast.get_node(index).visit(&ast, &mut sym_tbl).unwrap(),
+                   Value::Void);
+        assert_eq!(sym_tbl.value(&"a".to_string()), Some(Value::Real(42.0)));
     }
 }

@@ -19,6 +19,8 @@ pub struct SyntaxError {
 //  |
 // 1| a := 1 div 0
 //  |      ^^^^^^^
+#[allow(unknown_lints)]
+#[allow(op_ref)] // rust-clippy issue #1664
 pub fn print_error(input: &str, e: &SyntaxError) {
     let mut last_newline_byte = 0; // Byte offset of character after most recent newline found in input stream
     let mut last_newline_n = 0; // Character offset of character after most recent newline found in input stream
@@ -50,7 +52,7 @@ pub fn print_error(input: &str, e: &SyntaxError) {
         while !input.is_char_boundary(last_char) {
             last_char -= 1;
         }
-        if input[last_char..last_bad] != *"\n" && input[last_char..last_bad] != *"\r" {
+        if &input[last_char..last_bad] != "\n" && &input[last_char..last_bad] != "\r" {
             break;
         } else {
             if last_char == 0 {
