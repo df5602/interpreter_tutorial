@@ -57,7 +57,17 @@ impl AstNode for VariableNode {
 impl NodeVisitor for VariableNode {
     fn visit(&self, _ast: &Ast, sym_tbl: &mut SymbolTable) -> Result<Value, SyntaxError> {
         match sym_tbl.value(&self.name) {
-            Some(value) => Ok(value),
+            Some(value) => {
+                match value {
+                    Value::NotInitialized => {
+                        Err(SyntaxError {
+                                msg: format!("Use of uninitialized variable `{}`.", self.name),
+                                span: self.token.span.clone(),
+                            })
+                    }
+                    value => Ok(value),
+                }
+            }
             None => {
                 Err(SyntaxError {
                         msg: format!("No variable named `{}` in scope.", self.name),
@@ -179,6 +189,19 @@ mod tests {
         let index_var_a = var_node!(ast, "a");
 
         assert_eq!(sym_tbl.value(&"a".to_string()), None);
+        assert!(ast.get_node(index_var_a)
+                    .visit(&ast, &mut sym_tbl)
+                    .is_err());
+    }
+
+    #[test]
+    fn variable_node_visit_returns_error_if_variable_is_uninitialized() {
+        let mut ast = Ast::new();
+        let mut sym_tbl = SymbolTable::new();
+        assert!(sym_tbl.insert("a".to_string(), Type::Integer).is_ok());
+
+        let index_var_a = var_node!(ast, "a");
+
         assert!(ast.get_node(index_var_a)
                     .visit(&ast, &mut sym_tbl)
                     .is_err());
